@@ -8,7 +8,7 @@ int main() {
     table.addRow({"Canada", "Ottawa"});
     table.addRow({"Peru", "Lima"});
     table.addRow({"United States", "Washington"});
-    table.addRow({"Brazil", "Brasília"});
+    table.addRow({"Brazil", "Brasilia"});
 
     table.printTable();
     return 0;
