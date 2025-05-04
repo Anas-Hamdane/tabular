@@ -9,7 +9,7 @@
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
 
-    * EXAMPLE of a Simple table
+    * EXAMPLE of Unregular tables
 */
 
 #include "../include/tabular.hpp"
@@ -18,11 +18,12 @@ int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"Country", "Capital"});
-    table.addRow({"Canada", "Ottawa"});
-    table.addRow({"Peru", "Lima"});
+    table.addRow({"Countries Capitals"});
     table.addRow({"United States", "Washington"});
     table.addRow({"Brazil", "Brasilia"});
+    table.addRow({"Countries Population"});
+    table.addRow({"United States", "340.1 million (2024)"});
+    table.addRow({"Brazil", "211.1 million (2023)"});
 
     table.printTable();
     return 0;

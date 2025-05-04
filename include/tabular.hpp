@@ -14,7 +14,7 @@
 /*
     TODO:
         -  [x] implement Dynamic table logic
-        -  [ ] default padding
+        -  [x] default padding
         -  [ ] ANSI Support
         -  [ ] Alignment support
         -  [ ] terminal colors and highlights support
@@ -68,7 +68,7 @@ namespace tabular {
     enum class BorderStyle {
         standard,
         empty,
-        ANSI // ! Not emplemented
+        ANSI // ! Not implemented
     };
 
     class Column {
@@ -244,9 +244,10 @@ namespace tabular {
         BorderStyle border;
         style::BorderTemplates templates;
         Alignment alignment;
+        int horizontalPadding;
 
     public:
-        Table() : border(BorderStyle::standard), alignment(Alignment::left) {}
+        Table() : border(BorderStyle::standard), alignment(Alignment::left), horizontalPadding(1) {}
 
         void addRow(std::vector<std::string> columns) {
             std::vector<Column> Columns;
@@ -264,7 +265,7 @@ namespace tabular {
             for (Row row : rows)
                 if (row.columns.size() != referenceWidth)
                     return false;
-            
+
             return true;
         }
 
@@ -290,39 +291,14 @@ namespace tabular {
                 templates.vertical = vertical;
         }
 
-        std::string printRow(style::BorderTemplates borderTemplates, Row row) {
-            std::string result;
-
-            size_t maxSplittedContentSize = utilities::findMaxSplittedContentSize(
-                row); // tallest vector of splitted strings
-            for (unsigned int j = 0; j < maxSplittedContentSize; j++) {
-                result.append(borderTemplates.vertical);
-
-                for (Column col : row.columns) {
-                    int rest = col.width;
-                    if (j < col.splittedContent.size()) {
-                        result.append(col.splittedContent.at(j));
-                        rest = col.width - col.splittedContent.at(j).size();
-                    }
-
-                    for (int k = 0; k < rest; k++)
-                        result.append(" ");
-
-                    result.append(borderTemplates.vertical);
-                }
-
-                result.append("\n");
-            }
-
-            return result;
-        } 
-        
         std::string printRow(style::BorderTemplates borderTemplates, Row row, int widthReference) {
             std::string result;
 
-            // tableSplits = (row.columns.size() + 1)
-            unsigned int usableWidth = widthReference - (row.columns.size() + 1); 
-            utilities::formatRow(usableWidth, row);
+            if (widthReference != 0) {
+                // tableSplits = (row.columns.size() + 1)
+                unsigned int usableWidth = widthReference - (row.columns.size() + 1);
+                utilities::formatRow(usableWidth, row);
+            }
 
             size_t maxSplittedContentSize = utilities::findMaxSplittedContentSize(
                 row); // tallest vector of splitted strings
@@ -332,8 +308,12 @@ namespace tabular {
                 for (Column col : row.columns) {
                     int rest = col.width;
                     if (j < col.splittedContent.size()) {
+                        // * Default Padding: one space after the border
+                        for (int k = 0; k < horizontalPadding; k++)
+                            result.append(" ");
+
                         result.append(col.splittedContent.at(j));
-                        rest = col.width - col.splittedContent.at(j).size();
+                        rest = col.width - (col.splittedContent.at(j).size() + horizontalPadding); // to balance the line
                     }
 
                     for (int k = 0; k < rest; k++)
@@ -402,7 +382,7 @@ namespace tabular {
 
             // check if the table has consistent number of columns across all rows
             bool isRegular = checkRegularity();
-            
+
             // adjusting border style
             style::BorderTemplates borderTemplates = style::getBorderTemplates(border);
             if (!templates.corner.empty()) borderTemplates.corner = templates.corner;
@@ -412,21 +392,19 @@ namespace tabular {
 
             // ------printing the table-------
             Row rowReference = rows.at(i);
-            unsigned int rowWidthReference = rowReference.getRowWidth();
+            // 0 to check in printRow
+            unsigned int rowWidthReference = isRegular ? 0 : rowReference.getRowWidth();
 
             oss << printBorder(borderTemplates, rowReference);
             for (size_t j = i; j < rows.size(); j++) {
                 Row row = rows.at(j);
 
-                if (isRegular)
-                    oss << printRow(borderTemplates, row);
-                else
-                    oss << printRow(borderTemplates, row, rowWidthReference);
+                oss << printRow(borderTemplates, row, rowWidthReference);
 
                 oss << printBorder(borderTemplates, rowReference);
             }
 
-            // ! ****** REMEBER PADDING *******
+            // ! ****** REMEMBER PADDING *******
             std::cout << oss.str();
         }
     };
