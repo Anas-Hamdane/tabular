@@ -14,9 +14,12 @@
 /*
     TODO:
         -  [x] implement Dynamic table logic
+        -  [ ] default padding
         -  [ ] ANSI Support
         -  [ ] Alignment support
         -  [ ] terminal colors and highlights support
+        -  [ ] padding control
+        -  [ ] width control
 */
 
 #if defined(_WIN32) || defined(_WIN64)

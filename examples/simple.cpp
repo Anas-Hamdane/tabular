@@ -4,8 +4,11 @@ int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"Anas", "Hamdane", "very very very very loooooooooooooooooooooooooooooooooooooooooooooooooooooooong texto"});
-    table.addRow({"   HELLO", "      How are u", "       Good"});
+    table.addRow({"Country", "Capital"});
+    table.addRow({"Canada", "Ottawa"});
+    table.addRow({"Peru", "Lima"});
+    table.addRow({"United States", "Washington"});
+    table.addRow({"Brazil", "Brasília"});
 
     table.printTable();
     return 0;
