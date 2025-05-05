@@ -158,53 +158,98 @@ namespace tabular {
         }
         // clang-format on
 
-        inline std::vector<std::string> splitText(const std::string str, int maxWidth) {
+        inline void addSpaces(std::string &in, int spacesNum) {
+            for (int i = 0; i < spacesNum; i++)
+                in.append(" ");
+        }
+
+        inline std::vector<std::string> splitText(const std::string str, int horPadd, int maxWidth) {
             if (str.empty() || maxWidth == 0)
                 return std::vector<std::string>();
 
             std::vector<std::string> result;
 
-            const int redLine = maxWidth * 0.3; // don't go back more than 30% of the width
+            const int redLine = (maxWidth * 0.3); // don't go back more than 30% of the width
             const size_t strSize = str.size();
             size_t prevStart = 0;
             for (size_t i = maxWidth; i < strSize; i += maxWidth) {
                 // find the last space within the allowed maxWidth
                 size_t spaceIndex = i;
                 bool forceCut = false;
-                int itiriationsNum = 0;
+                int iterationsNum = 0;
 
-                while (spaceIndex > 0 && str.at(spaceIndex) != ' ') {
-                    if (itiriationsNum >= redLine) {
+                /*
+                    * first condition spaceIndex > 0 to avoid errors.
+                    * second condition (str.at(spaceIndex) != ' ') to go back whenever it is not a space until we reach a *VALID* space or the red line.
+                    * third condition check for valid spaces: they should be ( > (horPadd * 2)) behind the max width.
+                */
+                while ((spaceIndex > 0) && ((str.at(spaceIndex) != ' ') || (str.at(spaceIndex) == ' ' && iterationsNum <= (horPadd * 2)))) {
+                    if (iterationsNum >= redLine) {
                         forceCut = true;
                         break;
                     }
 
                     else {
                         spaceIndex--;
-                        itiriationsNum++;
+                        iterationsNum++;
                     }
                 }
 
-                if (forceCut)
-                    result.push_back(str.substr(prevStart, i - prevStart - (maxWidth > 5 ? 1 : 0)) +
-                                     (maxWidth > 5 ? "-" : ""));
+                std::string line;
+                addSpaces(line, horPadd);
+
+                /*
+                    * whenever there's a force cut we decrement 'i' by the space taken by the horPadd and/or the '-' character.
+                */
+                if (forceCut) {
+                    /*
+                        if and else replacing
+                        ... - (maxWidth > 5? 1 : 0)) + (maxWidth > 5?) "-" : "")
+                    */
+                    if (maxWidth <= 5)
+                        line.append(str.substr(prevStart, i - prevStart - (horPadd * 2)));
+                    else
+                        line.append(str.substr(prevStart, i - prevStart - 1 - (horPadd * 2)) + "-");
+
+                    i -= maxWidth <= 5? (horPadd * 2) : ((horPadd * 2) + 1);
+                }
+                /*
+                    * whenever there's a *VALID* space just split
+                    * note: we don't decrement 'i' because it is already (> (horPadd * 2)) behind the max width, it is a VALID SPACE.
+                */
                 else if (str.at(spaceIndex) == ' ') {
                     i = spaceIndex + 1; // skip space
-                    result.push_back(str.substr(prevStart, spaceIndex - prevStart));
-                } else
-                    // Probably a very small string case
-                    result.push_back(str.substr(prevStart, i - prevStart));
+                    line.append(str.substr(prevStart, spaceIndex - prevStart));
+                } 
+                
+                
+                //  * Probably a very small string case, didn't test it lol.
+                else {
+                    line.append(str.substr(prevStart, i - prevStart - (horPadd * 2)));
+                }
 
-                prevStart = i;
+                addSpaces(line, horPadd);
+
+                prevStart = i; // update the previous start point
+                result.push_back(line);
             }
 
-            if (prevStart < strSize)
-                result.push_back(str.substr(prevStart, strSize - prevStart));
+            //  * less than a line-string case.
+            if (prevStart < strSize) {
+                std::string line;
+                addSpaces(line, horPadd);
+                
+                line.append(str.substr(prevStart, strSize - prevStart));
+
+                addSpaces(line, horPadd);
+
+                result.push_back(line);
+            }
 
             return result;
         }
 
-        inline void formatRow(unsigned int width, Row& row) {
+        inline void formatRow(unsigned int width, int horPadding, Row& row) {
             if (row.columns.size() == 0)
                 return;
 
@@ -213,15 +258,18 @@ namespace tabular {
                 return;
 
             int individualColWidth = width / colsNum;
-            int reste = width % colsNum;
+            int rest = width % colsNum;
+
+            if (horPadding >= individualColWidth)
+                horPadding = 1; // reset horPadding by default value
 
             for (Column& col : row.columns) {
-                if (reste > 0) {
-                    col.splittedContent = splitText(col.content, individualColWidth + 1);
+                if (rest > 0) {
+                    col.splittedContent = splitText(col.content, horPadding, individualColWidth + 1);
                     col.width = individualColWidth + 1;
-                    reste--;
+                    rest--;
                 } else {
-                    col.splittedContent = splitText(col.content, individualColWidth);
+                    col.splittedContent = splitText(col.content, horPadding, individualColWidth);
                     col.width = individualColWidth;
                 }
             }
@@ -297,7 +345,7 @@ namespace tabular {
             if (widthReference != 0) {
                 // tableSplits = (row.columns.size() + 1)
                 unsigned int usableWidth = widthReference - (row.columns.size() + 1);
-                utilities::formatRow(usableWidth, row);
+                utilities::formatRow(usableWidth, horizontalPadding, row);
             }
 
             size_t maxSplittedContentSize = utilities::findMaxSplittedContentSize(
@@ -308,12 +356,8 @@ namespace tabular {
                 for (Column col : row.columns) {
                     int rest = col.width;
                     if (j < col.splittedContent.size()) {
-                        // * Default Padding: one space after the border
-                        for (int k = 0; k < horizontalPadding; k++)
-                            result.append(" ");
-
                         result.append(col.splittedContent.at(j));
-                        rest = col.width - (col.splittedContent.at(j).size() + horizontalPadding); // to balance the line
+                        rest = col.width - col.splittedContent.at(j).size(); // to balance the line
                     }
 
                     for (int k = 0; k < rest; k++)
@@ -378,7 +422,7 @@ namespace tabular {
 
             // edit rows to match the width
             for (Row& row : rows)
-                utilities::formatRow(usableWidth, row);
+                utilities::formatRow(usableWidth, horizontalPadding, row);
 
             // check if the table has consistent number of columns across all rows
             bool isRegular = checkRegularity();
