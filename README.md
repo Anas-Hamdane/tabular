@@ -1,2 +1,0 @@
-# tabular
-c++ tabular library
