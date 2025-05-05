@@ -9,7 +9,7 @@
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
 
-    * EXAMPLE of Unregular tables
+    * EXAMPLE of irregular tables
 */
 
 #include "../include/tabular.hpp"
