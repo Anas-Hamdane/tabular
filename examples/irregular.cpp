@@ -12,7 +12,7 @@
     * EXAMPLE of irregular tables
 */
 
-#include "../include/tabular.hpp"
+#include "../include/tabular/tabular.hpp"
 
 int main() {
     using namespace tabular;

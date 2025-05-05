@@ -12,7 +12,7 @@
     * EXAMPLE of a Long text in a table
 */
 
-#include "../include/tabular.hpp"
+#include "../include/tabular/tabular.hpp"
 
 int main() {
     using namespace tabular;
