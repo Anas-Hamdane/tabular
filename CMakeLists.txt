@@ -1,26 +1,14 @@
 cmake_minimum_required(VERSION 3.15)
-project(tabular LANGUAGES CXX)
+project(tabular VERSION 0.1 DESCRIPTION "C++ tabling library" LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    include_directories(SYSTEM
-        ${CMAKE_CXX_COMPILER_EXTERNAL_TOOLCHAIN}/include/c++/
-        ${CMAKE_CXX_COMPILER_EXTERNAL_TOOLCHAIN}/include/c++/${CMAKE_CXX_COMPILER_VERSION}
-        ${CMAKE_CXX_COMPILER_EXTERNAL_TOOLCHAIN}/include
-    )
-endif()
+set(EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
+set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# HERE set the EXAMPLE you want to try
+set(TEST_EXAMPLE "simple")
 
 # simple example
-add_executable(${PROJECT_NAME} examples/simple.cpp)
-
-target_compile_options(${PROJECT_NAME} PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE RelWithDebInfo)
-endif()
+add_executable(${TEST_EXAMPLE} ${EXAMPLES_DIR}/${TEST_EXAMPLE}.cpp ${INCLUDE_DIR}/tabular/tabular.hpp)

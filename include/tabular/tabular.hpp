@@ -13,13 +13,13 @@
 
 /*
     TODO:
-        -  [x] implement Dynamic table logic
-        -  [x] default padding
-        -  [ ] ANSI Support
-        -  [ ] Alignment support
-        -  [ ] terminal colors and highlights support
-        -  [ ] padding control
-        -  [ ] width control
+      -  [x] implement Dynamic table logic
+      -  [x] default padding
+      -  [ ] ANSI Support
+      -  [ ] Alignment support
+      -  [ ] terminal colors and highlights support
+      -  [ ] padding control
+      -  [ ] width control
 */
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -40,7 +40,7 @@
     #error Unsupported platform
 #endif
 
-#define AUTOMATIC_WIDTH_PERCENT 0.6
+#define AUTOMATIC_WIDTH_PERCENT .5
 #define ESC "\x1b"
 #define CSI "\x1b["
 
@@ -72,26 +72,36 @@ namespace tabular {
     };
 
     class Column {
-    public:
-        std::string content;
+        std::vector<FontStyle> fontStyles;
         std::vector<std::string> splittedContent;
         Alignment alignment;
-        std::vector<FontStyle> fontStyles;
         unsigned int width;
+
+    public:
+        std::string content;
 
         Column(std::string content)
             : content(content), alignment(Alignment::left), width(0) {};
 
-        void printContent() {}
-
         void setColumnAlign(Alignment alignment) { this->alignment = alignment; }
+
+        Alignment getColumnAlign() { return alignment; }
+
+        void setWidth(unsigned int width) { this->width = width; }
+
+        unsigned int getWidth() { return this->width; }
+
+        void setSplittedContent(std::vector<std::string> splittedContent) { this->splittedContent = splittedContent; }
+
+        std::vector<std::string> getSplittedContent() { return splittedContent; }
     };
 
     class Row {
+        Alignment alignment;
+        std::vector<FontStyle> fontStyles;
+
     public:
         std::vector<Column> columns;
-        std::vector<FontStyle> fontStyles;
-        Alignment alignment;
 
         Row(std::vector<Column> columns)
             : columns(columns), alignment(Alignment::left) {}
@@ -102,7 +112,7 @@ namespace tabular {
         void setRowAlign(Alignment alignment) {
             this->alignment = alignment;
 
-            for (Column col : columns)
+            for (Column& col : columns)
                 col.setColumnAlign(alignment);
         }
 
@@ -111,7 +121,7 @@ namespace tabular {
             unsigned int width = columns.size() + 1; // table splits
 
             for (Column col : columns)
-                width += col.width;
+                width += col.getWidth();
 
             return width;
         }
@@ -158,12 +168,25 @@ namespace tabular {
         }
         // clang-format on
 
-        inline void addSpaces(std::string &in, int spacesNum) {
+        inline void addSpaces(std::string& in, int spacesNum) {
             for (int i = 0; i < spacesNum; i++)
                 in.append(" ");
         }
 
-        inline std::vector<std::string> splitText(const std::string str, int horPadd, int maxWidth) {
+        inline void setContentAlign(std::string& line, std::string sub, int usableWidth, Alignment align) {
+            int start;
+            if (align == Alignment::center)
+                start = (usableWidth - sub.size()) / 2;
+            else if (align == Alignment::right)
+                start = (usableWidth - sub.size());
+            else
+                start = 0;
+
+            addSpaces(line, start);
+            line.append(sub);
+        }
+
+        inline std::vector<std::string> prepareColContent(const std::string str, Alignment colAlign, int horPadd, int maxWidth) {
             if (str.empty() || maxWidth == 0)
                 return std::vector<std::string>();
 
@@ -179,10 +202,10 @@ namespace tabular {
                 int iterationsNum = 0;
 
                 /*
-                    * first condition spaceIndex > 0 to avoid errors.
-                    * second condition (str.at(spaceIndex) != ' ') to go back whenever it is not a space until we reach a *VALID* space or the red line.
-                    * third condition check for valid spaces: they should be ( > (horPadd * 2)) behind the max width.
-                */
+                 * first condition spaceIndex > 0 to avoid errors.
+                 * second condition (str.at(spaceIndex) != ' ') to go back whenever it is not a space until we reach a *VALID* space or the red line.
+                 * third condition check for valid spaces: they should be ( > (horPadd * 2)) behind the max width.
+                 */
                 while ((spaceIndex > 0) && ((str.at(spaceIndex) != ' ') || (str.at(spaceIndex) == ' ' && iterationsNum <= (horPadd * 2)))) {
                     if (iterationsNum >= redLine) {
                         forceCut = true;
@@ -199,8 +222,9 @@ namespace tabular {
                 addSpaces(line, horPadd);
 
                 /*
-                    * whenever there's a force cut we decrement 'i' by the space taken by the horPadd and/or the '-' character.
-                */
+                 * whenever there's a force cut we decrement 'i' by the space taken by the horPadd and/or the '-' character.
+                 * NOTE: no alignment needed line already full.
+                 */
                 if (forceCut) {
                     /*
                         if and else replacing
@@ -211,21 +235,26 @@ namespace tabular {
                     else
                         line.append(str.substr(prevStart, i - prevStart - 1 - (horPadd * 2)) + "-");
 
-                    i -= maxWidth <= 5? (horPadd * 2) : ((horPadd * 2) + 1);
+                    i -= maxWidth <= 5 ? (horPadd * 2) : ((horPadd * 2) + 1);
                 }
                 /*
-                    * whenever there's a *VALID* space just split
-                    * note: we don't decrement 'i' because it is already (> (horPadd * 2)) behind the max width, it is a VALID SPACE.
-                */
+                 * whenever there's a *VALID* space just split
+                 * note: we don't decrement 'i' because it is already (> (horPadd * 2)) behind the max width, it is a VALID SPACE.
+                 */
                 else if (str.at(spaceIndex) == ' ') {
                     i = spaceIndex + 1; // skip space
-                    line.append(str.substr(prevStart, spaceIndex - prevStart));
-                } 
-                
-                
+                    std::string sub = str.substr(prevStart, spaceIndex - prevStart);
+
+                    int usableWidth = maxWidth - (horPadd * 2);
+                    setContentAlign(line, sub, usableWidth, colAlign);
+                }
+
                 //  * Probably a very small string case, didn't test it lol.
                 else {
-                    line.append(str.substr(prevStart, i - prevStart - (horPadd * 2)));
+                    std::string sub = str.substr(prevStart, i - prevStart - (horPadd * 2));
+
+                    int usableWidth = maxWidth - (horPadd * 2);
+                    setContentAlign(line, sub, usableWidth, colAlign);
                 }
 
                 addSpaces(line, horPadd);
@@ -238,8 +267,11 @@ namespace tabular {
             if (prevStart < strSize) {
                 std::string line;
                 addSpaces(line, horPadd);
-                
-                line.append(str.substr(prevStart, strSize - prevStart));
+
+                std::string sub = str.substr(prevStart, strSize - prevStart);
+
+                int usableWidth = maxWidth - (horPadd * 2);
+                setContentAlign(line, sub, usableWidth, colAlign);
 
                 addSpaces(line, horPadd);
 
@@ -264,13 +296,15 @@ namespace tabular {
                 horPadding = 1; // reset horPadding by default value
 
             for (Column& col : row.columns) {
+                Alignment colAlign = col.getColumnAlign();
                 if (rest > 0) {
-                    col.splittedContent = splitText(col.content, horPadding, individualColWidth + 1);
-                    col.width = individualColWidth + 1;
+                    col.setSplittedContent(prepareColContent(col.content, colAlign, horPadding, individualColWidth + 1));
+                    col.setWidth(individualColWidth + 1);
                     rest--;
                 } else {
-                    col.splittedContent = splitText(col.content, horPadding, individualColWidth);
-                    col.width = individualColWidth;
+                    col.setSplittedContent(prepareColContent(col.content, colAlign, horPadding, individualColWidth));
+
+                    col.setWidth(individualColWidth);
                 }
             }
         }
@@ -278,9 +312,11 @@ namespace tabular {
         //   return the size of the tallest splittedContent vector
         inline size_t findMaxSplittedContentSize(Row row) {
             size_t result = 0;
-            for (Column col : row.columns)
-                if (col.splittedContent.size() > result)
-                    result = col.splittedContent.size();
+            for (Column col : row.columns) {
+                size_t splittedContentSize = col.getSplittedContent().size();
+                if (splittedContentSize > result)
+                    result = splittedContentSize;
+            }
 
             return result;
         }
@@ -288,13 +324,14 @@ namespace tabular {
     } // namespace utilities
 
     class Table {
-        std::vector<Row> rows;
         BorderStyle border;
         style::BorderTemplates templates;
         Alignment alignment;
         int horizontalPadding;
 
     public:
+        std::vector<Row> rows;
+
         Table() : border(BorderStyle::standard), alignment(Alignment::left), horizontalPadding(1) {}
 
         void addRow(std::vector<std::string> columns) {
@@ -307,6 +344,23 @@ namespace tabular {
 
         void setBorder(BorderStyle border) { this->border = border; }
 
+        void setAllTableAlign(Alignment align) {
+            this->alignment = align;
+
+            for (Row& row : rows)
+                row.setRowAlign(align);
+        }
+
+        void setAllColsAlign(Alignment align, int colsIndex) {
+            if (colsIndex < 0)
+                return;
+            
+            for (Row row : rows) {
+                if (row.columns.size() > colsIndex)
+                    row.columns.at(colsIndex).setColumnAlign(align);
+            }
+        }
+
         bool checkRegularity() {
             size_t referenceWidth = rows.front().columns.size();
 
@@ -315,13 +369,6 @@ namespace tabular {
                     return false;
 
             return true;
-        }
-
-        void setGlobalTextAlign(Alignment alignment) {
-            this->alignment = alignment;
-
-            for (Row& row : rows)
-                row.setRowAlign(alignment);
         }
 
         void corner(std::string corner) {
@@ -354,10 +401,13 @@ namespace tabular {
                 result.append(borderTemplates.vertical);
 
                 for (Column col : row.columns) {
-                    int rest = col.width;
-                    if (j < col.splittedContent.size()) {
-                        result.append(col.splittedContent.at(j));
-                        rest = col.width - col.splittedContent.at(j).size(); // to balance the line
+                    int rest = col.getWidth();
+                    int splittedContentSize = col.getSplittedContent().size();
+                    std::string currLine = col.getSplittedContent().at(j);
+
+                    if (j < splittedContentSize) {
+                        result.append(currLine);
+                        rest -= currLine.size(); // to balance the line
                     }
 
                     for (int k = 0; k < rest; k++)
@@ -379,8 +429,9 @@ namespace tabular {
             size_t colsNum = reference.columns.size();
             for (size_t j = 0; j < colsNum; j++) {
                 Column col = reference.columns[j];
+                unsigned colWidth = col.getWidth();
 
-                for (unsigned int k = 0; k < col.width; k++)
+                for (unsigned int k = 0; k < colWidth; k++)
                     result.append(borderTemplates.horizontal);
 
                 result.append(borderTemplates.corner);
@@ -416,7 +467,7 @@ namespace tabular {
             size_t tableSplits = colsNum + 1; // cols reserved by the table
             usableWidth -= tableSplits;
             if (usableWidth <= (colsNum)) { // at least one character in each column
-                std::cout << "Not enough space";
+                std::cout << "Not enough space"; // ! use error code or something like that instead
                 return;
             }
 
