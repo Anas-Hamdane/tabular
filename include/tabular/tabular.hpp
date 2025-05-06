@@ -16,7 +16,7 @@
       -  [x] implement Dynamic table logic
       -  [x] default padding
       -  [ ] ANSI Support
-      -  [ ] Alignment support
+      -  [x] Alignment support
       -  [ ] terminal colors and highlights support
       -  [ ] padding control
       -  [ ] width control
