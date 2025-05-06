@@ -18,7 +18,8 @@ int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"this is a very long paragraph with a very long wooooooooooooooooooooooooooooooooooooooooooooooooooooooord"}); // 6
+    table.addRow({"this is a very long paragraph with a very long wooooooooooooooooooooooooooooooooooooooooooooooooooooooord"});
+    table.addRow({"this is a another paragraph\nwith a new line inside it"});
 
     table.printTable();
     return 0;

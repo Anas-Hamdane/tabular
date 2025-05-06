@@ -195,6 +195,11 @@ namespace tabular {
             const int redLine = (maxWidth * 0.3); // don't go back more than 30% of the width
             const size_t strSize = str.size();
             size_t prevStart = 0;
+
+            /*
+                ! split the str in '\n' before starting normal splitting because it will be a normal '\n' if it is not near the end.
+            */
+
             for (size_t i = maxWidth; i < strSize; i += maxWidth) {
                 // find the last space within the allowed maxWidth
                 size_t spaceIndex = i;
@@ -206,7 +211,9 @@ namespace tabular {
                  * second condition (str.at(spaceIndex) != ' ') to go back whenever it is not a space until we reach a *VALID* space or the red line.
                  * third condition check for valid spaces: they should be ( > (horPadd * 2)) behind the max width.
                  */
-                while ((spaceIndex > 0) && ((str.at(spaceIndex) != ' ') || (str.at(spaceIndex) == ' ' && iterationsNum <= (horPadd * 2)))) {
+                while ((spaceIndex > 0)
+                && ((str.at(spaceIndex) != ' ')
+                || (str.at(spaceIndex) == ' ' && (iterationsNum <= (horPadd * 2))))) {
                     if (iterationsNum >= redLine) {
                         forceCut = true;
                         break;
@@ -241,7 +248,7 @@ namespace tabular {
                  * whenever there's a *VALID* space just split
                  * note: we don't decrement 'i' because it is already (> (horPadd * 2)) behind the max width, it is a VALID SPACE.
                  */
-                else if (str.at(spaceIndex) == ' ') {
+                else {
                     i = spaceIndex + 1; // skip space
                     std::string sub = str.substr(prevStart, spaceIndex - prevStart);
 
@@ -249,13 +256,13 @@ namespace tabular {
                     setContentAlign(line, sub, usableWidth, colAlign);
                 }
 
-                //  * Probably a very small string case, didn't test it lol.
-                else {
-                    std::string sub = str.substr(prevStart, i - prevStart - (horPadd * 2));
+                // //  * Probably a very small string case, didn't test it lol.
+                // else {
+                //     std::string sub = str.substr(prevStart, i - prevStart - (horPadd * 2));
 
-                    int usableWidth = maxWidth - (horPadd * 2);
-                    setContentAlign(line, sub, usableWidth, colAlign);
-                }
+                //     int usableWidth = maxWidth - (horPadd * 2);
+                //     setContentAlign(line, sub, usableWidth, colAlign);
+                // }
 
                 addSpaces(line, horPadd);
 
