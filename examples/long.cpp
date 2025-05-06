@@ -10,6 +10,7 @@
     *  Github: https://github.com/Anas-Hamdane
 
     * EXAMPLE of a Long text in a table
+    ! in progress with the '\n'
 */
 
 #include "../include/tabular/tabular.hpp"
