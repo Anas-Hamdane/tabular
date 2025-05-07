@@ -32,9 +32,9 @@ set(HEADER_FILES
 )
 
 # HERE set the EXAMPLE you want to try
-set(TEST_EXAMPLE "width")
+set(TEST_EXAMPLE "irregular")
 
 # simple example
 add_executable(${TEST_EXAMPLE} ${EXAMPLES_DIR}/${TEST_EXAMPLE}.cpp ${HEADER_FILES})
 
-target_include_directories(${TEST_EXAMPLE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${TEST_EXAMPLE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/single_include)

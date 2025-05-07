@@ -114,7 +114,7 @@ namespace tabular {
         std::vector<Column> columns;
 
         Row(std::vector<Column> columns)
-            : columns(columns), alignment(Alignment::left){}
+            : columns(columns), alignment(Alignment::left) {}
         // bool isHeader = false;
 
         int getColumnsNumber() { return columns.size(); }
@@ -326,7 +326,7 @@ namespace tabular {
             for (Column& col : row.columns) {
                 if (col.getWidth() != 0)
                     col.setSplittedContent(prepareColContent(col, horPadding, col.getWidth()));
-                
+
                 else if (rest > 0) {
                     col.setSplittedContent(prepareColContent(col, horPadding, individualColWidth + 1));
 
@@ -490,8 +490,10 @@ namespace tabular {
 
             unsigned short terminalWidth = utilities::getTerminalWidth();
             unsigned int usableWidth = width * DEFAULT_WIDTH_PERCENT;
-            if (this->width <= 0 || this->width > terminalWidth) width = usableWidth;
-            else usableWidth = width;
+            if (this->width <= 0 || this->width > terminalWidth)
+                width = usableWidth;
+            else
+                usableWidth = width;
 
             // edit rows to match the width
             for (Row& row : rows) {
@@ -504,7 +506,7 @@ namespace tabular {
                     return;
                 }
 
-                utilities::formatRow(rowUsableWidth,  horizontalPadding, row);
+                utilities::formatRow(rowUsableWidth, horizontalPadding, row);
             }
 
             // check if the table has consistent number of columns across all rows
