@@ -1,9 +1,0 @@
-CompileFlags:
-  Add:
-    - -target
-    - x86_64-w64-mingw32
-    - -isystem
-    - C:/msys64/mingw64/include/c++/14.2.0
-    - -isystem
-    - C:/msys64/mingw64/include
-  Compiler: g++.exe
