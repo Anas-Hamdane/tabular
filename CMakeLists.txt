@@ -32,7 +32,7 @@ set(HEADER_FILES
 )
 
 # HERE set the EXAMPLE you want to try
-set(TEST_EXAMPLE "simple")
+set(TEST_EXAMPLE "width")
 
 # simple example
 add_executable(${TEST_EXAMPLE} ${EXAMPLES_DIR}/${TEST_EXAMPLE}.cpp ${HEADER_FILES})

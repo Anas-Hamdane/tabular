@@ -36,7 +36,7 @@
 #error Unsupported platform
 #endif
 
-#define AUTOMATIC_WIDTH_PERCENT .5
+#define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent for prepColContent()
 #define ESC "\x1b"
 #define CSI "\x1b["

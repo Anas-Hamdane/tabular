@@ -19,7 +19,7 @@
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
       -  [ ] padding control
-      -  [ ] width control
+      -  [x] width control
 */
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -40,7 +40,7 @@
 #error Unsupported platform
 #endif
 
-#define AUTOMATIC_WIDTH_PERCENT .5
+#define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent for prepColContent()
 #define ESC "\x1b"
 #define CSI "\x1b["
@@ -114,7 +114,7 @@ namespace tabular {
         std::vector<Column> columns;
 
         Row(std::vector<Column> columns)
-            : columns(columns), alignment(Alignment::left) {}
+            : columns(columns), alignment(Alignment::left){}
         // bool isHeader = false;
 
         int getColumnsNumber() { return columns.size(); }
@@ -127,7 +127,7 @@ namespace tabular {
         }
 
         // full width including table splits
-        unsigned int getRowWidth() {
+        unsigned int getFullRowWidth() {
             unsigned int width = columns.size() + 1; // table splits
 
             for (Column col : columns)
@@ -239,7 +239,12 @@ namespace tabular {
             sub.clear();
         }
 
-        inline StringVector prepareColContent(std::string str, Alignment colAlign, int padding, int maxWidth) {
+        inline StringVector prepareColContent(Column col, int padding, int maxWidth) {
+            std::string str = col.content;
+            Alignment colAlign = col.getColumnAlign();
+
+            if (col.getWidth() != 0) maxWidth = col.getWidth();
+
             if (str.empty() || maxWidth == 0)
                 return StringVector();
 
@@ -301,20 +306,34 @@ namespace tabular {
             if (width <= 0 || colsNum <= 0)
                 return;
 
-            int individualColWidth = width / colsNum;
-            int rest = width % colsNum;
+            for (Column col : row.columns) {
+                if (col.getWidth() != 0) {
+                    width -= col.getWidth();
+                    colsNum--;
+                }
+            }
+
+            int individualColWidth = 0;
+            int rest = 0;
+            if (colsNum > 0) {
+                individualColWidth = width / colsNum;
+                rest = width % colsNum;
+            }
 
             if (horPadding >= individualColWidth)
                 horPadding = 1; // reset horPadding by default value
 
             for (Column& col : row.columns) {
-                Alignment colAlign = col.getColumnAlign();
-                if (rest > 0) {
-                    col.setSplittedContent(prepareColContent(col.content, colAlign, horPadding, individualColWidth + 1));
+                if (col.getWidth() != 0)
+                    col.setSplittedContent(prepareColContent(col, horPadding, col.getWidth()));
+                
+                else if (rest > 0) {
+                    col.setSplittedContent(prepareColContent(col, horPadding, individualColWidth + 1));
+
                     col.setWidth(individualColWidth + 1);
                     rest--;
                 } else {
-                    col.setSplittedContent(prepareColContent(col.content, colAlign, horPadding, individualColWidth));
+                    col.setSplittedContent(prepareColContent(col, horPadding, individualColWidth));
 
                     col.setWidth(individualColWidth);
                 }
@@ -340,11 +359,16 @@ namespace tabular {
         style::BorderTemplates templates;
         Alignment alignment;
         int horizontalPadding;
+        int width;
 
     public:
         std::vector<Row> rows;
 
-        Table() : border(BorderStyle::standard), alignment(Alignment::left), horizontalPadding(1) {}
+        Table() : border(BorderStyle::standard), alignment(Alignment::left), horizontalPadding(1), width(0) {}
+
+        void setWidth(int width) { this->width = width; }
+
+        int getWidth() { return this->width; }
 
         void addRow(std::vector<std::string> columns) {
             std::vector<Column> Columns;
@@ -464,29 +488,24 @@ namespace tabular {
             // if (!OsSpecific::checkTerminal())
             //     std::cerr << "can't configure os specific terminal things\n";
 
-            unsigned short width = utilities::getTerminalWidth();
-            unsigned int usableWidth = width * AUTOMATIC_WIDTH_PERCENT;
-
-            size_t colsNum;
-            size_t i = 0;
-            do {
-                if (i >= rows.size())
-                    return;
-                colsNum = rows.at(i).columns.size();
-                i++;
-            } while (colsNum == 0);
-            i--; // negate last increment
-
-            size_t tableSplits = colsNum + 1; // cols reserved by the table
-            usableWidth -= tableSplits;
-            if (usableWidth <= (colsNum)) {      // at least one character in each column
-                std::cout << "Not enough space"; // ! use error code or something like that instead
-                return;
-            }
+            unsigned short terminalWidth = utilities::getTerminalWidth();
+            unsigned int usableWidth = width * DEFAULT_WIDTH_PERCENT;
+            if (this->width <= 0 || this->width > terminalWidth) width = usableWidth;
+            else usableWidth = width;
 
             // edit rows to match the width
-            for (Row& row : rows)
-                utilities::formatRow(usableWidth, horizontalPadding, row);
+            for (Row& row : rows) {
+                size_t colsNum = row.columns.size();
+                size_t rowUsableWidth = usableWidth - (colsNum + 1); // ... - tableSplits
+
+                if (rowUsableWidth <= colsNum) {
+                    // todo: change to error codes
+                    std::cout << "Not Enough Space\n";
+                    return;
+                }
+
+                utilities::formatRow(rowUsableWidth,  horizontalPadding, row);
+            }
 
             // check if the table has consistent number of columns across all rows
             bool isRegular = checkRegularity();
@@ -499,9 +518,10 @@ namespace tabular {
             if (!isRegular) borderTemplates.corner = borderTemplates.horizontal; // for styling
 
             // ------printing the table-------
+            size_t i = 0;
             Row rowReference = rows.at(i);
             // 0 to check in printRow
-            unsigned int rowWidthReference = isRegular ? 0 : rowReference.getRowWidth();
+            unsigned int rowWidthReference = isRegular ? 0 : rowReference.getFullRowWidth();
 
             oss << printBorder(borderTemplates, rowReference);
             for (size_t j = i; j < rows.size(); j++) {

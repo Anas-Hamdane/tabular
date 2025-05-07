@@ -19,7 +19,7 @@
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
       -  [ ] padding control
-      -  [ ] width control
+      -  [x] width control
 */
 
 #include <iostream>
@@ -42,11 +42,16 @@ namespace tabular {
         style::BorderTemplates templates;
         Alignment alignment;
         int horizontalPadding;
+        int width;
 
     public:
         std::vector<Row> rows;
 
-        Table() : border(BorderStyle::standard), alignment(Alignment::left), horizontalPadding(1) {}
+        Table() : border(BorderStyle::standard), alignment(Alignment::left), horizontalPadding(1), width(0) {}
+
+        void setWidth(int width) { this->width = width; }
+
+        int getWidth() { return this->width; }
 
         void addRow(std::vector<std::string> columns) {
             std::vector<Column> Columns;
@@ -166,29 +171,24 @@ namespace tabular {
             // if (!OsSpecific::checkTerminal())
             //     std::cerr << "can't configure os specific terminal things\n";
 
-            unsigned short width = utilities::getTerminalWidth();
-            unsigned int usableWidth = width * AUTOMATIC_WIDTH_PERCENT;
-
-            size_t colsNum;
-            size_t i = 0;
-            do {
-                if (i >= rows.size())
-                    return;
-                colsNum = rows.at(i).columns.size();
-                i++;
-            } while (colsNum == 0);
-            i--; // negate last increment
-
-            size_t tableSplits = colsNum + 1; // cols reserved by the table
-            usableWidth -= tableSplits;
-            if (usableWidth <= (colsNum)) {      // at least one character in each column
-                std::cout << "Not enough space"; // ! use error code or something like that instead
-                return;
-            }
+            unsigned short terminalWidth = utilities::getTerminalWidth();
+            unsigned int usableWidth = width * DEFAULT_WIDTH_PERCENT;
+            if (this->width <= 0 || this->width > terminalWidth) width = usableWidth;
+            else usableWidth = width;
 
             // edit rows to match the width
-            for (Row& row : rows)
-                utilities::formatRow(usableWidth, horizontalPadding, row);
+            for (Row& row : rows) {
+                size_t colsNum = row.columns.size();
+                size_t rowUsableWidth = usableWidth - (colsNum + 1); // ... - tableSplits
+
+                if (rowUsableWidth <= colsNum) {
+                    // todo: change to error codes
+                    std::cout << "Not Enough Space\n";
+                    return;
+                }
+
+                utilities::formatRow(rowUsableWidth,  horizontalPadding, row);
+            }
 
             // check if the table has consistent number of columns across all rows
             bool isRegular = checkRegularity();
@@ -201,9 +201,10 @@ namespace tabular {
             if (!isRegular) borderTemplates.corner = borderTemplates.horizontal; // for styling
 
             // ------printing the table-------
+            size_t i = 0;
             Row rowReference = rows.at(i);
             // 0 to check in printRow
-            unsigned int rowWidthReference = isRegular ? 0 : rowReference.getRowWidth();
+            unsigned int rowWidthReference = isRegular ? 0 : rowReference.getFullRowWidth();
 
             oss << printBorder(borderTemplates, rowReference);
             for (size_t j = i; j < rows.size(); j++) {

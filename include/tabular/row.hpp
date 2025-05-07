@@ -38,7 +38,7 @@ namespace tabular {
         }
 
         // full width including table splits
-        unsigned int getRowWidth() {
+        unsigned int getFullRowWidth() {
             unsigned int width = columns.size() + 1; // table splits
 
             for (Column col : columns)

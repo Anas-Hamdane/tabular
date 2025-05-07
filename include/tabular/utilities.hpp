@@ -104,7 +104,12 @@ namespace tabular {
             sub.clear();
         }
 
-        inline StringVector prepareColContent(std::string str, Alignment colAlign, int padding, int maxWidth) {
+        inline StringVector prepareColContent(Column col, int padding, int maxWidth) {
+            std::string str = col.content;
+            Alignment colAlign = col.getColumnAlign();
+
+            if (col.getWidth() != 0) maxWidth = col.getWidth();
+
             if (str.empty() || maxWidth == 0)
                 return StringVector();
 
@@ -165,21 +170,34 @@ namespace tabular {
             int colsNum = row.columns.size();
             if (width <= 0 || colsNum <= 0)
                 return;
+            for (Column col : row.columns) {
+                if (col.getWidth() != 0) {
+                    width -= col.getWidth();
+                    colsNum--;
+                }
+            }
 
-            int individualColWidth = width / colsNum;
-            int rest = width % colsNum;
+            int individualColWidth = 0;
+            int rest = 0;
+            if (colsNum > 0) {
+                individualColWidth = width / colsNum;
+                rest = width % colsNum;
+            }
 
             if (horPadding >= individualColWidth)
                 horPadding = 1; // reset horPadding by default value
 
             for (Column& col : row.columns) {
-                Alignment colAlign = col.getColumnAlign();
-                if (rest > 0) {
-                    col.setSplittedContent(prepareColContent(col.content, colAlign, horPadding, individualColWidth + 1));
+                if (col.getWidth() != 0)
+                    col.setSplittedContent(prepareColContent(col, horPadding, col.getWidth()));
+
+                else if (rest > 0) {
+                    col.setSplittedContent(prepareColContent(col, horPadding, individualColWidth + 1));
+
                     col.setWidth(individualColWidth + 1);
                     rest--;
                 } else {
-                    col.setSplittedContent(prepareColContent(col.content, colAlign, horPadding, individualColWidth));
+                    col.setSplittedContent(prepareColContent(col, horPadding, individualColWidth));
 
                     col.setWidth(individualColWidth);
                 }

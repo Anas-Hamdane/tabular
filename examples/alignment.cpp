@@ -12,7 +12,7 @@
     * EXAMPLE of aligning table content
 */
 
-#include "../include/tabular/table.hpp"
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;

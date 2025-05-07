@@ -12,7 +12,7 @@
     * EXAMPLE of a Long text and a new line in a table
 */
 
-#include "../include/tabular/table.hpp"
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;
