@@ -27,12 +27,14 @@
 #include <vector>
 
 // headers
-#include "column.hpp"
-#include "row.hpp"
-#include "style.hpp"
-#include "utilities.hpp"
-#include "enums.hpp"
-#include "glVars.hpp"
+#include <tabular/column.hpp>
+#include <tabular/row.hpp>
+
+#include <tabular/style.hpp>
+#include <tabular/utilities.hpp>
+
+#include <tabular/enums.hpp>
+#include <tabular/glVars.hpp>
 
 namespace tabular {
     class Table {

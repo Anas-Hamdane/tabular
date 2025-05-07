@@ -11,8 +11,8 @@
 
 */
 
-#include "enums.hpp"
-#include "glVars.hpp"
+#include <tabular/enums.hpp>
+#include <tabular/glVars.hpp>
 
 #ifndef TABULAR_COLUMN_HPP
 #define TABULAR_COLUMN_HPP

@@ -14,7 +14,7 @@
 #include <map>
 #include <string>
 
-#include "enums.hpp"
+#include <tabular/enums.hpp>
 
 #ifndef TABULAR_STYLE_HPP
 #define TABULAR_STYLE_HPP

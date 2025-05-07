@@ -16,6 +16,7 @@ project(tabular VERSION 0.1 DESCRIPTION "C++ tabling library" LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 set(TABULAR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/tabular)
@@ -35,3 +36,5 @@ set(TEST_EXAMPLE "simple")
 
 # simple example
 add_executable(${TEST_EXAMPLE} ${EXAMPLES_DIR}/${TEST_EXAMPLE}.cpp ${HEADER_FILES})
+
+target_include_directories(${TEST_EXAMPLE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

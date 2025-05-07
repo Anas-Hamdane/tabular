@@ -11,7 +11,7 @@
 
 */
 
-#include "column.hpp"
+#include <tabular/column.hpp>
 
 #ifndef TABULAR_ROW_HPP
 #define TABULAR_ROW_HPP
