@@ -7,4 +7,4 @@ ColumnLimit: 0
 NamespaceIndentation: All
 AccessModifierOffset: -4
 PointerAlignment: Left
-IndentPPDirectives: BeforeHash
+IndentPPDirectives: None

@@ -23,31 +23,36 @@
 */
 
 #if defined(_WIN32) || defined(_WIN64)
-    #define OS_WINDOWS
+#define OS_WINDOWS
 #elif defined(__APPLE__)
-    #define OS_MACOS
+#define OS_MACOS
 #elif defined(__unix__) || defined(__unix)
-    #define OS_LINUX_BASED
+#define OS_LINUX_BASED
 #else
-    #error unsupported platform
+#error unsupported platform
 #endif
 
 #if defined(OS_WINDOWS)
-    #include <windows.h>
+#include <windows.h>
 #elif defined(OS_LINUX_BASED) || defined(OS_MACOS)
-    #include <sys/ioctl.h>
+#include <sys/ioctl.h>
 #else
-    #error Unsupported platform
+#error Unsupported platform
 #endif
 
 #define AUTOMATIC_WIDTH_PERCENT .5
+#define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent for prepColContent()
 #define ESC "\x1b"
 #define CSI "\x1b["
 
 #include <iostream>
+#include <list>
 #include <map>
 #include <sstream>
 #include <vector>
+
+typedef std::vector<std::string> StringVector;
+typedef std::list<std::string> StringList;
 
 namespace tabular {
     enum class Alignment {
@@ -73,7 +78,8 @@ namespace tabular {
 
     class Column {
         std::vector<FontStyle> fontStyles;
-        std::vector<std::string> splittedContent;
+        StringVector splittedContent;
+        StringList words;
         Alignment alignment;
         unsigned int width;
 
@@ -91,9 +97,13 @@ namespace tabular {
 
         unsigned int getWidth() { return this->width; }
 
-        void setSplittedContent(std::vector<std::string> splittedContent) { this->splittedContent = splittedContent; }
+        void setSplittedContent(StringVector splittedContent) { this->splittedContent = splittedContent; }
 
-        std::vector<std::string> getSplittedContent() { return splittedContent; }
+        StringVector getSplittedContent() { return splittedContent; }
+
+        void setWords(StringList words) { this->words = words; }
+
+        StringList getWords() { return words; }
     };
 
     class Row {
@@ -173,7 +183,40 @@ namespace tabular {
                 in.append(" ");
         }
 
-        inline void setContentAlign(std::string& line, std::string sub, int usableWidth, Alignment align) {
+        // split by words AND save '\n' as a word too
+        inline StringList split_text(std::string str) {
+            StringList result;
+
+            size_t str_size = str.size();
+            size_t prev_start = 0;
+            for (size_t i = 0; i < str_size; i++) {
+                if (str.at(i) == '\n') {
+                    if (i > prev_start)
+                        result.push_back(str.substr(prev_start, i - prev_start));
+
+                    result.push_back("\n");
+                    prev_start = i + 1;
+                } else if (str.at(i) == ' ') {
+                    if (i > prev_start)
+                        result.push_back(str.substr(prev_start, i - prev_start));
+
+                    prev_start = i + 1;
+                }
+            }
+
+            // Handles the last word if it exists
+            if (prev_start < str_size)
+                result.push_back(str.substr(prev_start));
+
+            return result;
+        }
+
+        inline void setContentAlign(std::string& line, std::string sub, int maxWidth, int padding, Alignment align) {
+            if (line.empty())
+                addSpaces(line, padding);
+
+            int usableWidth = (maxWidth - (padding * 2));
+
             int start;
             if (align == Alignment::center)
                 start = (usableWidth - sub.size()) / 2;
@@ -184,106 +227,68 @@ namespace tabular {
 
             addSpaces(line, start);
             line.append(sub);
+            addSpaces(line, padding);
         }
 
-        inline std::vector<std::string> prepareColContent(const std::string str, Alignment colAlign, int horPadd, int maxWidth) {
+        inline void appendAndClear(StringVector& result, std::string& sub, int maxWidth, int padding, Alignment colAlign) {
+            std::string line;
+
+            setContentAlign(line, sub, maxWidth, padding, colAlign);
+            result.push_back(line);
+
+            sub.clear();
+        }
+
+        inline StringVector prepareColContent(std::string str, Alignment colAlign, int padding, int maxWidth) {
             if (str.empty() || maxWidth == 0)
-                return std::vector<std::string>();
+                return StringVector();
 
-            std::vector<std::string> result;
+            // split the content into words to easily manipulate it
+            StringList words = split_text(str);
 
-            const int redLine = (maxWidth * 0.3); // don't go back more than 30% of the width
-            const size_t strSize = str.size();
-            size_t prevStart = 0;
+            // the return result
+            StringVector result;
 
-            /*
-                ! split the str in '\n' before starting normal splitting because it will be a normal '\n' if it is not near the end.
-            */
+            const int usableWidth = (maxWidth - (padding * 2));                // e.g: MAX sub size POSSIBLE
+            const int limit = (usableWidth * CONTENT_MANIPULATION_BACK_LIMIT); // don't go back more than 30% when the last word is too long
 
-            for (size_t i = maxWidth; i < strSize; i += maxWidth) {
-                // find the last space within the allowed maxWidth
-                size_t spaceIndex = i;
-                bool forceCut = false;
-                int iterationsNum = 0;
+            std::string sub;
+            for (auto it = words.begin(); it != words.end(); ++it) {
+                std::string& word = *it;
 
-                /*
-                 * first condition spaceIndex > 0 to avoid errors.
-                 * second condition (str.at(spaceIndex) != ' ') to go back whenever it is not a space until we reach a *VALID* space or the red line.
-                 * third condition check for valid spaces: they should be ( > (horPadd * 2)) behind the max width.
-                 */
-                while ((spaceIndex > 0)
-                && ((str.at(spaceIndex) != ' ')
-                || (str.at(spaceIndex) == ' ' && (iterationsNum <= (horPadd * 2))))) {
-                    if (iterationsNum >= redLine) {
-                        forceCut = true;
-                        break;
+                // add existing content if we reach new line
+                if (word == "\n") {
+                    appendAndClear(result, sub, maxWidth, padding, colAlign);
+                    continue;
+                }
+
+                if (!sub.empty())
+                    sub += ' ';
+
+                // we need split
+                if ((sub.size() + word.size()) > usableWidth) {
+                    int diff = usableWidth - sub.size();
+                    if (diff > limit) {
+                        std::string part = word.substr(0, diff - 1);
+                        part += '-';
+
+                        sub += part;
+                        appendAndClear(result, sub, maxWidth, padding, colAlign);
+
+                        std::string remaining = word.substr(diff - 1);
+                        words.insert(std::next(it), remaining);
+                    } else {
+                        sub.pop_back(); // pop the space added previously
+                        appendAndClear(result, sub, maxWidth, padding, colAlign);
+                        --it;
                     }
-
-                    else {
-                        spaceIndex--;
-                        iterationsNum++;
-                    }
-                }
-
-                std::string line;
-                addSpaces(line, horPadd);
-
-                /*
-                 * whenever there's a force cut we decrement 'i' by the space taken by the horPadd and/or the '-' character.
-                 * NOTE: no alignment needed line already full.
-                 */
-                if (forceCut) {
-                    /*
-                        if and else replacing
-                        ... - (maxWidth > 5? 1 : 0)) + (maxWidth > 5?) "-" : "")
-                    */
-                    if (maxWidth <= 5)
-                        line.append(str.substr(prevStart, i - prevStart - (horPadd * 2)));
-                    else
-                        line.append(str.substr(prevStart, i - prevStart - 1 - (horPadd * 2)) + "-");
-
-                    i -= maxWidth <= 5 ? (horPadd * 2) : ((horPadd * 2) + 1);
-                }
-                /*
-                 * whenever there's a *VALID* space just split
-                 * note: we don't decrement 'i' because it is already (> (horPadd * 2)) behind the max width, it is a VALID SPACE.
-                 */
-                else {
-                    i = spaceIndex + 1; // skip space
-                    std::string sub = str.substr(prevStart, spaceIndex - prevStart);
-
-                    int usableWidth = maxWidth - (horPadd * 2);
-                    setContentAlign(line, sub, usableWidth, colAlign);
-                }
-
-                // //  * Probably a very small string case, didn't test it lol.
-                // else {
-                //     std::string sub = str.substr(prevStart, i - prevStart - (horPadd * 2));
-
-                //     int usableWidth = maxWidth - (horPadd * 2);
-                //     setContentAlign(line, sub, usableWidth, colAlign);
-                // }
-
-                addSpaces(line, horPadd);
-
-                prevStart = i; // update the previous start point
-                result.push_back(line);
+                } else
+                    sub += word; // add a normall less than line word
             }
 
-            //  * less than a line-string case.
-            if (prevStart < strSize) {
-                std::string line;
-                addSpaces(line, horPadd);
-
-                std::string sub = str.substr(prevStart, strSize - prevStart);
-
-                int usableWidth = maxWidth - (horPadd * 2);
-                setContentAlign(line, sub, usableWidth, colAlign);
-
-                addSpaces(line, horPadd);
-
-                result.push_back(line);
-            }
+            // any remaining words
+            if (!sub.empty())
+                appendAndClear(result, sub, maxWidth, padding, colAlign);
 
             return result;
         }
@@ -361,7 +366,7 @@ namespace tabular {
         void setAllColsAlign(Alignment align, int colsIndex) {
             if (colsIndex < 0)
                 return;
-            
+
             for (Row row : rows) {
                 if (row.columns.size() > colsIndex)
                     row.columns.at(colsIndex).setColumnAlign(align);
@@ -410,9 +415,10 @@ namespace tabular {
                 for (Column col : row.columns) {
                     int rest = col.getWidth();
                     int splittedContentSize = col.getSplittedContent().size();
-                    std::string currLine = col.getSplittedContent().at(j);
+                    std::string currLine;
 
                     if (j < splittedContentSize) {
+                        currLine = col.getSplittedContent().at(j);
                         result.append(currLine);
                         rest -= currLine.size(); // to balance the line
                     }
@@ -473,7 +479,7 @@ namespace tabular {
 
             size_t tableSplits = colsNum + 1; // cols reserved by the table
             usableWidth -= tableSplits;
-            if (usableWidth <= (colsNum)) { // at least one character in each column
+            if (usableWidth <= (colsNum)) {      // at least one character in each column
                 std::cout << "Not enough space"; // ! use error code or something like that instead
                 return;
             }

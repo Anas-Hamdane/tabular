@@ -12,7 +12,7 @@
     * EXAMPLE of a Simple table
 */
 
-#include "../include/tabular/tabular.hpp"
+#include "../include/tabular/table.hpp"
 
 int main() {
     using namespace tabular;
