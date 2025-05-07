@@ -172,9 +172,11 @@ namespace tabular {
             //     std::cerr << "can't configure os specific terminal things\n";
 
             unsigned short terminalWidth = utilities::getTerminalWidth();
-            unsigned int usableWidth = width * DEFAULT_WIDTH_PERCENT;
-            if (this->width <= 0 || this->width > terminalWidth) width = usableWidth;
-            else usableWidth = width;
+            unsigned int usableWidth = terminalWidth * DEFAULT_WIDTH_PERCENT;
+            if (this->width <= 0 || this->width > terminalWidth)
+                width = usableWidth;
+            else
+                usableWidth = width;
 
             // edit rows to match the width
             for (Row& row : rows) {
@@ -187,7 +189,7 @@ namespace tabular {
                     return;
                 }
 
-                utilities::formatRow(rowUsableWidth,  horizontalPadding, row);
+                utilities::formatRow(rowUsableWidth, horizontalPadding, row);
             }
 
             // check if the table has consistent number of columns across all rows

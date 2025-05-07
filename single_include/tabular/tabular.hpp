@@ -489,7 +489,7 @@ namespace tabular {
             //     std::cerr << "can't configure os specific terminal things\n";
 
             unsigned short terminalWidth = utilities::getTerminalWidth();
-            unsigned int usableWidth = width * DEFAULT_WIDTH_PERCENT;
+            unsigned int usableWidth = terminalWidth * DEFAULT_WIDTH_PERCENT;
             if (this->width <= 0 || this->width > terminalWidth)
                 width = usableWidth;
             else

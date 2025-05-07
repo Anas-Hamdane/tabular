@@ -12,7 +12,7 @@
     * EXAMPLE of controling table width
 */
 
-#include <tabular/table.hpp>
+#include <tabular/tabular.hpp>
 
 int main() {
     using namespace tabular;
