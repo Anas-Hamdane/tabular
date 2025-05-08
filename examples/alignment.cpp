@@ -12,6 +12,7 @@
     * EXAMPLE of aligning table content
 */
 
+// #include <tabular/table.hpp>
 #include <tabular/tabular.hpp>
 
 int main() {
@@ -23,18 +24,11 @@ int main() {
     table.addRow({"Peru", "Lima"});
     table.addRow({"United States", "Washington"});
     table.addRow({"Brazil", "Brasilia"});
+    
+    table.setAllColsAlign(Alignment::left, 0);
+    table.setAllColsAlign(Alignment::right, 1);
 
     table.rows.at(0).setRowAlign(Alignment::center);
-    
-    table.rows.at(1).columns.at(0).setColumnAlign(Alignment::left);
-    table.rows.at(2).columns.at(0).setColumnAlign(Alignment::left);
-    table.rows.at(3).columns.at(0).setColumnAlign(Alignment::left);
-    table.rows.at(4).columns.at(0).setColumnAlign(Alignment::left);
-
-    table.rows.at(1).columns.at(1).setColumnAlign(Alignment::right);
-    table.rows.at(2).columns.at(1).setColumnAlign(Alignment::right);
-    table.rows.at(3).columns.at(1).setColumnAlign(Alignment::right);
-    table.rows.at(4).columns.at(1).setColumnAlign(Alignment::right);
 
     table.printTable();
     return 0;

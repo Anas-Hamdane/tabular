@@ -11,11 +11,11 @@
 
 */
 
-#include <tabular/enums.hpp>
-#include <tabular/glVars.hpp>
-
 #ifndef TABULAR_COLUMN_HPP
 #define TABULAR_COLUMN_HPP
+
+#include <tabular/enums.hpp>
+#include <tabular/glVars.hpp>
 
 namespace tabular {
     class Column {
@@ -24,20 +24,53 @@ namespace tabular {
         StringList words;
         Alignment alignment;
         unsigned int width;
+        unsigned int topPadding;
+        unsigned int bottomPadding;
 
     public:
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0) {};
+            : content(content), alignment(Alignment::left), width(0), topPadding(0), bottomPadding(0) {};
 
         void setColumnAlign(Alignment alignment) { this->alignment = alignment; }
 
         Alignment getColumnAlign() { return alignment; }
 
-        void setWidth(unsigned int width) { this->width = width; }
+        void setWidth(int width) {
+            if (width <= 0)
+                width = 0;
+
+            this->width = static_cast<unsigned int>(width);
+        }
 
         unsigned int getWidth() { return this->width; }
+
+        void setColumnPadding(int padding) {
+            if (padding <= 0)
+                padding = 0;
+
+            this->topPadding = padding;
+            this->bottomPadding = padding;
+        }
+
+        void setColumnTopPadding(int padding) {
+            if (padding <= 0)
+                this->topPadding = 0;
+            else
+                this->topPadding = static_cast<unsigned int>(padding);
+        }
+        
+        void setColumnBottomPadding(int padding) {
+            if (padding <= 0)
+                this->bottomPadding = 0;
+            else
+                this->bottomPadding = static_cast<unsigned int>(padding);
+        }
+
+        unsigned int getTopPadding() { return topPadding; }
+        
+        unsigned int getBottomPadding() { return bottomPadding; }
 
         void setSplittedContent(StringVector splittedContent) { this->splittedContent = splittedContent; }
 

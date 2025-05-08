@@ -18,8 +18,9 @@
       -  [ ] ANSI Support
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
-      -  [ ] padding control
-      -  [x] width control
+      -  [x] padding control
+      -  [x] width control                          # issue with setAllColsWidth when the table is irregular, suggested: add head condition.
+      -  [ ] range columns setters (functions)
 */
 
 #include <iostream>
@@ -40,14 +41,14 @@ namespace tabular {
     class Table {
         BorderStyle border;
         style::BorderTemplates templates;
-        Alignment alignment;
-        int horizontalPadding;
-        int width;
+        // Alignment alignment;
+        // unsigned int padding; // for padding we have to check whether it is negative to avoid the max value
+        unsigned int width; // for width we check if it is bigger than the terminal width so no problem
 
     public:
         std::vector<Row> rows;
 
-        Table() : border(BorderStyle::standard), alignment(Alignment::left), horizontalPadding(1), width(0) {}
+        Table() : border(BorderStyle::standard), width(0) {}
 
         void setWidth(int width) { this->width = width; }
 
@@ -64,8 +65,6 @@ namespace tabular {
         void setBorder(BorderStyle border) { this->border = border; }
 
         void setAllTableAlign(Alignment align) {
-            this->alignment = align;
-
             for (Row& row : rows)
                 row.setRowAlign(align);
         }
@@ -74,10 +73,61 @@ namespace tabular {
             if (colsIndex < 0)
                 return;
 
-            for (Row row : rows) {
+            for (Row& row : rows)
                 if (row.columns.size() > colsIndex)
                     row.columns.at(colsIndex).setColumnAlign(align);
-            }
+        }
+        
+        // check for negative values
+        void setAllTablePadding(int topPadding) {
+            for (Row& row : rows)
+                row.setRowPadding(topPadding);
+        }
+
+        void setAllColsPadding(int topPadding, int colsIndex) {
+            if (colsIndex < 0)
+                return;
+
+            for (Row& row : rows)
+                if (row.columns.size() > colsIndex)
+                    row.columns.at(colsIndex).setColumnPadding(topPadding);
+        }
+
+        void setAllTableTopPadding(int topPadding) {
+            for (Row& row : rows)
+                row.setRowTopPadding(topPadding);
+        }
+
+        void setAllColsTopPadding(int topPadding, int colsIndex) {
+            if (colsIndex < 0)
+                return;
+
+            for (Row& row : rows)
+                if (row.columns.size() > colsIndex)
+                    row.columns.at(colsIndex).setColumnTopPadding(topPadding);
+        }
+        
+        void setAllTableBottomPadding(int bottomPadding) {
+            for (Row& row : rows)
+                row.setRowBottomPadding(bottomPadding);
+        }
+
+        void setAllColsBottomPadding(int bottomPadding, int colsIndex) {
+            if (colsIndex < 0)
+                return;
+
+            for (Row& row : rows)
+                if (row.columns.size() > colsIndex)
+                    row.columns.at(colsIndex).setColumnBottomPadding(bottomPadding);
+        }
+
+        void setAllColsWidth(int width, int colsIndex) {
+            if (colsIndex < 0)
+                return;
+
+            for (Row& row : rows) 
+                if (row.columns.size() > colsIndex)
+                    row.columns.at(colsIndex).setWidth(width);
         }
 
         bool checkRegularity() {
@@ -105,13 +155,13 @@ namespace tabular {
                 templates.vertical = vertical;
         }
 
-        std::string printRow(style::BorderTemplates borderTemplates, Row row, int widthReference) {
+        std::string printRow(style::BorderTemplates borderTemplates, Row& row, int widthReference) {
             std::string result;
 
             if (widthReference != 0) {
                 // tableSplits = (row.columns.size() + 1)
                 unsigned int usableWidth = widthReference - (row.columns.size() + 1);
-                utilities::formatRow(usableWidth, horizontalPadding, row);
+                utilities::formatRow(usableWidth, row);
             }
 
             size_t maxSplittedContentSize = utilities::findMaxSplittedContentSize(
@@ -171,6 +221,7 @@ namespace tabular {
             // if (!OsSpecific::checkTerminal())
             //     std::cerr << "can't configure os specific terminal things\n";
 
+            // chose width to use
             unsigned short terminalWidth = utilities::getTerminalWidth();
             unsigned int usableWidth = terminalWidth * DEFAULT_WIDTH_PERCENT;
             if (this->width <= 0 || this->width > terminalWidth)
@@ -189,7 +240,7 @@ namespace tabular {
                     return;
                 }
 
-                utilities::formatRow(rowUsableWidth, horizontalPadding, row);
+                utilities::formatRow(rowUsableWidth, row);
             }
 
             // check if the table has consistent number of columns across all rows
@@ -210,7 +261,7 @@ namespace tabular {
 
             oss << printBorder(borderTemplates, rowReference);
             for (size_t j = i; j < rows.size(); j++) {
-                Row row = rows.at(j);
+                Row& row = rows.at(j);
 
                 oss << printRow(borderTemplates, row, rowWidthReference);
 

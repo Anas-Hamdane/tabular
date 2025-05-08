@@ -21,20 +21,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 set(TABULAR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/tabular)
 
-set(HEADER_FILES
-    ${TABULAR_INCLUDE_DIR}/column.hpp
-    ${TABULAR_INCLUDE_DIR}/row.hpp
-    ${TABULAR_INCLUDE_DIR}/enums.hpp
-    ${TABULAR_INCLUDE_DIR}/glVars.hpp
-    ${TABULAR_INCLUDE_DIR}/style.hpp
-    ${TABULAR_INCLUDE_DIR}/utilities.hpp
-    ${TABULAR_INCLUDE_DIR}/table.hpp
-)
+# All Header files
+file(GLOB HEADER_FILES ${TABULAR_INCLUDE_DIR}/*.hpp)
 
-# HERE set the EXAMPLE you want to try
-set(TEST_EXAMPLE "width")
+# All examples
+file(GLOB EXAMPLE_SOURCES ${EXAMPLES_DIR}/*.cpp)
 
-# simple example
-add_executable(${TEST_EXAMPLE} ${EXAMPLES_DIR}/${TEST_EXAMPLE}.cpp ${HEADER_FILES})
-
-target_include_directories(${TEST_EXAMPLE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/single_include)
+# compile every example
+foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
+    get_filename_component(EXAMPLE_NAME ${EXAMPLE_SOURCE} NAME_WE)
+    
+    add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE} ${HEADER_FILES})
+    
+    target_include_directories(${EXAMPLE_NAME} 
+        PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include 
+        ${CMAKE_CURRENT_SOURCE_DIR}/single_include
+    )
+    
+    message(STATUS "Added example: ${EXAMPLE_NAME}")
+endforeach()

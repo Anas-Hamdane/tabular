@@ -11,10 +11,10 @@
 
 */
 
-#include <tabular/column.hpp>
-
 #ifndef TABULAR_ROW_HPP
 #define TABULAR_ROW_HPP
+
+#include <tabular/column.hpp>
 
 namespace tabular {
     class Row {
@@ -35,6 +35,21 @@ namespace tabular {
 
             for (Column& col : columns)
                 col.setColumnAlign(alignment);
+        }
+        
+        void setRowPadding(int padding){
+            for (Column& col : columns)
+                col.setColumnPadding(padding);
+        }
+
+        void setRowTopPadding(int padding) {
+            for (Column& col : columns)
+                col.setColumnTopPadding(padding);
+        }
+        
+        void setRowBottomPadding(int padding) {
+            for (Column& col : columns)
+                col.setColumnBottomPadding(padding);
         }
 
         // full width including table splits

@@ -11,13 +11,13 @@
 
 */
 
+#ifndef TABULAR_STYLE_HPP
+#define TABULAR_STYLE_HPP
+
 #include <map>
 #include <string>
 
 #include <tabular/enums.hpp>
-
-#ifndef TABULAR_STYLE_HPP
-#define TABULAR_STYLE_HPP
 
 namespace tabular {
     namespace style {

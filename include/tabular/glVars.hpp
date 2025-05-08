@@ -11,12 +11,12 @@
 
 */
 
+#ifndef TABULAR_GL_VARS_HPP
+#define TABULAR_GL_VARS_HPP
+
 #include <list>
 #include <string>
 #include <vector>
-
-#ifndef TABULAR_GL_VARS_HPP
-#define TABULAR_GL_VARS_HPP
 
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS

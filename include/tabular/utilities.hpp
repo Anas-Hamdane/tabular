@@ -11,8 +11,8 @@
 
 */
 
-#include "glVars.hpp"
-#include "row.hpp"
+#include <tabular/row.hpp>
+#include <tabular/glVars.hpp>
 
 #ifndef TABULAR_UTILITIES_HPP
 #define TABULAR_UTILITIES_HPP
@@ -76,11 +76,10 @@ namespace tabular {
             return result;
         }
 
-        inline void setContentAlign(std::string& line, std::string sub, int maxWidth, int padding, Alignment align) {
+        // note: addSpaces(line, 1); for space side
+        inline void setContentAlign(std::string& line, std::string sub, int usableWidth, Alignment align) {
             if (line.empty())
-                addSpaces(line, padding);
-
-            int usableWidth = (maxWidth - (padding * 2));
+                addSpaces(line, 1);
 
             int start;
             if (align == Alignment::center)
@@ -92,22 +91,25 @@ namespace tabular {
 
             addSpaces(line, start);
             line.append(sub);
-            addSpaces(line, padding);
+            addSpaces(line, 1);
         }
 
-        inline void appendAndClear(StringVector& result, std::string& sub, int maxWidth, int padding, Alignment colAlign) {
+        inline void appendAndClear(StringVector& result, std::string& sub, int usableWidth, Alignment colAlign) {
             std::string line;
 
-            setContentAlign(line, sub, maxWidth, padding, colAlign);
+            setContentAlign(line, sub, usableWidth, colAlign);
             result.push_back(line);
 
             sub.clear();
         }
 
-        inline StringVector prepareColContent(Column col, int padding, int maxWidth) {
+        inline StringVector prepareColContent(Column col, int maxWidth) {
             std::string str = col.content;
             Alignment colAlign = col.getColumnAlign();
+            unsigned int topPadding = col.getTopPadding();
+            unsigned int bottomPadding = col.getBottomPadding();
 
+            // which width to use
             if (col.getWidth() != 0) maxWidth = col.getWidth();
 
             if (str.empty() || maxWidth == 0)
@@ -119,7 +121,11 @@ namespace tabular {
             // the return result
             StringVector result;
 
-            const int usableWidth = (maxWidth - (padding * 2));                // e.g: MAX sub size POSSIBLE
+            // TOP padding
+            for (unsigned int i = 0; i < topPadding; i++)
+                result.push_back(std::string());
+
+            const int usableWidth = (maxWidth - 2);                            // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
             const int limit = (usableWidth * CONTENT_MANIPULATION_BACK_LIMIT); // don't go back more than 30% when the last word is too long
 
             std::string sub;
@@ -128,7 +134,7 @@ namespace tabular {
 
                 // add existing content if we reach new line
                 if (word == "\n") {
-                    appendAndClear(result, sub, maxWidth, padding, colAlign);
+                    appendAndClear(result, sub, usableWidth, colAlign);
                     continue;
                 }
 
@@ -143,13 +149,13 @@ namespace tabular {
                         part += '-';
 
                         sub += part;
-                        appendAndClear(result, sub, maxWidth, padding, colAlign);
+                        appendAndClear(result, sub, usableWidth, colAlign);
 
                         std::string remaining = word.substr(diff - 1);
                         words.insert(std::next(it), remaining);
                     } else {
                         sub.pop_back(); // pop the space added previously
-                        appendAndClear(result, sub, maxWidth, padding, colAlign);
+                        appendAndClear(result, sub, usableWidth, colAlign);
                         --it;
                     }
                 } else
@@ -158,18 +164,24 @@ namespace tabular {
 
             // any remaining words
             if (!sub.empty())
-                appendAndClear(result, sub, maxWidth, padding, colAlign);
+                appendAndClear(result, sub, usableWidth, colAlign);
+
+            // BOTTOM padding
+            for (unsigned int i = 0; i < bottomPadding; i++)
+                result.push_back(std::string());
 
             return result;
         }
 
-        inline void formatRow(unsigned int width, int horPadding, Row& row) {
+        inline void formatRow(unsigned int width, Row& row) {
             if (row.columns.size() == 0)
                 return;
 
             int colsNum = row.columns.size();
             if (width <= 0 || colsNum <= 0)
                 return;
+
+            // for other columns width calculation we should decrease the specific ones
             for (Column col : row.columns) {
                 if (col.getWidth() != 0) {
                     width -= col.getWidth();
@@ -184,20 +196,17 @@ namespace tabular {
                 rest = width % colsNum;
             }
 
-            if (horPadding >= individualColWidth)
-                horPadding = 1; // reset horPadding by default value
-
             for (Column& col : row.columns) {
                 if (col.getWidth() != 0)
-                    col.setSplittedContent(prepareColContent(col, horPadding, col.getWidth()));
+                    col.setSplittedContent(prepareColContent(col, col.getWidth()));
 
                 else if (rest > 0) {
-                    col.setSplittedContent(prepareColContent(col, horPadding, individualColWidth + 1));
+                    col.setSplittedContent(prepareColContent(col, individualColWidth + 1));
 
                     col.setWidth(individualColWidth + 1);
                     rest--;
                 } else {
-                    col.setSplittedContent(prepareColContent(col, horPadding, individualColWidth));
+                    col.setSplittedContent(prepareColContent(col, individualColWidth));
 
                     col.setWidth(individualColWidth);
                 }
