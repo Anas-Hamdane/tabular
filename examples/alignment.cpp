@@ -13,23 +13,23 @@
 */
 
 // #include <tabular/table.hpp>
-#include <tabular/tabular.hpp>
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"Countries Capitals"});
-    table.addRow({"Canada", "Ottawa"});
-    table.addRow({"Peru", "Lima"});
-    table.addRow({"United States", "Washington"});
-    table.addRow({"Brazil", "Brasilia"});
-    
-    table.setAllColsAlign(Alignment::left, 0);
-    table.setAllColsAlign(Alignment::right, 1);
+    table.add_row({"Countries Capitals"});
+    table.add_row({"Canada", "Ottawa"});
+    table.add_row({"Peru", "Lima"});
+    table.add_row({"United States", "Washington"});
+    table.add_row({"Brazil", "Brasilia"});
 
-    table.rows.at(0).setRowAlign(Alignment::center);
+    table.configure().set_all_cols_align(Alignment::left, 0);
+    table.configure().set_all_cols_align(Alignment::right, 1);
 
-    table.printTable();
+    table.rows.at(0).set_row_align(Alignment::center);
+
+    std::cout << table << std::endl;
     return 0;
 }

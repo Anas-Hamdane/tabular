@@ -13,24 +13,24 @@
 */
 
 // #include <tabular/table.hpp>
-#include <tabular/tabular.hpp>
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"Company", "Market Cap"});
-    table.addRow({ "Microsoft", "$3.256 T"});
-    table.addRow({ "Apple", "$2.949 T"});
-    table.addRow({ "NVIDIA", "$2.863 T"});
-    table.addRow({ "Amazon", "$2.039 T"});
-    table.addRow({ "Google", "$1.880 T"});
+    table.add_row({"Company", "Market Cap"});
+    table.add_row({ "Microsoft", "$3.256 T"});
+    table.add_row({ "Apple", "$2.949 T"});
+    table.add_row({ "NVIDIA", "$2.863 T"});
+    table.add_row({ "Amazon", "$2.039 T"});
+    table.add_row({ "Google", "$1.880 T"});
 
-    table.rows.at(0).setRowAlign(Alignment::center);
-    table.setWidth(50);
+    table.rows.at(0).set_row_align(Alignment::center);
+    table.set_width(50);
 
-    table.rows.at(0).setRowPadding(1);
+    table.rows.at(0).set_row_padding(1);
     
-    table.printTable();
+    std::cout << table << std::endl;
     return 0;
 }

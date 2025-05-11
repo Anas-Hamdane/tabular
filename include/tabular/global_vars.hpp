@@ -35,6 +35,12 @@ namespace tabular {
         empty,
         ANSI // ! Not implemented
     };
+    typedef struct Range {
+        int from;
+        int to;
+
+        Range(int from, int to) : from(from), to(to) {}
+    } Range;
 } // namespace tabular
 
 #endif // TABULAR_ENUMS_HPP

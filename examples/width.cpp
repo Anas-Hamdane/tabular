@@ -13,29 +13,25 @@
 */
 
 // #include <tabular/table.hpp>
-#include <tabular/tabular.hpp>
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"5-Top Largest Countries"});
-    table.addRow({"#1", "Russia"});
-    table.addRow({"#2", "Canada"});
-    table.addRow({"#3", "USA"});
-    table.addRow({"#4", "China"});
-    table.addRow({"#5", "Brazil"});
+    table.add_row({"5-Top Largest Countries"});
+    table.add_row({"#1", "Russia"});
+    table.add_row({"#2", "Canada"});
+    table.add_row({"#3", "USA"});
+    table.add_row({"#4", "China"});
+    table.add_row({"#5", "Brazil"});
 
-    table.rows.at(0).setRowAlign(Alignment::center);
+    table.rows.at(0).set_row_align(Alignment::center);
 
-    table.setWidth(50);
+    table.set_width(50);
  
-    table.rows.at(1).columns.at(0).setWidth(4);
-    table.rows.at(2).columns.at(0).setWidth(4);
-    table.rows.at(3).columns.at(0).setWidth(4);
-    table.rows.at(4).columns.at(0).setWidth(4);
-    table.rows.at(5).columns.at(0).setWidth(4);
+    table.configure().set_cols_width(4, 0, Range(1, 5));
  
-    table.printTable();
+    std::cout << table << std::endl;
     return 0;
 }

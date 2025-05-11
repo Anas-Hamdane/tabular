@@ -13,18 +13,18 @@
 */
 
 // #include <tabular/table.hpp>
-#include <tabular/tabular.hpp>
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"Country", "Capital"});
-    table.addRow({"Canada", "Ottawa"});
-    table.addRow({"Peru", "Lima"});
-    table.addRow({"United States", "Washington"});
-    table.addRow({"Brazil", "Brasilia"});
+    table.add_row({"Country", "Capital"});
+    table.add_row({"Canada", "Ottawa"});
+    table.add_row({"Peru", "Lima"});
+    table.add_row({"United States", "Washington"});
+    table.add_row({"Brazil", "Brasilia"});
 
-    table.printTable();
+    std::cout << table << std::endl;
     return 0;
 }

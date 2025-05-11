@@ -13,19 +13,19 @@
 */
 
 // #include <tabular/table.hpp>
-#include <tabular/tabular.hpp>
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;
 
     Table table;
-    table.addRow({"Countries Capitals"});
-    table.addRow({"United States", "Washington"});
-    table.addRow({"Brazil", "Brasilia"});
-    table.addRow({"Countries Population"});
-    table.addRow({"United States", "340.1 million (2024)"});
-    table.addRow({"Brazil", "211.1 million (2023)"});
+    table.add_row({"Countries Capitals"});
+    table.add_row({"United States", "Washington"});
+    table.add_row({"Brazil", "Brasilia"});
+    table.add_row({"Countries Population"});
+    table.add_row({"United States", "340.1 million (2024)"});
+    table.add_row({"Brazil", "211.1 million (2023)"});
 
-    table.printTable();
+    std::cout << table << std::endl;
     return 0;
 }

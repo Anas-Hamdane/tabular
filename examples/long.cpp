@@ -13,15 +13,15 @@
 */
 
 // #include <tabular/table.hpp>
-#include <tabular/tabular.hpp>
+#include <tabular/table.hpp>
 
 int main() {
     using namespace tabular;
 
     Table table;
     
-    table.addRow({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\n with a '\\n' inside it"});
+    table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\n with a '\\n' inside it"});
 
-    table.printTable();
+    std::cout << table << std::endl;
     return 0;
 }

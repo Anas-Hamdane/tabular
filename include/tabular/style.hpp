@@ -17,7 +17,7 @@
 #include <map>
 #include <string>
 
-#include <tabular/enums.hpp>
+#include <tabular/global_vars.hpp>
 
 namespace tabular {
     namespace style {
@@ -27,7 +27,7 @@ namespace tabular {
             std::string corner;
         };
 
-        static BorderTemplates getBorderTemplates(BorderStyle borderStyle) {
+        static BorderTemplates get_border_templates(BorderStyle borderStyle) {
             static std::map<BorderStyle, BorderTemplates> templates{
                 {BorderStyle::empty, {" ", " ", " "}},
                 {BorderStyle::standard, {"|", "-", "+"}},

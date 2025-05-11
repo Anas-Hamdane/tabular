@@ -19,45 +19,43 @@
 namespace tabular {
     class Row {
         Alignment alignment;
-        std::vector<FontStyle> fontStyles;
+        std::vector<FontStyle> font_styles;
 
     public:
         std::vector<Column> columns;
 
         Row(std::vector<Column> columns)
             : columns(columns), alignment(Alignment::left) {}
-        // bool isHeader = false;
 
-        int getColumnsNumber() { return columns.size(); }
+        int get_columns_number() { return columns.size(); }
 
-        void setRowAlign(Alignment alignment) {
+        void set_row_align(Alignment alignment) {
             this->alignment = alignment;
 
             for (Column& col : columns)
-                col.setColumnAlign(alignment);
+                col.set_column_align(alignment);
         }
         
-        void setRowPadding(int padding){
+        void set_row_padding(int padding) {
             for (Column& col : columns)
-                col.setColumnPadding(padding);
+                col.set_column_padding(padding);
         }
 
-        void setRowTopPadding(int padding) {
+        void set_row_top_padding(int padding) {
             for (Column& col : columns)
-                col.setColumnTopPadding(padding);
+                col.set_column_top_padding(padding);
         }
         
-        void setRowBottomPadding(int padding) {
+        void set_row_bottom_padding(int padding) {
             for (Column& col : columns)
-                col.setColumnBottomPadding(padding);
+                col.set_column_bottom_padding(padding);
         }
 
-        // full width including table splits
-        unsigned int getFullRowWidth() {
-            unsigned int width = columns.size() + 1; // table splits
+        unsigned int get_full_row_width() {
+            unsigned int width = columns.size() + 1;
 
             for (Column col : columns)
-                width += col.getWidth();
+                width += col.get_width();
 
             return width;
         }

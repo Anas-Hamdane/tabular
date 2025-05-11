@@ -423,11 +423,11 @@ namespace tabular {
 
         Table() : border(BorderStyle::standard), width(0) {}
 
-        void setWidth(int width) { this->width = width; }
+        void set_width(int width) { this->width = width; }
 
-        int getWidth() { return this->width; }
+        int get_width() { return this->width; }
 
-        void addRow(std::vector<std::string> columns) {
+        void add_row(std::vector<std::string> columns) {
             std::vector<Column> Columns;
             for (std::string str : columns)
                 Columns.push_back(Column(str));
@@ -503,7 +503,7 @@ namespace tabular {
                     row.columns.at(colsIndex).setWidth(width);
         }
 
-        bool checkRegularity() {
+        bool is_regular() {
             size_t referenceWidth = rows.front().columns.size();
 
             for (Row row : rows)
@@ -528,7 +528,7 @@ namespace tabular {
                 templates.vertical = vertical;
         }
 
-        std::string printRow(style::BorderTemplates borderTemplates, Row& row, int widthReference) {
+        std::string print_row(style::BorderTemplates borderTemplates, Row& row, int widthReference) {
             std::string result;
 
             if (widthReference != 0) {
@@ -565,7 +565,7 @@ namespace tabular {
             return result;
         }
 
-        std::string printBorder(style::BorderTemplates borderTemplates, Row reference) {
+        std::string print_border(style::BorderTemplates borderTemplates, Row reference) {
             std::string result;
 
             result.append(borderTemplates.corner);
@@ -584,7 +584,7 @@ namespace tabular {
             return result;
         }
 
-        void printTable() {
+        void print_table() {
             if (rows.size() == 0)
                 return;
 
@@ -617,7 +617,7 @@ namespace tabular {
             }
 
             // check if the table has consistent number of columns across all rows
-            bool isRegular = checkRegularity();
+            bool isRegular = is_regular();
 
             // adjusting border style
             style::BorderTemplates borderTemplates = style::getBorderTemplates(border);
@@ -632,13 +632,13 @@ namespace tabular {
             // 0 to check in printRow
             unsigned int rowWidthReference = isRegular ? 0 : rowReference.getFullRowWidth();
 
-            oss << printBorder(borderTemplates, rowReference);
+            oss << print_border(borderTemplates, rowReference);
             for (size_t j = i; j < rows.size(); j++) {
                 Row& row = rows.at(j);
 
-                oss << printRow(borderTemplates, row, rowWidthReference);
+                oss << print_row(borderTemplates, row, rowWidthReference);
 
-                oss << printBorder(borderTemplates, rowReference);
+                oss << print_border(borderTemplates, rowReference);
             }
 
             // ! ****** REMEMBER PADDING *******

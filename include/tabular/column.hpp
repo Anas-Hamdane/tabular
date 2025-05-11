@@ -14,71 +14,71 @@
 #ifndef TABULAR_COLUMN_HPP
 #define TABULAR_COLUMN_HPP
 
-#include <tabular/enums.hpp>
-#include <tabular/glVars.hpp>
+#include <tabular/global_vars.hpp>
+#include <tabular/definitions.hpp>
 
 namespace tabular {
     class Column {
-        std::vector<FontStyle> fontStyles;
-        StringVector splittedContent;
+        std::vector<FontStyle> font_styles;
+        StringVector splitted_content;
         StringList words;
         Alignment alignment;
         unsigned int width;
-        unsigned int topPadding;
-        unsigned int bottomPadding;
+        unsigned int top_padding;
+        unsigned int bottom_padding;
 
     public:
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), topPadding(0), bottomPadding(0) {};
+            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0) {};
 
-        void setColumnAlign(Alignment alignment) { this->alignment = alignment; }
+        void set_column_align(Alignment alignment) { this->alignment = alignment; }
 
-        Alignment getColumnAlign() { return alignment; }
+        Alignment get_column_align() { return alignment; }
 
-        void setWidth(int width) {
+        void set_width(int width) {
             if (width <= 0)
                 width = 0;
 
             this->width = static_cast<unsigned int>(width);
         }
 
-        unsigned int getWidth() { return this->width; }
+        unsigned int get_width() { return this->width; }
 
-        void setColumnPadding(int padding) {
+        void set_column_padding(int padding) {
             if (padding <= 0)
                 padding = 0;
 
-            this->topPadding = padding;
-            this->bottomPadding = padding;
+            this->top_padding = padding;
+            this->bottom_padding = padding;
         }
 
-        void setColumnTopPadding(int padding) {
+        void set_column_top_padding(int padding) {
             if (padding <= 0)
-                this->topPadding = 0;
+                this->top_padding = 0;
             else
-                this->topPadding = static_cast<unsigned int>(padding);
+                this->top_padding = static_cast<unsigned int>(padding);
         }
         
-        void setColumnBottomPadding(int padding) {
+        void set_column_bottom_padding(int padding) {
             if (padding <= 0)
-                this->bottomPadding = 0;
+                this->bottom_padding = 0;
             else
-                this->bottomPadding = static_cast<unsigned int>(padding);
+                this->bottom_padding = static_cast<unsigned int>(padding);
         }
 
-        unsigned int getTopPadding() { return topPadding; }
+        unsigned int get_top_padding() { return top_padding; }
         
-        unsigned int getBottomPadding() { return bottomPadding; }
+        unsigned int get_bottom_padding() { return bottom_padding; }
 
-        void setSplittedContent(StringVector splittedContent) { this->splittedContent = splittedContent; }
+        void set_splitted_content(StringVector splittedContent) { this->splitted_content = splittedContent; }
 
-        StringVector getSplittedContent() { return splittedContent; }
+        StringVector get_splitted_content() { return splitted_content; }
 
-        void setWords(StringList words) { this->words = words; }
+        void set_words(StringList words) { this->words = words; }
 
-        StringList getWords() { return words; }
+        StringList get_words() { return words; }
     };
 } // namespace tabular
 
