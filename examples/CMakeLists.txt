@@ -11,7 +11,6 @@
 #
 #
 
-cmake_policy(SET CMP0175 NEW)
 set(EXAMPLES_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/source)
 set(EXAMPLES_BIN_DIR ${CMAKE_BINARY_DIR}/bin/examples)
 
