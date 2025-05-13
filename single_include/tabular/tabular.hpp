@@ -37,6 +37,7 @@
 #include <windows.h>
 #elif defined(OS_LINUX_BASED) || defined(OS_MACOS)
 #include <sys/ioctl.h>
+#include <unistd.h>
 #else
 #error Unsupported platform
 #endif
@@ -50,6 +51,7 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <climits>
 
 typedef std::vector<std::string> StringVector;
 typedef std::list<std::string> StringList;

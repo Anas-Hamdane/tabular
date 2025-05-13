@@ -23,11 +23,21 @@ namespace tabular {
         // to align PPDirectives
         // clang-format off
         inline unsigned short get_terminal_width() {
+            // first case: defined env var of COLUMNS
+            const char* columns_env = std::getenv("COLUMNS");
+            if (columns_env != nullptr) {
+                try {
+                    int width_int = std::stoi(columns_env);
+                    if (width_int > 0 && width_int <= USHRT_MAX)
+                        return static_cast<unsigned short>(width_int);
+                } catch(...) {}
+            }
+
             unsigned short width = 0;
 
             #if defined(OS_LINUX_BASED) || defined(OS_MACOS)
                 struct winsize ws;
-                if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
+                if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
                     width = 0;
                 else 
                     width = ws.ws_col;
@@ -125,7 +135,7 @@ namespace tabular {
             for (unsigned int i = 0; i < top_padding; i++)
                 result.push_back(std::string());
 
-            const int usable_width = (max_width - 2);                            // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
+            const int usable_width = (max_width - 2);                           // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
             const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT); // don't go back more than 30% when the last word is too long
 
             std::string sub;
@@ -225,7 +235,7 @@ namespace tabular {
             return result;
         }
 
-    } // namespace utilities
+    } // namespace utils
 } // namespace tabular
 
 #endif // TABULAR_UTILITIES_HPP

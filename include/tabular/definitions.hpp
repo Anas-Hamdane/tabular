@@ -17,6 +17,7 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <climits>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS
@@ -32,12 +33,13 @@
 #include <windows.h>
 #elif defined(OS_LINUX_BASED) || defined(OS_MACOS)
 #include <sys/ioctl.h>
+#include <unistd.h>
 #else
 #error Unsupported platform
 #endif
 
 #define DEFAULT_WIDTH_PERCENT .5
-#define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent for prepColContent()
+#define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
 #define ESC "\x1b"
 #define CSI "\x1b["
 
