@@ -18,26 +18,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
+# enable testing
+enable_testing()
+
+# header files location
 set(TABULAR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/tabular)
 
-# All Header files
-file(GLOB HEADER_FILES ${TABULAR_INCLUDE_DIR}/*.hpp)
+# examples
+add_subdirectory(examples)
 
-# All examples
-file(GLOB EXAMPLE_SOURCES ${EXAMPLES_DIR}/*.cpp)
-
-# compile every example
-foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
-    get_filename_component(EXAMPLE_NAME ${EXAMPLE_SOURCE} NAME_WE)
-    
-    add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE} ${HEADER_FILES})
-    
-    target_include_directories(${EXAMPLE_NAME} 
-        PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/include 
-        ${CMAKE_CURRENT_SOURCE_DIR}/single_include
-    )
-    
-    message(STATUS "Added example: ${EXAMPLE_NAME}")
-endforeach()
+# tests
+add_subdirectory(tests)

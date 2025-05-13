@@ -9,18 +9,22 @@
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
 
-    * EXAMPLE of a Long text and a new line in a table
+    * EXAMPLE of irregular tables
 */
 
 // #include <tabular/table.hpp>
-#include <tabular/table.hpp>
+#include <tabular/tabular.hpp>
 
 int main() {
     using namespace tabular;
 
     Table table;
-    
-    table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\n with a '\\n' inside it"});
+    table.add_row({"Countries Capitals"});
+    table.add_row({"United States", "Washington"});
+    table.add_row({"Brazil", "Brasilia"});
+    table.add_row({"Countries Population"});
+    table.add_row({"United States", "340.1 million (2024)"});
+    table.add_row({"Brazil", "211.1 million (2023)"});
 
     std::cout << table << std::endl;
     return 0;

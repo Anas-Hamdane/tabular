@@ -41,6 +41,7 @@ namespace tabular {
         BorderStyle border;
         style::BorderTemplates templates;
         unsigned int width; // for width we check if it is bigger than the terminal width so no problem
+        bool forced_width;
 
         struct Setters {
             Table& table;
@@ -319,7 +320,8 @@ namespace tabular {
 
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
-                stream << '\n' << templates.vertical;
+                stream << '\n'
+                       << templates.vertical;
 
                 for (Column col : row.columns) {
                     int rest = col.get_width();
@@ -363,16 +365,33 @@ namespace tabular {
         std::vector<Row>
             rows;
 
-        Table() : border(BorderStyle::standard), width(0) {}
+        Table() : border(BorderStyle::standard), width(0), forced_width(false) {}
 
         // configure the table
         Setters configure() { return Setters(*this); }
 
         Format format() { return Format(*this); }
 
-        void set_width(int width) { this->width = width; }
+        void set_width(int width) {
+            if (width > 0)
+                this->width = static_cast<unsigned int>(width);
+            else
+                this->width = 0;
+        }
 
         int get_width() { return this->width; }
+
+        // * for testing set a fixed, forced width
+        void set_forced_width(int width) {
+            if (width < 0)
+                this->width = 0;
+            else
+                this->width = static_cast<unsigned int>(width);
+
+            forced_width = true;
+        }
+
+        void remove_forced_width() { forced_width = false; }
 
         void add_row(std::vector<std::string> contents) {
             std::vector<Column> columns;
@@ -397,7 +416,6 @@ namespace tabular {
             return is_regular(Range(0, rows.size() - 1));
         }
 
-        
         // * return 2 for empty rows and 3 for terminal space problems
         int print(std::ostream& stream) {
             if (rows.size() == 0)
@@ -408,12 +426,17 @@ namespace tabular {
             //     std::cerr << "can't configure os specific terminal things\n";
 
             // chose width to use
-            unsigned short terminal_width = utils::get_terminal_width();
-            unsigned int usable_width = terminal_width * DEFAULT_WIDTH_PERCENT;
-            if (this->width <= 0 || this->width > terminal_width)
-                width = usable_width;
-            else
+            unsigned int usable_width;
+            if (forced_width)
                 usable_width = width;
+            else {
+                unsigned short terminal_width = utils::get_terminal_width();
+                usable_width = terminal_width * DEFAULT_WIDTH_PERCENT;
+                if (this->width <= 0 || this->width > terminal_width)
+                    width = usable_width;
+                else
+                    usable_width = width;
+            }
 
             // edit rows to match the width
             for (Row& row : rows) {
@@ -421,10 +444,7 @@ namespace tabular {
                 size_t row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
 
                 if (row_usable_width <= cols_num)
-                    // todo: change to error codes
-                    // std::cout << "Not Enough Space\n";
                     return 3;
-                
 
                 utils::format_row(row_usable_width, row);
             }
@@ -439,7 +459,7 @@ namespace tabular {
             if (templates.horizontal.empty()) templates.horizontal = border_templates.horizontal;
             if (templates.vertical.empty()) templates.vertical = border_templates.vertical;
             if (!regular) templates.corner = templates.horizontal; // for styling
-            
+
             // ------printing the table-------
             size_t i = 0;
             Row row_reference = rows.at(i);
@@ -460,7 +480,7 @@ namespace tabular {
     };
 
     inline std::ostream& operator<<(std::ostream& stream, const Table& table) {
-        const_cast<Table &>(table).print(stream);
+        const_cast<Table&>(table).print(stream);
         return stream;
     }
 } // namespace tabular

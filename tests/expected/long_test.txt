@@ -1,0 +1,7 @@
++------------------------+-----------------------+
+| This a normal paragra- | And this another      |
+| ph with a very looooo- | paragraph             |
+| ooooooooooooooooooooo- | with a '\n' inside it |
+| ooooooooooooooooooooo- |                       |
+| ooooooong word         |                       |
++------------------------+-----------------------+
