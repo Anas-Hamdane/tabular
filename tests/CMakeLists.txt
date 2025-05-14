@@ -59,3 +59,20 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 
     message(STATUS "Added GTest: ${TEST_NAME}")
 endforeach()
+
+# custom target
+add_custom_target(run_tests
+    COMMAND ${CMAKE_COMMAND} -E echo "Running all tests..."
+    WORKING_DIRECTORY ${TESTS_BIN_DIR}
+)
+
+# run all tests
+foreach(TEST_SOURCE ${TEST_SOURCES})
+    get_filename_component(TEST_TO_RUN ${TEST_SOURCE} NAME_WE)
+    add_custom_command(
+        TARGET run_tests
+        POST_BUILD
+        COMMAND ${TESTS_BIN_DIR}/${TEST_TO_RUN}
+        COMMENT "Running test ${TEST_TO_RUN}\n"
+    )
+endforeach()

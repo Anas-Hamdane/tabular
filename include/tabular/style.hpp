@@ -21,14 +21,14 @@
 
 namespace tabular {
     namespace style {
-        struct BorderTemplates {
+        struct Border {
             std::string vertical;
             std::string horizontal;
             std::string corner;
         };
 
-        static BorderTemplates get_border_templates(BorderStyle borderStyle) {
-            static std::map<BorderStyle, BorderTemplates> templates{
+        static Border get_border_template(BorderStyle borderStyle) {
+            static std::map<BorderStyle, Border> templates{
                 {BorderStyle::empty, {" ", " ", " "}},
                 {BorderStyle::standard, {"|", "-", "+"}},
                 {BorderStyle::ANSI, {}}};

@@ -14,10 +14,10 @@
 #ifndef TABULAR_GL_VARS_HPP
 #define TABULAR_GL_VARS_HPP
 
-#include <list>
-#include <string>
-#include <vector>
 #include <climits>
+#include <vector>
+#include <string>
+#include <list>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS
@@ -40,7 +40,8 @@
 
 #define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
-#define ESC "\x1b"
+#define TABLE_MODE "\x1b(0"
+#define RESET_TABLE_MODE "\x1B(B"
 #define CSI "\x1b["
 
 typedef std::vector<std::string> StringVector;

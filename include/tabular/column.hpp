@@ -37,35 +37,43 @@ namespace tabular {
 
         Alignment get_column_align() { return alignment; }
 
-        void set_width(int width) {
+        Column& set_width(int width) {
             if (width <= 0)
                 width = 0;
 
             this->width = static_cast<unsigned int>(width);
+
+            return *this;
         }
 
         unsigned int get_width() { return this->width; }
 
-        void set_column_padding(int padding) {
+        Column& set_column_padding(int padding) {
             if (padding <= 0)
                 padding = 0;
 
             this->top_padding = padding;
             this->bottom_padding = padding;
+
+            return *this;
         }
 
-        void set_column_top_padding(int padding) {
+        Column& set_column_top_padding(int padding) {
             if (padding <= 0)
                 this->top_padding = 0;
             else
                 this->top_padding = static_cast<unsigned int>(padding);
+
+            return *this;
         }
         
-        void set_column_bottom_padding(int padding) {
+        Column& set_column_bottom_padding(int padding) {
             if (padding <= 0)
                 this->bottom_padding = 0;
             else
                 this->bottom_padding = static_cast<unsigned int>(padding);
+
+            return *this;
         }
 
         unsigned int get_top_padding() { return top_padding; }

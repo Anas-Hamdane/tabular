@@ -29,26 +29,34 @@ namespace tabular {
 
         int get_columns_number() { return columns.size(); }
 
-        void set_row_align(Alignment alignment) {
+        Row& set_row_align(Alignment alignment) {
             this->alignment = alignment;
 
             for (Column& col : columns)
                 col.set_column_align(alignment);
+
+            return *this;
         }
         
-        void set_row_padding(int padding) {
+        Row& set_row_padding(int padding) {
             for (Column& col : columns)
                 col.set_column_padding(padding);
+
+            return *this;
         }
 
-        void set_row_top_padding(int padding) {
+        Row& set_row_top_padding(int padding) {
             for (Column& col : columns)
                 col.set_column_top_padding(padding);
+
+            return *this;
         }
         
-        void set_row_bottom_padding(int padding) {
+        Row& set_row_bottom_padding(int padding) {
             for (Column& col : columns)
                 col.set_column_bottom_padding(padding);
+
+            return *this;
         }
 
         unsigned int get_full_row_width() {

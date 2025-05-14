@@ -11,8 +11,8 @@
 
 */
 
-#include <tabular/row.hpp>
 #include <tabular/definitions.hpp>
+#include <tabular/row.hpp>
 
 #ifndef TABULAR_UTILITIES_HPP
 #define TABULAR_UTILITIES_HPP
@@ -50,6 +50,30 @@ namespace tabular {
             #endif
 
             return width;
+        }
+
+        inline bool check_terminal() {
+            #if defined(OS_WINDOWS)
+                static bool initialized = []() -> bool {
+                    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                    if (hOut == INVALID_HANDLE_VALUE)
+                        return false;
+
+                    DWORD dwMode = 0;
+                    if (!GetConsoleMode(hOut, &dwMode))
+                        return false;
+
+                    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+                    if (!SetConsoleMode(hOut, dwMode))
+                        return false;
+
+                    return true;
+                }();
+                // SetConsoleOutputCP(CP_UTF8);
+                return initialized;
+            #else
+                return true;
+            #endif
         }
         // clang-format on
 

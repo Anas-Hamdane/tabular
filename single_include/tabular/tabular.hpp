@@ -19,8 +19,8 @@
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
       -  [x] padding control
-      -  [x] width control                          # issue with setAllColsWidth when the table is irregular, suggested: add head condition.
-      -  [ ] range columns setters (functions)
+      -  [x] width control
+      -  [x] range columns setters (functions)
 */
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -43,15 +43,15 @@
 #endif
 
 #define DEFAULT_WIDTH_PERCENT .5
-#define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent for prepColContent()
+#define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
 #define ESC "\x1b"
 #define CSI "\x1b["
 
 #include <iostream>
+#include <climits>
+#include <vector>
 #include <list>
 #include <map>
-#include <vector>
-#include <climits>
 
 typedef std::vector<std::string> StringVector;
 typedef std::list<std::string> StringList;
@@ -192,14 +192,14 @@ namespace tabular {
     };
 
     namespace style {
-        struct BorderTemplates {
+        struct Border {
             std::string vertical;
             std::string horizontal;
             std::string corner;
         };
 
-        static BorderTemplates get_border_templates(BorderStyle borderStyle) {
-            static std::map<BorderStyle, BorderTemplates> templates{
+        static Border get_border_template(BorderStyle borderStyle) {
+            static std::map<BorderStyle, Border> templates{
                 {BorderStyle::empty, {" ", " ", " "}},
                 {BorderStyle::standard, {"|", "-", "+"}},
                 {BorderStyle::ANSI, {}}};
@@ -428,7 +428,7 @@ namespace tabular {
 
     class Table {
         BorderStyle border;
-        style::BorderTemplates templates;
+        style::Border border_templates;
         unsigned int width; // for width we check if it is bigger than the terminal width so no problem
         bool forced_width;
 
@@ -677,7 +677,7 @@ namespace tabular {
                 if (corner.size() != 1)
                     return 2;
 
-                table.templates.corner = corner;
+                table.border_templates.corner = corner;
                 return 1;
             }
 
@@ -685,7 +685,7 @@ namespace tabular {
                 if (horizontal.size() != 1)
                     return 2;
 
-                table.templates.horizontal = horizontal;
+                table.border_templates.horizontal = horizontal;
                 return 1;
             }
 
@@ -693,7 +693,7 @@ namespace tabular {
                 if (vertical.size() != 1)
                     return 2;
 
-                table.templates.vertical = vertical;
+                table.border_templates.vertical = vertical;
                 return 1;
             }
 
@@ -710,7 +710,7 @@ namespace tabular {
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
                 stream << '\n'
-                       << templates.vertical;
+                       << border_templates.vertical;
 
                 for (Column col : row.columns) {
                     int rest = col.get_width();
@@ -726,7 +726,7 @@ namespace tabular {
                     for (int k = 0; k < rest; k++)
                         stream << ' ';
 
-                    stream << templates.vertical;
+                    stream << border_templates.vertical;
                 }
             }
         }
@@ -735,7 +735,7 @@ namespace tabular {
             if (!is_first)
                 stream << '\n';
 
-            stream << templates.corner;
+            stream << border_templates.corner;
 
             size_t cols_num = reference.columns.size();
 
@@ -744,9 +744,9 @@ namespace tabular {
                 unsigned col_width = col.get_width();
 
                 for (unsigned int k = 0; k < col_width; k++)
-                    stream << templates.horizontal;
+                    stream << border_templates.horizontal;
 
-                stream << templates.corner;
+                stream << border_templates.corner;
             }
         }
 
@@ -842,12 +842,12 @@ namespace tabular {
             bool regular = is_regular();
 
             // adjusting border style
-            style::BorderTemplates border_templates = style::get_border_templates(border);
+            style::Border border_templates = style::get_border_template(border);
 
-            if (templates.corner.empty()) templates.corner = border_templates.corner;
-            if (templates.horizontal.empty()) templates.horizontal = border_templates.horizontal;
-            if (templates.vertical.empty()) templates.vertical = border_templates.vertical;
-            if (!regular) templates.corner = templates.horizontal; // for styling
+            if (border_templates.corner.empty()) border_templates.corner = border_templates.corner;
+            if (border_templates.horizontal.empty()) border_templates.horizontal = border_templates.horizontal;
+            if (border_templates.vertical.empty()) border_templates.vertical = border_templates.vertical;
+            if (!regular) border_templates.corner = border_templates.horizontal; // for styling
 
             // ------printing the table-------
             size_t i = 0;

@@ -35,12 +35,32 @@ namespace tabular {
         empty,
         ANSI // ! Not implemented
     };
+
     typedef struct Range {
         int from;
         int to;
 
         Range(int from, int to) : from(from), to(to) {}
     } Range;
+    typedef enum {
+        // straight lines
+        TABLE_HORIZONTAL = 'q',
+        TABLE_VERTICAL = 'x',
+
+        // corners
+        TABLE_BOTTOM_RIGHT_CORNER = 'j',
+        TABLE_TOP_RIGHT_CORNER = 'k',
+        TABLE_TOP_LEFT_CORNER = 'l',
+        TABLE_BOTTOM_LEFT_CORNER = 'm',
+        TABLE_MIDDLE_SEPARATOR = 'n',
+        
+        // middle separators
+        TABLE_MIDDLE_LEFT_TO_RIGHT = 't',
+        TABLE_MIDDLE_RIGHT_TO_LEFT = 'u',
+        
+        TABLE_MIDDLE_BOTTOM_TO_TOP = 'v',
+        TABLE_MIDDLE_TOP_TO_BOTTOM = 'w'
+    } ANSI_TABLE_PARTS;
 } // namespace tabular
 
 #endif // TABULAR_ENUMS_HPP
