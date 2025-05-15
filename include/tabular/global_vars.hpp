@@ -33,7 +33,7 @@ namespace tabular {
     enum class BorderStyle {
         standard,
         empty,
-        ANSI // ! Not implemented
+        ANSI
     };
 
     typedef struct Range {

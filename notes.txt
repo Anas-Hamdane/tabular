@@ -105,3 +105,6 @@ int border_top(std::string top) {
                 return 1;
             }
 ///////////////////////////////////////////////////////////////////////////////////////////
+
+
+gad tests/add example/test for ansi irregular table

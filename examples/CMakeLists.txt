@@ -20,11 +20,13 @@ file(GLOB HEADER_FILES ${CMAKE_SOURCE_DIR}/include/tabular/*.hpp)
 # all examples
 file(GLOB EXAMPLE_SOURCES ${EXAMPLES_SOURCE_DIR}/*.cpp)
 
+set(EXAMPLE_TARGETS)
+
 foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
     get_filename_component(EXAMPLE_NAME ${EXAMPLE_SOURCE} NAME_WE)
     
     add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE} ${HEADER_FILES})
-    
+
     target_include_directories(${EXAMPLE_NAME} 
         PRIVATE 
         ${CMAKE_SOURCE_DIR}/include 
@@ -34,23 +36,22 @@ foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
     set_target_properties(${EXAMPLE_NAME} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${EXAMPLES_BIN_DIR}
     )
-    
+
+    list(APPEND EXAMPLE_TARGETS ${EXAMPLE_NAME})
+
     message(STATUS "Added example: ${EXAMPLE_NAME}")
 endforeach()
 
-# custom target
 add_custom_target(run_examples
-    COMMAND ${CMAKE_COMMAND} -E echo "Running all examples..."
     WORKING_DIRECTORY ${EXAMPLES_BIN_DIR}
+    DEPENDS ${EXAMPLE_TARGETS}
 )
 
-# run all examples
-foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
-    get_filename_component(EXAMPLE_TO_RUN ${EXAMPLE_SOURCE} NAME_WE)
+foreach(EXAMPLE_TARGET ${EXAMPLE_TARGETS})
     add_custom_command(
         TARGET run_examples
         POST_BUILD
-        COMMAND ${EXAMPLES_BIN_DIR}/${EXAMPLE_TO_RUN}
-        COMMENT "Running example ${EXAMPLE_TO_RUN}\n"
+        COMMAND ${EXAMPLES_BIN_DIR}/${EXAMPLE_TARGET}
+        COMMENT "Running example ${EXAMPLE_TARGET}\n"
     )
 endforeach()

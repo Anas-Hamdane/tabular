@@ -31,7 +31,7 @@ namespace tabular {
             static std::map<BorderStyle, Border> templates{
                 {BorderStyle::empty, {" ", " ", " "}},
                 {BorderStyle::standard, {"|", "-", "+"}},
-                {BorderStyle::ANSI, {}}};
+                {BorderStyle::ANSI, {}}}; // just to check when printing 
             return templates[borderStyle];
         }
     }; // namespace style

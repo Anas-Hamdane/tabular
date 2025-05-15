@@ -33,6 +33,8 @@ set(TESTS_EXPECTED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/expected)
 file(GLOB HEADER_FILES ${CMAKE_SOURCE_DIR}/include/tabular/*.hpp)
 file(GLOB TEST_SOURCES ${TESTS_SOURCE_DIR}/*.cpp)
 
+set(TEST_TARGETS)
+
 foreach(TEST_SOURCE ${TEST_SOURCES})
     get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
 
@@ -57,6 +59,8 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 
     add_test(NAME ${TEST_NAME} COMMAND ${TESTS_BIN_DIR}/${TEST_NAME})
 
+    list(APPEND TEST_TARGETS ${TEST_NAME})
+
     message(STATUS "Added GTest: ${TEST_NAME}")
 endforeach()
 
@@ -64,10 +68,11 @@ endforeach()
 add_custom_target(run_tests
     COMMAND ${CMAKE_COMMAND} -E echo "Running all tests..."
     WORKING_DIRECTORY ${TESTS_BIN_DIR}
+    DEPENDS ${TEST_TARGETS}
 )
 
 # run all tests
-foreach(TEST_SOURCE ${TEST_SOURCES})
+foreach(TEST_SOURCE ${TEST_TARGETS})
     get_filename_component(TEST_TO_RUN ${TEST_SOURCE} NAME_WE)
     add_custom_command(
         TARGET run_tests

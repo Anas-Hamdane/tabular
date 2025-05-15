@@ -15,7 +15,7 @@
     TODO:
       -  [x] implement Dynamic table logic
       -  [x] default padding
-      -  [ ] ANSI Support
+      -  [x] ANSI Support
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
       -  [x] padding control
@@ -24,6 +24,7 @@
 */
 
 #include <iostream>
+#include <algorithm>
 #include <vector>
 
 // headers
@@ -42,6 +43,7 @@ namespace tabular {
         style::Border border_templates;
         unsigned int width; // for width we check if it is bigger than the terminal width so no problem
         bool forced_width;
+        bool force_ansi;
 
         struct Setters {
             Table& table;
@@ -279,7 +281,7 @@ namespace tabular {
                 return set_cols_width(width, cols_index, Range(0, table.rows.size() - 1));
             }
         };
-        
+
         struct Format {
             Table& table;
             Format(Table& table) : table(table) {}
@@ -302,6 +304,20 @@ namespace tabular {
             void border(BorderStyle style) { table.border_style = style; }
         };
 
+        std::vector<int> find_stops(Row row) {
+            std::vector<int> result;
+
+            int track = 1;
+            for (Column col : row.columns) {
+                track += col.get_width();
+
+                result.push_back(int(track));
+                track++;
+            }
+
+            return result;
+        }
+
         void print_row(std::ostream& stream, Row& row, int width_reference) {
             if (width_reference != 0) {
                 // tableSplits = (row.columns.size() + 1)
@@ -313,10 +329,11 @@ namespace tabular {
 
             if (border_style == BorderStyle::ANSI)
                 vertical = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_VERTICAL)) + RESET_TABLE_MODE;
-            
+
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
-                stream << '\n' << vertical;
+                stream << '\n'
+                       << vertical;
 
                 for (Column col : row.columns) {
                     int rest = col.get_width();
@@ -328,7 +345,7 @@ namespace tabular {
                         stream << current_line;
                         rest -= current_line.size(); // to balance the line
                     }
-                    
+
                     for (int k = 0; k < rest; k++)
                         stream << ' ';
 
@@ -337,7 +354,13 @@ namespace tabular {
             }
         }
 
-        void print_border(std::ostream& stream, Row reference, bool is_first, bool is_last) {
+        void print_border(std::ostream& stream, std::vector<Row>::iterator& it, bool is_first, bool is_last, bool regular) {
+
+            Row reference = *it;
+            std::vector<int> next_row_corners;
+
+            if (is_first) next_row_corners = find_stops(*it);
+            else if (!is_last) next_row_corners = find_stops(*(it + 1));
 
             // (vertical separators)/corners
             std::string left_corner = border_templates.corner;
@@ -347,6 +370,7 @@ namespace tabular {
 
             // horizontal separator
             std::string hor_separator = border_templates.corner;
+            std::string top_to_bottom = border_templates.corner;
 
             bool is_ANSI = (border_style == BorderStyle::ANSI);
 
@@ -368,6 +392,8 @@ namespace tabular {
                 right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_RIGHT_TO_LEFT)) + RESET_TABLE_MODE;
 
                 hor_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_SEPARATOR)) + RESET_TABLE_MODE;
+                
+                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
             }
 
             else if (is_last && is_ANSI) {
@@ -381,18 +407,39 @@ namespace tabular {
 
             size_t cols_num = reference.columns.size();
 
+            int tracker = 0;
             for (size_t j = 0; j < cols_num; j++) {
                 Column col = reference.columns[j];
                 unsigned col_width = col.get_width();
 
-                for (unsigned int k = 0; k < col_width; k++)
-                    stream << horizontal;
+                // tracker++;
+
+                for (unsigned int k = 0; k < col_width; k++) {
+                    tracker++;
+                    
+                    if (std::find(next_row_corners.begin(), next_row_corners.end(), tracker) != next_row_corners.end())
+                        stream << top_to_bottom;
+                    else
+                        stream << horizontal;
+                }
+
+                tracker++;
 
                 if (j + 1 != cols_num)
                     stream << hor_separator;
             }
 
             stream << right_corner;
+        }
+
+        unsigned int find_max_rows_width() {
+            unsigned int result = 0;
+            for (Row row : rows) {
+                unsigned int row_width = row.get_full_row_width();
+                if (row_width > result) result = row_width;
+            }
+
+            return result;
         }
 
     public:
@@ -425,6 +472,13 @@ namespace tabular {
             forced_width = true;
         }
 
+        // * for testing force using ansi (used when redirecting output to files)
+        void set_forced_ansi() {
+            border_style = BorderStyle::ANSI;
+
+            force_ansi = true;
+        }
+
         void remove_forced_width() { forced_width = false; }
 
         void add_row(std::vector<std::string> contents) {
@@ -450,7 +504,7 @@ namespace tabular {
             return is_regular(Range(0, rows.size() - 1));
         }
 
-        // * return 2 for empty rows and 3 for terminal space problems and 4 for ANSI support
+        // * return 2 for empty rows and 3 for terminal space problems
         int print(std::ostream& stream) {
             if (rows.size() == 0)
                 return 2;
@@ -468,10 +522,12 @@ namespace tabular {
                     usable_width = width;
             }
 
+            size_t cols_num;
+            size_t row_usable_width;
             // edit rows to match the width
             for (Row& row : rows) {
-                size_t cols_num = row.columns.size();
-                size_t row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
+                cols_num = row.columns.size();
+                row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
 
                 if (row_usable_width <= cols_num)
                     return 3;
@@ -479,16 +535,16 @@ namespace tabular {
                 utils::format_row(row_usable_width, row);
             }
 
-            // check if the table has consistent number of columns across all rows
+             // check if the table has consistent number of columns across all rows
             bool regular = is_regular();
 
             if (border_style == BorderStyle::ANSI) {
-                if (!regular) // no support for irregular tables
+                // if (!regular) // no support for irregular tables
+                //     border_style = BorderStyle::standard;
+                if (!utils::check_terminal() && !force_ansi) // for testing/redirecting to files (not a terminal)
                     border_style = BorderStyle::standard;
-                else if (!utils::check_terminal())
-                    return 4;
             }
-            
+
             if (border_style != BorderStyle::ANSI) {
                 // adjusting border style
                 style::Border templates = style::get_border_template(border_style);
@@ -497,28 +553,35 @@ namespace tabular {
                 if (border_templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
                 if (border_templates.vertical.empty()) border_templates.vertical = templates.vertical;
 
-                if (!regular) border_templates.corner = border_templates.horizontal; // for styling
+                // if (!regular) border_templates.corner = border_templates.horizontal; // for styling
             }
 
-            // ------printing the table-------
-            size_t i = 0;
-            Row row_reference = rows.at(i);
-            // 0 to check in printRow
-            unsigned int row_width_reference = regular ? 0 : row_reference.get_full_row_width();
+            /* ------ printing the table ------- */
 
-            bool is_first = true, is_last = false;
-            print_border(stream, row_reference, is_first, is_last);
+            // 0 to check in print_row
+            unsigned int row_width_reference = regular ? 0 : find_max_rows_width();
+
+            if (!regular)
+                for (auto it = rows.begin(); it != rows.end(); ++it)
+                    utils::format_row(row_width_reference - (it->columns.size() + 1), *it);  
+            
+            bool is_first = true, is_last;
+            if (rows.size() == 1)
+                is_last = true;
+
+            auto it = rows.begin();
+            print_border(stream, it, is_first, is_last, regular);
 
             is_first = false;
-            for (size_t j = i; j < rows.size(); j++) {
-                Row& row = rows.at(j);
+            for (it = rows.begin(); it != rows.end(); ++it) {
+                Row& row = *it;
 
                 print_row(stream, row, row_width_reference);
 
-                if ((j + 1) == rows.size())
+                if ((it + 1) == rows.end())
                     is_last = true;
 
-                print_border(stream, row, is_first, is_last);
+                print_border(stream, it, is_first, is_last, regular);
             }
 
             return 0;
