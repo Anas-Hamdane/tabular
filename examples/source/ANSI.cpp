@@ -15,6 +15,8 @@
 #include <tabular/table.hpp>
 // #include <tabular/tabular.hpp>
 
+#include <iostream>
+
 int main() {
     using namespace tabular;
 
