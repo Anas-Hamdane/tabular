@@ -23,6 +23,14 @@
       -  [x] range columns setters (functions)
 */
 
+#include <algorithm>
+#include <ostream>
+#include <climits>
+#include <vector>
+#include <string>
+#include <list>
+#include <map>
+
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS
 #elif defined(__APPLE__)
@@ -44,14 +52,9 @@
 
 #define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
-#define ESC "\x1b"
+#define TABLE_MODE "\x1b(0"
+#define RESET_TABLE_MODE "\x1B(B"
 #define CSI "\x1b["
-
-#include <iostream>
-#include <climits>
-#include <vector>
-#include <list>
-#include <map>
 
 typedef std::vector<std::string> StringVector;
 typedef std::list<std::string> StringList;
@@ -75,14 +78,34 @@ namespace tabular {
     enum class BorderStyle {
         standard,
         empty,
-        ANSI // ! Not implemented
+        ANSI
     };
+
     typedef struct Range {
         int from;
         int to;
 
         Range(int from, int to) : from(from), to(to) {}
     } Range;
+    typedef enum {
+        // straight lines
+        TABLE_HORIZONTAL = 'q',
+        TABLE_VERTICAL = 'x',
+
+        // corners
+        TABLE_BOTTOM_RIGHT_CORNER = 'j',
+        TABLE_TOP_RIGHT_CORNER = 'k',
+        TABLE_TOP_LEFT_CORNER = 'l',
+        TABLE_BOTTOM_LEFT_CORNER = 'm',
+        TABLE_MIDDLE_SEPARATOR = 'n',
+        
+        // middle separators
+        TABLE_MIDDLE_LEFT_TO_RIGHT = 't',
+        TABLE_MIDDLE_RIGHT_TO_LEFT = 'u',
+        
+        TABLE_MIDDLE_BOTTOM_TO_TOP = 'v',
+        TABLE_MIDDLE_TOP_TO_BOTTOM = 'w'
+    } ANSI_TABLE_PARTS;
 
     class Column {
         std::vector<FontStyle> font_styles;
@@ -103,39 +126,47 @@ namespace tabular {
 
         Alignment get_column_align() { return alignment; }
 
-        void set_width(int width) {
+        Column& set_width(int width) {
             if (width <= 0)
                 width = 0;
 
             this->width = static_cast<unsigned int>(width);
+
+            return *this;
         }
 
         unsigned int get_width() { return this->width; }
 
-        void set_column_padding(int padding) {
+        Column& set_column_padding(int padding) {
             if (padding <= 0)
                 padding = 0;
 
             this->top_padding = padding;
             this->bottom_padding = padding;
+
+            return *this;
         }
 
-        void set_column_top_padding(int padding) {
+        Column& set_column_top_padding(int padding) {
             if (padding <= 0)
                 this->top_padding = 0;
             else
                 this->top_padding = static_cast<unsigned int>(padding);
-        }
 
-        void set_column_bottom_padding(int padding) {
+            return *this;
+        }
+        
+        Column& set_column_bottom_padding(int padding) {
             if (padding <= 0)
                 this->bottom_padding = 0;
             else
                 this->bottom_padding = static_cast<unsigned int>(padding);
+
+            return *this;
         }
 
         unsigned int get_top_padding() { return top_padding; }
-
+        
         unsigned int get_bottom_padding() { return bottom_padding; }
 
         void set_splitted_content(StringVector splittedContent) { this->splitted_content = splittedContent; }
@@ -159,26 +190,34 @@ namespace tabular {
 
         int get_columns_number() { return columns.size(); }
 
-        void set_row_align(Alignment alignment) {
+        Row& set_row_align(Alignment alignment) {
             this->alignment = alignment;
 
             for (Column& col : columns)
                 col.set_column_align(alignment);
-        }
 
-        void set_row_padding(int padding) {
+            return *this;
+        }
+        
+        Row& set_row_padding(int padding) {
             for (Column& col : columns)
                 col.set_column_padding(padding);
+
+            return *this;
         }
 
-        void set_row_top_padding(int padding) {
+        Row& set_row_top_padding(int padding) {
             for (Column& col : columns)
                 col.set_column_top_padding(padding);
-        }
 
-        void set_row_bottom_padding(int padding) {
+            return *this;
+        }
+        
+        Row& set_row_bottom_padding(int padding) {
             for (Column& col : columns)
                 col.set_column_bottom_padding(padding);
+
+            return *this;
         }
 
         unsigned int get_full_row_width() {
@@ -202,7 +241,7 @@ namespace tabular {
             static std::map<BorderStyle, Border> templates{
                 {BorderStyle::empty, {" ", " ", " "}},
                 {BorderStyle::standard, {"|", "-", "+"}},
-                {BorderStyle::ANSI, {}}};
+                {BorderStyle::ANSI, {}}}; // just to check when printing 
             return templates[borderStyle];
         }
     }; // namespace style
@@ -239,6 +278,30 @@ namespace tabular {
             #endif
 
             return width;
+        }
+
+        inline bool check_terminal() {
+            #if defined(OS_WINDOWS)
+                static bool initialized = []() -> bool {
+                    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                    if (hOut == INVALID_HANDLE_VALUE)
+                        return false;
+
+                    DWORD dwMode = 0;
+                    if (!GetConsoleMode(hOut, &dwMode))
+                        return false;
+
+                    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+                    if (!SetConsoleMode(hOut, dwMode))
+                        return false;
+
+                    return true;
+                }();
+                // SetConsoleOutputCP(CP_UTF8);
+                return initialized;
+            #else
+                return true;
+            #endif
         }
         // clang-format on
 
@@ -427,13 +490,16 @@ namespace tabular {
     } // namespace utils
 
     class Table {
-        BorderStyle border;
+        BorderStyle border_style;
         style::Border border_templates;
         unsigned int width; // for width we check if it is bigger than the terminal width so no problem
         bool forced_width;
+        bool force_ansi;
 
         struct Setters {
             Table& table;
+
+        public:
             Setters(Table& table) : table(table) {}
 
             /*
@@ -673,32 +739,37 @@ namespace tabular {
             Table& table;
             Format(Table& table) : table(table) {}
 
-            int corner(std::string corner) {
-                if (corner.size() != 1)
-                    return 2;
-
+            Format& corner(char corner) {
                 table.border_templates.corner = corner;
-                return 1;
+                return *this;
             }
 
-            int horizontal(std::string horizontal) {
-                if (horizontal.size() != 1)
-                    return 2;
-
+            Format& horizontal(char horizontal) {
                 table.border_templates.horizontal = horizontal;
-                return 1;
+                return *this;
             }
 
-            int vertical(std::string vertical) {
-                if (vertical.size() != 1)
-                    return 2;
-
+            Format& vertical(char vertical) {
                 table.border_templates.vertical = vertical;
-                return 1;
+                return *this;
             }
 
-            void border(BorderStyle border) { table.border = border; }
+            void border(BorderStyle style) { table.border_style = style; }
         };
+
+        std::vector<int> find_stops(Row row) {
+            std::vector<int> result;
+
+            int track = 1;
+            for (Column col : row.columns) {
+                track += col.get_width();
+
+                result.push_back(int(track));
+                track++;
+            }
+
+            return result;
+        }
 
         void print_row(std::ostream& stream, Row& row, int width_reference) {
             if (width_reference != 0) {
@@ -707,10 +778,15 @@ namespace tabular {
                 utils::format_row(usable_width, row);
             }
 
+            std::string vertical = border_templates.vertical;
+
+            if (border_style == BorderStyle::ANSI)
+                vertical = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_VERTICAL)) + RESET_TABLE_MODE;
+
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
                 stream << '\n'
-                       << border_templates.vertical;
+                       << vertical;
 
                 for (Column col : row.columns) {
                     int rest = col.get_width();
@@ -726,35 +802,123 @@ namespace tabular {
                     for (int k = 0; k < rest; k++)
                         stream << ' ';
 
-                    stream << border_templates.vertical;
+                    stream << vertical;
                 }
             }
         }
 
-        void print_border(std::ostream& stream, Row reference, bool is_first) {
+        void print_border(std::ostream& stream, std::vector<Row>::iterator& it, bool is_first, bool is_last, bool regular) {
+
+            Row reference = *it;
+            std::vector<int> next_row_corners;
+
+            if (is_first)
+                next_row_corners = find_stops(*it);
+            else if (!is_last)
+                next_row_corners = find_stops(*(it + 1));
+
+            // (vertical separators)/corners
+            std::string left_corner = border_templates.corner;
+            std::string right_corner = border_templates.corner;
+
+            std::string horizontal = border_templates.horizontal;
+
+            // horizontal separator
+            std::string middle_separator = border_templates.corner;
+            std::string top_to_bottom = border_templates.corner;
+            std::string bottom_to_top = border_templates.corner;
+
+            bool is_ANSI = (border_style == BorderStyle::ANSI);
+
             if (!is_first)
                 stream << '\n';
 
-            stream << border_templates.corner;
+            if (is_ANSI)
+                horizontal = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_HORIZONTAL)) + RESET_TABLE_MODE;
+
+            if (is_first && is_ANSI) {
+                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_TOP_LEFT_CORNER)) + RESET_TABLE_MODE;
+                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_TOP_RIGHT_CORNER)) + RESET_TABLE_MODE;
+
+                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+
+                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+
+                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+            }
+
+            else if (!(is_first || is_last) && is_ANSI) {
+                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_LEFT_TO_RIGHT)) + RESET_TABLE_MODE;
+                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_RIGHT_TO_LEFT)) + RESET_TABLE_MODE;
+
+                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_SEPARATOR)) + RESET_TABLE_MODE;
+
+                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+
+                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
+            }
+
+            else if (is_last && is_ANSI) {
+                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_BOTTOM_LEFT_CORNER)) + RESET_TABLE_MODE;
+                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_BOTTOM_RIGHT_CORNER)) + RESET_TABLE_MODE;
+
+                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
+
+                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
+
+                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
+            }
+
+            stream << left_corner;
 
             size_t cols_num = reference.columns.size();
 
+            int tracker = 0;
             for (size_t j = 0; j < cols_num; j++) {
                 Column col = reference.columns[j];
                 unsigned col_width = col.get_width();
 
-                for (unsigned int k = 0; k < col_width; k++)
-                    stream << border_templates.horizontal;
+                // tracker++;
 
-                stream << border_templates.corner;
+                for (unsigned int k = 0; k < col_width; k++) {
+                    tracker++;
+
+                    if (std::find(next_row_corners.begin(), next_row_corners.end(), tracker) != next_row_corners.end())
+                        stream << top_to_bottom;
+                    else
+                        stream << horizontal;
+                }
+
+                tracker++;
+
+                if (j + 1 != cols_num) {
+
+                    // column separator at the bottom and at the top
+                    if (std::find(next_row_corners.begin(), next_row_corners.end(), tracker) != next_row_corners.end())
+                        stream << middle_separator;
+                    else
+                        stream << bottom_to_top; // just at the top
+                }
             }
+
+            stream << right_corner;
+        }
+
+        unsigned int find_max_rows_width() {
+            unsigned int result = 0;
+            for (Row row : rows) {
+                unsigned int row_width = row.get_full_row_width();
+                if (row_width > result) result = row_width;
+            }
+
+            return result;
         }
 
     public:
         std::vector<Row>
             rows;
 
-        Table() : border(BorderStyle::standard), width(0), forced_width(false) {}
+        Table() : border_style(BorderStyle::standard), width(0), forced_width(false) {}
 
         // configure the table
         Setters configure() { return Setters(*this); }
@@ -778,6 +942,13 @@ namespace tabular {
                 this->width = static_cast<unsigned int>(width);
 
             forced_width = true;
+        }
+
+        // * for testing force using ansi (used when redirecting output to files)
+        void set_forced_ansi() {
+            border_style = BorderStyle::ANSI;
+
+            force_ansi = true;
         }
 
         void remove_forced_width() { forced_width = false; }
@@ -810,10 +981,6 @@ namespace tabular {
             if (rows.size() == 0)
                 return 2;
 
-            // todo: add ANSI support
-            // if (!OsSpecific::checkTerminal())
-            //     std::cerr << "can't configure os specific terminal things\n";
-
             // chose width to use
             unsigned int usable_width;
             if (forced_width)
@@ -827,10 +994,12 @@ namespace tabular {
                     usable_width = width;
             }
 
+            size_t cols_num;
+            size_t row_usable_width;
             // edit rows to match the width
             for (Row& row : rows) {
-                size_t cols_num = row.columns.size();
-                size_t row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
+                cols_num = row.columns.size();
+                row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
 
                 if (row_usable_width <= cols_num)
                     return 3;
@@ -841,27 +1010,50 @@ namespace tabular {
             // check if the table has consistent number of columns across all rows
             bool regular = is_regular();
 
-            // adjusting border style
-            style::Border border_templates = style::get_border_template(border);
+            if (border_style == BorderStyle::ANSI) {
+                // if (!regular) // no support for irregular tables
+                //     border_style = BorderStyle::standard;
+                if (!utils::check_terminal() && !force_ansi) // for testing/redirecting to files (not a terminal)
+                    border_style = BorderStyle::standard;
+            }
 
-            if (border_templates.corner.empty()) border_templates.corner = border_templates.corner;
-            if (border_templates.horizontal.empty()) border_templates.horizontal = border_templates.horizontal;
-            if (border_templates.vertical.empty()) border_templates.vertical = border_templates.vertical;
-            if (!regular) border_templates.corner = border_templates.horizontal; // for styling
+            if (border_style != BorderStyle::ANSI) {
+                // adjusting border style
+                style::Border templates = style::get_border_template(border_style);
 
-            // ------printing the table-------
-            size_t i = 0;
-            Row row_reference = rows.at(i);
-            // 0 to check in printRow
-            unsigned int row_width_reference = regular ? 0 : row_reference.get_full_row_width();
+                if (border_templates.corner.empty()) border_templates.corner = templates.corner;
+                if (border_templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
+                if (border_templates.vertical.empty()) border_templates.vertical = templates.vertical;
 
-            print_border(stream, row_reference, true);
-            for (size_t j = i; j < rows.size(); j++) {
-                Row& row = rows.at(j);
+                // if (!regular) border_templates.corner = border_templates.horizontal; // for styling
+            }
+
+            /* ------ printing the table ------- */
+
+            // 0 to check in print_row
+            unsigned int row_width_reference = regular ? 0 : find_max_rows_width();
+
+            if (!regular)
+                for (auto it = rows.begin(); it != rows.end(); ++it)
+                    utils::format_row(row_width_reference - (it->columns.size() + 1), *it);
+
+            bool is_first = true, is_last;
+            if (rows.size() == 1)
+                is_last = true;
+
+            auto it = rows.begin();
+            print_border(stream, it, is_first, is_last, regular);
+
+            is_first = false;
+            for (it = rows.begin(); it != rows.end(); ++it) {
+                Row& row = *it;
 
                 print_row(stream, row, row_width_reference);
 
-                print_border(stream, row, false);
+                if ((it + 1) == rows.end())
+                    is_last = true;
+
+                print_border(stream, it, is_first, is_last, regular);
             }
 
             return 0;

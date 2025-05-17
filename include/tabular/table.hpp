@@ -21,11 +21,14 @@
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
+
+    ! NOTE: add more border control by editing the Border struct to be like the ANSI, switch to chars for better performance, and maybe move configure to namespace style, merge tests in one test with all the cases and better handling.
 */
 
-#include <iostream>
 #include <algorithm>
+#include <ostream>
 #include <vector>
+
 
 // headers
 #include <tabular/column.hpp>
@@ -47,6 +50,8 @@ namespace tabular {
 
         struct Setters {
             Table& table;
+
+        public:
             Setters(Table& table) : table(table) {}
 
             /*
@@ -359,8 +364,10 @@ namespace tabular {
             Row reference = *it;
             std::vector<int> next_row_corners;
 
-            if (is_first) next_row_corners = find_stops(*it);
-            else if (!is_last) next_row_corners = find_stops(*(it + 1));
+            if (is_first)
+                next_row_corners = find_stops(*it);
+            else if (!is_last)
+                next_row_corners = find_stops(*(it + 1));
 
             // (vertical separators)/corners
             std::string left_corner = border_templates.corner;
@@ -397,9 +404,9 @@ namespace tabular {
                 right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_RIGHT_TO_LEFT)) + RESET_TABLE_MODE;
 
                 middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_SEPARATOR)) + RESET_TABLE_MODE;
-                
+
                 top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
-                
+
                 bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
             }
 
@@ -427,7 +434,7 @@ namespace tabular {
 
                 for (unsigned int k = 0; k < col_width; k++) {
                     tracker++;
-                    
+
                     if (std::find(next_row_corners.begin(), next_row_corners.end(), tracker) != next_row_corners.end())
                         stream << top_to_bottom;
                     else
@@ -552,7 +559,7 @@ namespace tabular {
                 utils::format_row(row_usable_width, row);
             }
 
-             // check if the table has consistent number of columns across all rows
+            // check if the table has consistent number of columns across all rows
             bool regular = is_regular();
 
             if (border_style == BorderStyle::ANSI) {
@@ -580,8 +587,8 @@ namespace tabular {
 
             if (!regular)
                 for (auto it = rows.begin(); it != rows.end(); ++it)
-                    utils::format_row(row_width_reference - (it->columns.size() + 1), *it);  
-            
+                    utils::format_row(row_width_reference - (it->columns.size() + 1), *it);
+
             bool is_first = true, is_last;
             if (rows.size() == 1)
                 is_last = true;
