@@ -32,6 +32,9 @@ int main() {
 
     table[0].config().alignment(Alignment::center);
 
+    // for testing because "ninja" change the output stream of the program
+    table.set().forced_width(60, true);
+
     std::cout << table << std::endl;
     return 0;
 }

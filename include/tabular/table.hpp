@@ -18,7 +18,7 @@
       -  [x] ANSI Support
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
-      -  [ ] terminal font styles support
+      -  [x] terminal font styles support
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)

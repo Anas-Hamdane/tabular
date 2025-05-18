@@ -15,17 +15,21 @@
     TODO:
       -  [x] implement Dynamic table logic
       -  [x] default padding
-      -  [ ] ANSI Support
+      -  [x] ANSI Support
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
+      -  [x] terminal font styles support
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
+
+    ! NOTE: add more border control by editing the Border struct to be like the ANSI, switch to chars for better performance, and maybe move configure to namespace style, merge tests in one test with all the cases and better handling.
 */
 
+#include <unordered_set>
 #include <algorithm>
-#include <ostream>
 #include <climits>
+#include <ostream>
 #include <vector>
 #include <string>
 #include <list>
@@ -52,12 +56,13 @@
 
 #define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
+// table ANSI printing
 #define TABLE_MODE "\x1b(0"
 #define RESET_TABLE_MODE "\x1B(B"
-#define CSI "\x1b["
 
-typedef std::vector<std::string> StringVector;
-typedef std::list<std::string> StringList;
+// Control sequence introducer (for font styles and colors)
+#define CSI "\x1b["
+#define RESET "\x1b[0m"
 
 namespace tabular {
     enum class Alignment {
@@ -65,6 +70,13 @@ namespace tabular {
         center,
         right
     };
+
+    enum class BorderStyle {
+        standard,
+        empty,
+        ANSI
+    };
+
     enum class FontStyle {
         bold,
         dark,
@@ -72,13 +84,8 @@ namespace tabular {
         underline,
         blink,
         reverse,
-        concealed,
+        concealed, // doesn't work for windows
         crossed
-    };
-    enum class BorderStyle {
-        standard,
-        empty,
-        ANSI
     };
 
     typedef struct Range {
@@ -87,28 +94,13 @@ namespace tabular {
 
         Range(int from, int to) : from(from), to(to) {}
     } Range;
-    typedef enum {
-        // straight lines
-        TABLE_HORIZONTAL = 'q',
-        TABLE_VERTICAL = 'x',
 
-        // corners
-        TABLE_BOTTOM_RIGHT_CORNER = 'j',
-        TABLE_TOP_RIGHT_CORNER = 'k',
-        TABLE_TOP_LEFT_CORNER = 'l',
-        TABLE_BOTTOM_LEFT_CORNER = 'm',
-        TABLE_MIDDLE_SEPARATOR = 'n',
-        
-        // middle separators
-        TABLE_MIDDLE_LEFT_TO_RIGHT = 't',
-        TABLE_MIDDLE_RIGHT_TO_LEFT = 'u',
-        
-        TABLE_MIDDLE_BOTTOM_TO_TOP = 'v',
-        TABLE_MIDDLE_TOP_TO_BOTTOM = 'w'
-    } ANSI_TABLE_PARTS;
+    typedef std::vector<std::string> StringVector;
+    typedef std::vector<tabular::FontStyle> FontStylesVector;
+    typedef std::list<std::string> StringList;
 
     class Column {
-        std::vector<FontStyle> font_styles;
+        FontStylesVector font_styles;
         StringVector splitted_content;
         StringList words;
         Alignment alignment;
@@ -116,71 +108,213 @@ namespace tabular {
         unsigned int top_padding;
         unsigned int bottom_padding;
 
+        class Config {
+            Column& column;
+
+            class Fonts {
+                Column& column;
+
+            public:
+                Fonts(Column& column) : column(column) {}
+
+                Fonts& add(FontStylesVector styles) {
+                    column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
+
+                    return *this;
+                }
+
+                // removing every element of font_styles exist in this->font_styles
+                Fonts& remove(FontStylesVector styles) {
+
+                    // better performance
+                    std::unordered_set<FontStyle> to_remove(styles.begin(), styles.end());
+
+                    column.font_styles.erase(
+                        std::remove_if(
+                            column.font_styles.begin(),
+                            column.font_styles.end(),
+
+                            [&to_remove](FontStyle font_style) {
+                                return to_remove.find(font_style) != to_remove.end();
+                            }),
+
+                        column.font_styles.end());
+
+                    return *this;
+                }
+            };
+
+        public:
+            Config(Column& column) : column(column) {}
+
+            Fonts fonts() { return Fonts(column); }
+
+            Config& alignment(Alignment align) {
+                column.alignment = align;
+
+                return *this;
+            }
+
+            Config& width(int w) {
+                if (w <= 0)
+                    w = 0;
+
+                column.width = static_cast<unsigned int>(w);
+
+                return *this;
+            }
+
+            Config& padding(int padd) {
+                if (padd <= 0)
+                    padd = 0;
+
+                column.top_padding = padd;
+                column.bottom_padding = padd;
+
+                return *this;
+            }
+
+            Config& top_padding(int padd) {
+                if (padd <= 0)
+                    column.top_padding = 0;
+                else
+                    column.top_padding = static_cast<unsigned int>(padd);
+
+                return *this;
+            }
+
+            Config& bottom_padding(int padd) {
+                if (padd <= 0)
+                    column.bottom_padding = 0;
+                else
+                    column.bottom_padding = static_cast<unsigned int>(padd);
+
+                return *this;
+            }
+        };
+
+        class Getters {
+            Column& column;
+
+        public:
+            Getters(Column& column) : column(column) {}
+
+            Alignment alignment() { return column.alignment; }
+
+            unsigned int width() { return column.width; }
+
+            unsigned int top_padding() { return column.top_padding; }
+
+            unsigned int bottom_padding() { return column.bottom_padding; }
+
+            StringVector splitted_content() { return column.splitted_content; }
+
+            FontStylesVector font_styles() { return column.font_styles; }
+
+            StringList words() { return column.words; }
+        };
+
+        class Setters {
+            Column& column;
+
+        public:
+            Setters(Column& column) : column(column) {}
+
+            Setters& splitted_content(StringVector splittedContent) {
+                column.splitted_content = splittedContent;
+                return *this;
+            }
+
+            Setters& words(StringList words) {
+                column.words = words;
+                return *this;
+            }
+
+            Setters& width(int width) {
+                if (width <= 0)
+                    width = 0;
+
+                column.width = static_cast<unsigned int>(width);
+
+                return *this;
+            }
+        };
+
     public:
         std::string content;
 
         Column(std::string content)
             : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0) {};
 
-        void set_column_align(Alignment alignment) { this->alignment = alignment; }
+        Config config() { return Config(*this); }
 
-        Alignment get_column_align() { return alignment; }
+        Getters get() { return Getters(*this); }
 
-        Column& set_width(int width) {
-            if (width <= 0)
-                width = 0;
-
-            this->width = static_cast<unsigned int>(width);
-
-            return *this;
-        }
-
-        unsigned int get_width() { return this->width; }
-
-        Column& set_column_padding(int padding) {
-            if (padding <= 0)
-                padding = 0;
-
-            this->top_padding = padding;
-            this->bottom_padding = padding;
-
-            return *this;
-        }
-
-        Column& set_column_top_padding(int padding) {
-            if (padding <= 0)
-                this->top_padding = 0;
-            else
-                this->top_padding = static_cast<unsigned int>(padding);
-
-            return *this;
-        }
-        
-        Column& set_column_bottom_padding(int padding) {
-            if (padding <= 0)
-                this->bottom_padding = 0;
-            else
-                this->bottom_padding = static_cast<unsigned int>(padding);
-
-            return *this;
-        }
-
-        unsigned int get_top_padding() { return top_padding; }
-        
-        unsigned int get_bottom_padding() { return bottom_padding; }
-
-        void set_splitted_content(StringVector splittedContent) { this->splitted_content = splittedContent; }
-
-        StringVector get_splitted_content() { return splitted_content; }
-
-        void set_words(StringList words) { this->words = words; }
-
-        StringList get_words() { return words; }
+        Setters set() { return Setters(*this); }
     };
 
     class Row {
         Alignment alignment;
-        std::vector<FontStyle> font_styles;
+
+        class Config {
+            Row& row;
+
+            class Fonts {
+                Row& row;
+
+            public:
+                Fonts(Row& row) : row(row) {}
+
+                Fonts& add(const FontStylesVector& styles) {
+                    for (Column& column : row.columns)
+                        column.config().fonts().add(styles);
+
+                    return *this;
+                }
+
+                Fonts& remove(const FontStylesVector& styles) {
+                    for (Column& col : row.columns)
+                        col.config().fonts().remove(styles);
+
+                    return *this;
+                }
+            };
+
+        public:
+            Config(Row& row) : row(row) {}
+
+            Fonts fonts() { return Fonts(row); }
+
+            Config& alignment(Alignment alignment) {
+                row.alignment = alignment;
+
+                for (Column& col : row.columns)
+                    col.config().alignment(alignment);
+
+                return *this;
+            }
+
+            Config& padding(int padding) {
+                for (Column& col : row.columns)
+                    col.config().padding(padding);
+
+                return *this;
+            }
+
+            Config& top_padding(int padding) {
+                for (Column& col : row.columns)
+                    col.config().top_padding(padding);
+
+                return *this;
+            }
+
+            Config& bottom_padding(int padding) {
+                for (Column& col : row.columns)
+                    col.config().bottom_padding(padding);
+
+                return *this;
+            }
+        };
 
     public:
         std::vector<Column> columns;
@@ -188,45 +322,24 @@ namespace tabular {
         Row(std::vector<Column> columns)
             : columns(columns), alignment(Alignment::left) {}
 
+        Config config() { return Config(*this); }
+
         int get_columns_number() { return columns.size(); }
-
-        Row& set_row_align(Alignment alignment) {
-            this->alignment = alignment;
-
-            for (Column& col : columns)
-                col.set_column_align(alignment);
-
-            return *this;
-        }
-        
-        Row& set_row_padding(int padding) {
-            for (Column& col : columns)
-                col.set_column_padding(padding);
-
-            return *this;
-        }
-
-        Row& set_row_top_padding(int padding) {
-            for (Column& col : columns)
-                col.set_column_top_padding(padding);
-
-            return *this;
-        }
-        
-        Row& set_row_bottom_padding(int padding) {
-            for (Column& col : columns)
-                col.set_column_bottom_padding(padding);
-
-            return *this;
-        }
 
         unsigned int get_full_row_width() {
             unsigned int width = columns.size() + 1;
 
-            for (Column col : columns)
-                width += col.get_width();
+            for (Column column : columns)
+                width += column.get().width();
 
             return width;
+        }
+
+        Column& operator[](int index) {
+            if (index >= this->columns.size() || index < 0)
+                throw std::out_of_range("Index out of bounds");
+
+            return this->columns[index];
         }
     };
 
@@ -234,15 +347,54 @@ namespace tabular {
         struct Border {
             std::string vertical;
             std::string horizontal;
+
             std::string corner;
+            std::string bottom_right_corner;
+            std::string top_right_corner;
+            std::string top_left_corner;
+            std::string bottom_left_corner;
+
+            std::string middle_separator; // +
+
+            std::string left_to_right;
+            std::string right_to_left;
+            std::string bottom_to_top;
+            std::string top_to_bottom;
         };
 
         static Border get_border_template(BorderStyle borderStyle) {
             static std::map<BorderStyle, Border> templates{
-                {BorderStyle::empty, {" ", " ", " "}},
-                {BorderStyle::standard, {"|", "-", "+"}},
-                {BorderStyle::ANSI, {}}}; // just to check when printing 
+                {BorderStyle::empty, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
+                {BorderStyle::standard, {"|", "-", "+", "+", "+", "+", "+", "+", "+", "+", "+", "+"}},
+                {BorderStyle::ANSI, {
+                                        TABLE_MODE "x" RESET_TABLE_MODE, // vertical
+                                        TABLE_MODE "q" RESET_TABLE_MODE, // horizontal
+                                        TABLE_MODE "n" RESET_TABLE_MODE, // corner
+                                        TABLE_MODE "j" RESET_TABLE_MODE, // bottom_right_corner
+                                        TABLE_MODE "k" RESET_TABLE_MODE, // top_right_corner
+                                        TABLE_MODE "l" RESET_TABLE_MODE, // top_left_corner
+                                        TABLE_MODE "m" RESET_TABLE_MODE, // bottom_left_corner
+                                        TABLE_MODE "n" RESET_TABLE_MODE, // middle_separator
+                                        TABLE_MODE "t" RESET_TABLE_MODE, // middle_left_to_right
+                                        TABLE_MODE "u" RESET_TABLE_MODE, // middle_right_to_left
+                                        TABLE_MODE "v" RESET_TABLE_MODE, // middle_bottom_to_top
+                                        TABLE_MODE "w" RESET_TABLE_MODE  // middle_top_to_bottom
+                                    }}};
             return templates[borderStyle];
+        }
+
+        static std::string get_font_style(FontStyle style) {
+            static std::map<FontStyle, std::string> styles{
+                // {FontStyle::reset, "0m"},
+                {FontStyle::bold, "1m"},
+                {FontStyle::dark, "2m"},
+                {FontStyle::italic, "3m"},
+                {FontStyle::underline, "4m"},
+                {FontStyle::blink, "5m"},
+                {FontStyle::reverse, "7m"},
+                {FontStyle::concealed, "8m"},
+                {FontStyle::crossed, "9m"}};
+            return styles[style];
         }
     }; // namespace style
 
@@ -339,7 +491,7 @@ namespace tabular {
         }
 
         // note: add_spaces(line, 1); for space side
-        inline void set_content_align(std::string& line, std::string sub, int usable_width, Alignment align) {
+        inline void set_content_align(std::string& line, std::string sub, int usable_width, Alignment align, FontStylesVector font_styles) {
             if (line.empty())
                 add_spaces(line, 1);
 
@@ -352,27 +504,39 @@ namespace tabular {
                 start = 0;
 
             add_spaces(line, start);
+
+            bool is_empty = font_styles.empty();
+            if (!is_empty) {
+                for (FontStyle font_style : font_styles)
+                    line.append(CSI + (style::get_font_style(font_style)));
+            }
+
             line.append(sub);
+
+            if (!is_empty)
+                line.append(RESET);
+
             add_spaces(line, 1);
         }
 
-        inline void append_and_clear(StringVector& result, std::string& sub, int usable_width, Alignment col_align) {
+        inline void append_and_clear(StringVector& result, std::string& sub, int usable_width, Alignment col_align, FontStylesVector font_styles) {
             std::string line;
 
-            set_content_align(line, sub, usable_width, col_align);
+            set_content_align(line, sub, usable_width, col_align, font_styles);
+
             result.push_back(line);
 
             sub.clear();
         }
 
-        inline StringVector prepare_col_content(Column col, int max_width) {
-            std::string str = col.content;
-            Alignment col_align = col.get_column_align();
-            unsigned int top_padding = col.get_top_padding();
-            unsigned int bottom_padding = col.get_bottom_padding();
+        inline StringVector prepare_col_content(Column& column, int max_width) {
+            std::string str = column.content;
+            Alignment col_align = column.get().alignment();
+            unsigned int top_padding = column.get().top_padding();
+            unsigned int bottom_padding = column.get().bottom_padding();
 
             // which width to use
-            if (col.get_width() != 0) max_width = col.get_width();
+            if (column.get().width() != 0) max_width = column.get().width();
 
             if (str.empty() || max_width == 0)
                 return StringVector();
@@ -382,6 +546,8 @@ namespace tabular {
 
             // the return result
             StringVector result;
+
+            FontStylesVector font_styles = column.get().font_styles();
 
             // TOP padding
             for (unsigned int i = 0; i < top_padding; i++)
@@ -396,7 +562,7 @@ namespace tabular {
 
                 // add existing content if we reach new line
                 if (word == "\n") {
-                    append_and_clear(result, sub, usable_width, col_align);
+                    append_and_clear(result, sub, usable_width, col_align, font_styles);
                     continue;
                 }
 
@@ -411,13 +577,13 @@ namespace tabular {
                         part += '-';
 
                         sub += part;
-                        append_and_clear(result, sub, usable_width, col_align);
+                        append_and_clear(result, sub, usable_width, col_align, font_styles);
 
                         std::string remaining = word.substr(diff - 1);
                         words.insert(std::next(it), remaining);
                     } else {
                         sub.pop_back(); // pop the space added previously
-                        append_and_clear(result, sub, usable_width, col_align);
+                        append_and_clear(result, sub, usable_width, col_align, font_styles);
                         --it;
                     }
                 } else
@@ -426,7 +592,7 @@ namespace tabular {
 
             // any remaining words
             if (!sub.empty())
-                append_and_clear(result, sub, usable_width, col_align);
+                append_and_clear(result, sub, usable_width, col_align, font_styles);
 
             // BOTTOM padding
             for (unsigned int i = 0; i < bottom_padding; i++)
@@ -444,9 +610,9 @@ namespace tabular {
                 return;
 
             // for other columns width calculation we should decrease the specific ones
-            for (Column col : row.columns) {
-                if (col.get_width() != 0) {
-                    width -= col.get_width();
+            for (Column& column : row.columns) {
+                if (column.get().width() != 0) {
+                    width -= column.get().width();
                     cols_num--;
                 }
             }
@@ -459,18 +625,18 @@ namespace tabular {
             }
 
             for (Column& col : row.columns) {
-                if (col.get_width() != 0)
-                    col.set_splitted_content(prepare_col_content(col, col.get_width()));
+                if (col.get().width() != 0)
+                    col.set().splitted_content(prepare_col_content(col, col.get().width()));
 
                 else if (rest > 0) {
-                    col.set_splitted_content(prepare_col_content(col, individual_col_width + 1));
+                    col.set().splitted_content(prepare_col_content(col, individual_col_width + 1));
 
-                    col.set_width(individual_col_width + 1);
+                    col.set().width(individual_col_width + 1);
                     rest--;
                 } else {
-                    col.set_splitted_content(prepare_col_content(col, individual_col_width));
+                    col.set().splitted_content(prepare_col_content(col, individual_col_width));
 
-                    col.set_width(individual_col_width);
+                    col.set().width(individual_col_width);
                 }
             }
         }
@@ -479,7 +645,7 @@ namespace tabular {
         inline size_t find_max_splitted_content_size(Row row) {
             size_t result = 0;
             for (Column col : row.columns) {
-                size_t splitted_content_size = col.get_splitted_content().size();
+                size_t splitted_content_size = col.get().splitted_content().size();
                 if (splitted_content_size > result)
                     result = splitted_content_size;
             }
@@ -496,11 +662,8 @@ namespace tabular {
         bool forced_width;
         bool force_ansi;
 
-        struct Setters {
+        class Config {
             Table& table;
-
-        public:
-            Setters(Table& table) : table(table) {}
 
             /*
                 ! ERROR CODES:
@@ -513,231 +676,294 @@ namespace tabular {
                     * 7: error code for regularity problems
             */
 
-            /* -----------------ALIGNMENT--------------------- */
-
-            // Set All Columns Alignments in the table
-            void set_global_align(Alignment align) {
-                for (Row& row : table.rows)
-                    row.set_row_align(align);
-            }
-
-            // set the alignment of all cols in index "cols_index" from row "from" to "to"
-            // note: "from" and "to" are indices
-            int set_cols_align(Alignment align, int cols_index, Range range) {
-                if (cols_index < 0)
-                    return 2;
+            int validate_params(int column_index, const Range& range) const {
+                if (column_index < 0)
+                    return 2; // Column index error
 
                 if (range.from < 0)
-                    return 3;
+                    return 3; // Range start error
 
                 if (range.to < 0)
-                    return 4;
+                    return 4; // Range end error
 
-                size_t rows_size = table.rows.size();
-                if (range.to >= rows_size)
-                    range.to = rows_size - 1; // last element
+                return 1;
+            }
+
+            Range normalize_range(Range range) {
+                Range result = range;
+                size_t rowsSize = table.rows.size();
+
+                if (result.to >= rowsSize)
+                    result.to = rowsSize - 1;
+
+                return result;
+            }
+
+        public:
+            Config(Table& table) : table(table) {}
+
+            /* -----------------ALIGNMENT--------------------- */
+
+            int alignment(Alignment align, int column_index, Range range) {
+                int validation_code = validate_params(column_index, range);
+                if (validation_code != 1)
+                    return validation_code;
+
+                range = normalize_range(range);
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[cols_index].set_column_align(align);
+                    row.columns[column_index].config().alignment(align);
                 }
 
                 return 1; // done (true)
             }
 
-            // set all the columns with "cols_index" to the "align"
-            int set_all_cols_align(Alignment align, int cols_index) {
-                return set_cols_align(align, cols_index,
-                                      Range(0, table.rows.size() - 1));
+            int alignment(Alignment align, int column_index) {
+                return alignment(align, column_index,
+                                 Range(0, table.rows.size() - 1));
+            }
+
+            int alignment(Alignment align) {
+                for (Row& row : table.rows)
+                    row.config().alignment(align);
+
+                return 1;
             }
 
             /* -----------------PADDING--------------------- */
 
-            // check for negative values
-            int set_global_padding(int padding) {
-                if (padding < 0)
-                    return 5;
+            int padding(int pad, int column_index, Range range) {
+                if (pad < 0)
+                    return 5; // Invalid padding
 
-                for (Row& row : table.rows)
-                    row.set_row_padding(padding);
+                int validation = validate_params(column_index, range);
+                if (validation != 1)
+                    return validation;
 
-                return 1; // done (true)
-            }
-
-            // set the padding of all cols in index "cols_index" from row in index "from" to "to"
-            // note: "from" and "to" are indices
-            int set_cols_padding(int padding, int cols_index, Range range) {
-                if (cols_index < 0)
-                    return 2;
-
-                if (range.from < 0)
-                    return 3;
-
-                if (range.to < 0)
-                    return 4;
-
-                if (padding < 0)
-                    return 5;
-
-                size_t rows_size = table.rows.size();
-                if (range.to >= rows_size)
-                    range.to = rows_size - 1; // last element
+                range = normalize_range(range);
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[cols_index].set_column_padding(padding);
+                    row.columns[column_index].config().padding(pad);
                 }
 
-                return 1; // done (true)
+                return 1;
             }
 
-            // set all the columns with "cols_index" to "padding"
-            int set_all_cols_padding(int padding, int colsIndex) {
-                return set_cols_padding(padding, colsIndex,
-                                        Range(0, table.rows.size() - 1));
+            int padding(int pad, int column_index) {
+                return padding(pad, column_index, Range(0, table.rows.size() - 1));
+            }
+
+            int padding(int pad) {
+                if (pad < 0)
+                    return 5; // Invalid padding
+
+                for (Row& row : table.rows)
+                    row.config().padding(pad);
+
+                return 1;
             }
 
             /* -----------------TOP_PADDING--------------------- */
 
-            // check for negative values
-            int set_global_top_padding(int top_padding) {
-                if (top_padding < 0)
-                    return 5;
+            int top_padding(int pad, int column_index, Range range) {
+                if (pad < 0)
+                    return 5; // Invalid padding
 
-                for (Row& row : table.rows)
-                    row.set_row_top_padding(top_padding);
+                int validation = validate_params(column_index, range);
+                if (validation != 1)
+                    return validation;
 
-                return 1; // done (true)
-            }
-
-            // set the top padding of all cols in index "cols_index" from row in index "from" to "to"
-            // note: "from" and "to" are indices
-            int set_cols_top_padding(int top_padding, int cols_index, Range range) {
-                if (cols_index < 0)
-                    return 2;
-
-                if (range.from < 0)
-                    return 3;
-
-                if (range.to < 0)
-                    return 4;
-
-                if (top_padding < 0)
-                    return 5;
-
-                size_t rows_size = table.rows.size();
-                if (range.to >= rows_size)
-                    range.to = rows_size - 1; // last element
+                range = normalize_range(range);
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[cols_index].set_column_top_padding(top_padding);
+                    row.columns[column_index].config().top_padding(pad);
                 }
 
-                return 1; // done (true)
+                return 1;
             }
 
-            // set all the columns with "cols_index" to "top_padding"
-            int set_all_cols_top_padding(int top_padding, int colsIndex) {
-                return set_cols_top_padding(top_padding, colsIndex,
-                                            Range(0, table.rows.size() - 1));
+            int top_padding(int pad, int column_index) {
+                return top_padding(pad, column_index, Range(0, table.rows.size() - 1));
+            }
+
+            int top_padding(int pad) {
+                if (pad < 0)
+                    return 5; // Invalid padding
+
+                for (Row& row : table.rows)
+                    row.config().top_padding(pad);
+
+                return 1;
             }
 
             /* -----------------BOTTOM_PADDING--------------------- */
 
-            // check for negative values
-            int set_global_bottom_padding(int bottom_padding) {
-                if (bottom_padding < 0)
-                    return 5;
+            int bottom_padding(int pad, int column_index, Range range) {
+                if (pad < 0)
+                    return 5; // Invalid padding
 
-                for (Row& row : table.rows)
-                    row.set_row_bottom_padding(bottom_padding);
+                int validation = validate_params(column_index, range);
+                if (validation != 1)
+                    return validation;
 
-                return 1; // done (true)
-            }
-
-            // set the bottom padding of all cols in index "cols_index" from row in index "from" to "to"
-            // note: "from" and "to" are indices
-            int set_cols_bottom_padding(int bottom_padding, int cols_index, Range range) {
-                if (cols_index < 0)
-                    return 2;
-
-                if (range.from < 0)
-                    return 3;
-
-                if (range.to < 0)
-                    return 4;
-
-                if (bottom_padding < 0)
-                    return 5;
-
-                size_t rows_size = table.rows.size();
-                if (range.to >= rows_size)
-                    range.to = rows_size - 1; // last element
+                range = normalize_range(range);
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[cols_index].set_column_bottom_padding(bottom_padding);
+                    row.columns[column_index].config().bottom_padding(pad);
                 }
 
-                return 1; // done (true)
+                return 1;
             }
 
-            // set all the columns with "cols_index" to "bottom_padding"
-            int set_all_cols_bottom_padding(int bottom_padding, int colsIndex) {
-                return set_cols_bottom_padding(bottom_padding, colsIndex,
-                                               Range(0, table.rows.size() - 1));
+            int bottom_padding(int pad, int column_index) {
+                return bottom_padding(pad, column_index, Range(0, table.rows.size() - 1));
+            }
+
+            int bottom_padding(int pad) {
+                if (pad < 0)
+                    return 5; // Invalid padding
+
+                for (Row& row : table.rows)
+                    row.config().bottom_padding(pad);
+
+                return 1;
             }
 
             /* -----------------WIDTH--------------------- */
 
-            int set_table_width(int width) {
+            int table_width(int width) {
                 if (width <= 0)
-                    return 6;
+                    return 6; // Invalid width
 
                 table.width = width;
 
                 return 1;
             }
 
-            // set the width of all cols in index "cols_index" from row in index "from" to "to"
-            // note: "from" and "to" are indices
-            int set_cols_width(int width, int cols_index, Range range) {
-                if (cols_index < 0)
-                    return 2;
-
-                if (range.from < 0)
-                    return 3;
-
-                if (range.to < 0)
-                    return 4;
-
+            int columns_width(int width, int column_index, Range range) {
                 if (width < 0)
-                    return 6;
+                    return 6; // Invalid width
 
-                size_t rows_size = table.rows.size();
-                if (range.to >= rows_size)
-                    range.to = rows_size - 1; // last element
+                int validation = validate_params(column_index, range);
+                if (validation != 1)
+                    return validation;
 
+                range = normalize_range(range);
+
+                // Check regularity
                 if (!table.is_regular(range))
                     return 7;
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[cols_index].set_width(width);
+                    row.columns[column_index].config().width(width);
                 }
 
-                return 1; // done (true)
+                return 1;
             }
 
-            int set_all_cols_width(int width, int cols_index) {
-                return set_cols_width(width, cols_index, Range(0, table.rows.size() - 1));
+            int columns_width(int width, int column_index) {
+                return columns_width(width, column_index, Range(0, table.rows.size() - 1));
             }
         };
 
-        struct Format {
+        class Format {
             Table& table;
-            Format(Table& table) : table(table) {}
+
+            class Fonts {
+                Table& table;
+
+                int validate_params(int column_index, const Range& range) const {
+                    if (column_index < 0)
+                        return 2; // Column index error
+
+                    if (range.from < 0)
+                        return 3; // Range start error
+
+                    if (range.to < 0)
+                        return 4; // Range end error
+
+                    return 1;
+                }
+
+                Range normalize_range(Range range) {
+                    Range result = range;
+                    size_t rowsSize = table.rows.size();
+
+                    if (result.to >= rowsSize)
+                        result.to = rowsSize - 1;
+
+                    return result;
+                }
+
+            public:
+                Fonts(Table& table) : table(table) {}
+
+                /* -----------------ADD FONT STYLES--------------------- */
+
+                int add(FontStylesVector styles, int column_index, Range range) {
+                    int validation = validate_params(column_index, range);
+                    if (validation != 1)
+                        return validation;
+
+                    range = normalize_range(range);
+
+                    for (int i = range.from; i <= range.to; i++) {
+                        Row& row = table.rows[i];
+                        row.columns[column_index].config().fonts().add(styles);
+                    }
+
+                    return 1; // done (true)
+                }
+
+                int add(FontStylesVector styles, int column_index) {
+                    return add(styles, column_index,
+                               Range(0, table.rows.size() - 1));
+                }
+
+                void add(FontStylesVector styles) {
+                    for (Row& row : table.rows)
+                        row.config().fonts().add(styles);
+                }
+
+                /* -----------------REMOVE FONT STYLES--------------------- */
+
+                int remove(const FontStylesVector& styles, int column_index, Range range) {
+                    int validation = validate_params(column_index, range);
+                    if (validation != 1)
+                        return validation;
+
+                    range = normalize_range(range);
+
+                    for (int i = range.from; i <= range.to; i++) {
+                        Row& row = table.rows[i];
+                        row.columns[column_index].config().fonts().remove(styles);
+                    }
+
+                    return 1;
+                }
+
+                int remove(const FontStylesVector& styles, int column_index) {
+                    return remove(styles, column_index, Range(0, table.rows.size() - 1));
+                }
+
+                int remove(const FontStylesVector& styles) {
+                    for (Row& row : table.rows)
+                        row.config().fonts().remove(styles);
+
+                    return 1;
+                }
+            };
+
+        public:
+            Format(Table& table) : table(table) {
+            }
+
+            Fonts fonts() { return Fonts(table); }
 
             Format& corner(char corner) {
                 table.border_templates.corner = corner;
@@ -754,15 +980,97 @@ namespace tabular {
                 return *this;
             }
 
+            Format& bottom_right_corner(char corner) {
+                table.border_templates.bottom_right_corner = corner;
+                return *this;
+            }
+
+            Format& top_right_corner(char corner) {
+                table.border_templates.top_right_corner = corner;
+                return *this;
+            }
+
+            Format& top_left_corner(char corner) {
+                table.border_templates.top_left_corner = corner;
+                return *this;
+            }
+
+            Format& bottom_left_corner(char corner) {
+                table.border_templates.bottom_left_corner = corner;
+                return *this;
+            }
+
+            Format& middle_separator(char separator) {
+                table.border_templates.middle_separator = separator;
+                return *this;
+            }
+
+            Format& middle_left_to_right(char connector) {
+                table.border_templates.left_to_right = connector;
+                return *this;
+            }
+
+            Format& middle_right_to_left(char connector) {
+                table.border_templates.right_to_left = connector;
+                return *this;
+            }
+
+            Format& middle_bottom_to_top(char connector) {
+                table.border_templates.bottom_to_top = connector;
+                return *this;
+            }
+
+            Format& middle_top_to_bottom(char connector) {
+                table.border_templates.top_to_bottom = connector;
+                return *this;
+            }
+
             void border(BorderStyle style) { table.border_style = style; }
+        };
+
+        class Setters {
+            Table& table;
+
+        public:
+            Setters(Table& table) : table(table) {}
+
+            Setters& width(int width) {
+                if (width > 0)
+                    table.width = static_cast<unsigned int>(width);
+                else
+                    table.width = 0;
+
+                return *this;
+            }
+
+            // * for testing set a fixed, forced width
+            Setters& forced_width(int width, bool forced) {
+                if (width < 0)
+                    table.width = 0;
+                else
+                    table.width = static_cast<unsigned int>(width);
+
+                table.forced_width = forced;
+
+                return *this;
+            }
+
+            // * for testing force using ansi (used when redirecting output to files)
+            Setters& forced_ansi(bool forced) {
+                table.border_style = BorderStyle::ANSI;
+
+                table.force_ansi = forced;
+
+                return *this;
+            }
         };
 
         std::vector<int> find_stops(Row row) {
             std::vector<int> result;
 
             int track = 1;
-            for (Column col : row.columns) {
-                track += col.get_width();
+            for (Column column : row.columns) {
+                track += column.get().width();
 
                 result.push_back(int(track));
                 track++;
@@ -780,23 +1088,26 @@ namespace tabular {
 
             std::string vertical = border_templates.vertical;
 
-            if (border_style == BorderStyle::ANSI)
-                vertical = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_VERTICAL)) + RESET_TABLE_MODE;
-
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
                 stream << '\n'
                        << vertical;
 
-                for (Column col : row.columns) {
-                    int rest = col.get_width();
-                    int splitted_content_size = col.get_splitted_content().size();
+                for (Column column : row.columns) {
+                    int rest = column.get().width();
+                    int splitted_content_size = column.get().splitted_content().size();
                     std::string current_line;
 
                     if (i < splitted_content_size) {
-                        current_line = col.get_splitted_content().at(i);
+                        current_line = column.get().splitted_content().at(i);
                         stream << current_line;
-                        rest -= current_line.size(); // to balance the line
+
+                        int special_characters = 0;
+                        FontStylesVector font_styles = column.get().font_styles();
+                        if (!font_styles.empty())
+                            special_characters = 4 + (font_styles.size() * 4); // 4 fixed for RESET extra characters and (font_styles.size() * 4) = (font_styles.size() * 2) + (font_styles.size() * 2), means 2 characters for each font_style + 2 characters fir CSI for each font_style
+
+                        rest -= current_line.size() - special_characters; // to balance the line
                     }
 
                     for (int k = 0; k < rest; k++)
@@ -817,56 +1128,41 @@ namespace tabular {
             else if (!is_last)
                 next_row_corners = find_stops(*(it + 1));
 
-            // (vertical separators)/corners
-            std::string left_corner = border_templates.corner;
-            std::string right_corner = border_templates.corner;
-
-            std::string horizontal = border_templates.horizontal;
-
-            // horizontal separator
-            std::string middle_separator = border_templates.corner;
-            std::string top_to_bottom = border_templates.corner;
-            std::string bottom_to_top = border_templates.corner;
-
-            bool is_ANSI = (border_style == BorderStyle::ANSI);
-
             if (!is_first)
                 stream << '\n';
 
-            if (is_ANSI)
-                horizontal = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_HORIZONTAL)) + RESET_TABLE_MODE;
+            std::string horizontal = border_templates.horizontal;
 
-            if (is_first && is_ANSI) {
-                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_TOP_LEFT_CORNER)) + RESET_TABLE_MODE;
-                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_TOP_RIGHT_CORNER)) + RESET_TABLE_MODE;
+            // (vertical separators)/corners
+            std::string left_corner;
+            std::string right_corner;
 
-                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+            // horizontal separator
+            std::string middle_separator;
+            std::string top_to_bottom;
+            std::string bottom_to_top;
 
-                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+            if (is_first) {
+                left_corner = border_templates.top_left_corner;
+                right_corner = border_templates.top_right_corner;
 
-                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
-            }
+                middle_separator = border_templates.top_to_bottom;
+                top_to_bottom = border_templates.top_to_bottom;
+                bottom_to_top = border_templates.top_to_bottom;
+            } else if (is_last) {
+                left_corner = border_templates.bottom_left_corner;
+                right_corner = border_templates.bottom_right_corner;
 
-            else if (!(is_first || is_last) && is_ANSI) {
-                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_LEFT_TO_RIGHT)) + RESET_TABLE_MODE;
-                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_RIGHT_TO_LEFT)) + RESET_TABLE_MODE;
+                middle_separator = border_templates.bottom_to_top;
+                top_to_bottom = border_templates.bottom_to_top;
+                bottom_to_top = border_templates.bottom_to_top;
+            } else {
+                left_corner = border_templates.left_to_right;
+                right_corner = border_templates.right_to_left;
 
-                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_SEPARATOR)) + RESET_TABLE_MODE;
-
-                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
-
-                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
-            }
-
-            else if (is_last && is_ANSI) {
-                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_BOTTOM_LEFT_CORNER)) + RESET_TABLE_MODE;
-                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_BOTTOM_RIGHT_CORNER)) + RESET_TABLE_MODE;
-
-                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
-
-                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
-
-                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
+                middle_separator = border_templates.middle_separator;
+                top_to_bottom = border_templates.top_to_bottom;
+                bottom_to_top = border_templates.bottom_to_top;
             }
 
             stream << left_corner;
@@ -875,8 +1171,8 @@ namespace tabular {
 
             int tracker = 0;
             for (size_t j = 0; j < cols_num; j++) {
-                Column col = reference.columns[j];
-                unsigned col_width = col.get_width();
+                Column column = reference.columns[j];
+                unsigned col_width = column.get().width();
 
                 // tracker++;
 
@@ -915,43 +1211,18 @@ namespace tabular {
         }
 
     public:
-        std::vector<Row>
-            rows;
+        std::vector<Row> rows;
 
         Table() : border_style(BorderStyle::standard), width(0), forced_width(false) {}
 
         // configure the table
-        Setters configure() { return Setters(*this); }
+        Config config() { return Config(*this); }
 
         Format format() { return Format(*this); }
 
-        void set_width(int width) {
-            if (width > 0)
-                this->width = static_cast<unsigned int>(width);
-            else
-                this->width = 0;
-        }
+        Setters set() { return Setters(*this); }
 
-        int get_width() { return this->width; }
-
-        // * for testing set a fixed, forced width
-        void set_forced_width(int width) {
-            if (width < 0)
-                this->width = 0;
-            else
-                this->width = static_cast<unsigned int>(width);
-
-            forced_width = true;
-        }
-
-        // * for testing force using ansi (used when redirecting output to files)
-        void set_forced_ansi() {
-            border_style = BorderStyle::ANSI;
-
-            force_ansi = true;
-        }
-
-        void remove_forced_width() { forced_width = false; }
+        unsigned int get_width() { return width; }
 
         void add_row(std::vector<std::string> contents) {
             std::vector<Column> columns;
@@ -1010,23 +1281,25 @@ namespace tabular {
             // check if the table has consistent number of columns across all rows
             bool regular = is_regular();
 
-            if (border_style == BorderStyle::ANSI) {
-                // if (!regular) // no support for irregular tables
-                //     border_style = BorderStyle::standard;
-                if (!utils::check_terminal() && !force_ansi) // for testing/redirecting to files (not a terminal)
+            if (border_style == BorderStyle::ANSI)
+                if (!utils::check_terminal() && !force_ansi)
                     border_style = BorderStyle::standard;
-            }
 
-            if (border_style != BorderStyle::ANSI) {
-                // adjusting border style
-                style::Border templates = style::get_border_template(border_style);
+            style::Border templates = border_templates;
+            border_templates = style::get_border_template(border_style);
 
-                if (border_templates.corner.empty()) border_templates.corner = templates.corner;
-                if (border_templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
-                if (border_templates.vertical.empty()) border_templates.vertical = templates.vertical;
-
-                // if (!regular) border_templates.corner = border_templates.horizontal; // for styling
-            }
+            if (!templates.corner.empty()) border_templates.corner = templates.corner;
+            if (!templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
+            if (!templates.vertical.empty()) border_templates.vertical = templates.vertical;
+            if (!templates.top_left_corner.empty()) border_templates.top_left_corner = templates.top_left_corner;
+            if (!templates.top_right_corner.empty()) border_templates.top_right_corner = templates.top_right_corner;
+            if (!templates.bottom_left_corner.empty()) border_templates.bottom_left_corner = templates.bottom_left_corner;
+            if (!templates.bottom_right_corner.empty()) border_templates.bottom_right_corner = templates.bottom_right_corner;
+            if (!templates.middle_separator.empty()) border_templates.middle_separator = templates.middle_separator;
+            if (!templates.left_to_right.empty()) border_templates.left_to_right = templates.left_to_right;
+            if (!templates.right_to_left.empty()) border_templates.right_to_left = templates.right_to_left;
+            if (!templates.top_to_bottom.empty()) border_templates.top_to_bottom = templates.top_to_bottom;
+            if (!templates.bottom_to_top.empty()) border_templates.bottom_to_top = templates.bottom_to_top;
 
             /* ------ printing the table ------- */
 
@@ -1037,7 +1310,7 @@ namespace tabular {
                 for (auto it = rows.begin(); it != rows.end(); ++it)
                     utils::format_row(row_width_reference - (it->columns.size() + 1), *it);
 
-            bool is_first = true, is_last;
+            bool is_first = true, is_last = false;
             if (rows.size() == 1)
                 is_last = true;
 
@@ -1057,6 +1330,13 @@ namespace tabular {
             }
 
             return 0;
+        }
+
+        Row& operator[](int index) {
+            if (index >= this->rows.size() || index < 0)
+                throw std::out_of_range("Index out of bounds");
+
+            return this->rows[index];
         }
     };
 

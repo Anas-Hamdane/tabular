@@ -37,15 +37,16 @@ std::string get_expected_output() {
     return buffer.str();
 }
 
-TEST(simple_table_test, output_eq_expected) {
+TEST(table_test, output_eq_expected) {
     using namespace tabular;
 
     Table table;
-    table.add_row({"Country", "Capital"});
-    table.add_row({"Canada", "Ottawa"});
-    table.add_row({"Peru", "Lima"});
+    table.add_row({"Countries Capitals"});
     table.add_row({"United States", "Washington"});
     table.add_row({"Brazil", "Brasilia"});
+    table.add_row({"Countries Population"});
+    table.add_row({"United States", "340.1 million (2024)"});
+    table.add_row({"Brazil", "211.1 million (2023)"});
 
     // important to be forced
     table.set().forced_width(50, true);

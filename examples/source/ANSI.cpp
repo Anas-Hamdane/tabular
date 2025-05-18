@@ -21,17 +21,21 @@ int main() {
     using namespace tabular;
 
     Table table;
-    table.add_row({"University", "Score (IT)"});
-    table.add_row({"Massachusetts Institute of Technology (MIT)", "94.2"});
-    table.add_row({"Stanford University", "92.1"});
-    table.add_row({"Carnegie Mellon University", "91.2"});
-    table.add_row({"National University of Singapore (NUS)", "90.6"});
+    table.add_row({"Top 5 Math universities in the world"});
+    table.add_row({"Massachusetts Institute of Technology (MIT)", "95.5"});
+    table.add_row({"Harvard University", "93.2"});
+    table.add_row({"University of Oxford", "93.1"});
+    table.add_row({"University of Cambridge", "92.5"});
+    table.add_row({"Stanford University", "91.6"});
 
     table[0].config().padding(1);
     table.config().alignment(Alignment::center);
 
     table.format().border(BorderStyle::ANSI);
 
+    // for testing because "ninja" change the output stream of the program
+    table.set().forced_width(60, true);
+    
     std::cout << table << std::endl;
     return 0;
 }
