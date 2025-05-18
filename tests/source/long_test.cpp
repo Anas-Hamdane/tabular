@@ -44,7 +44,7 @@ TEST(long_table_test, output_eq_expected) {
     table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\n with a '\\n' inside it"});
 
     // important to be forced
-    table.set_forced_width(50);
+    table.set().forced_width(50, true);
 
     std::ostringstream out;
     out << table;

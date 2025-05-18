@@ -49,7 +49,7 @@ TEST(irregular_table_test, output_eq_expected) {
     table.add_row({"Brazil", "211.1 million (2023)"});
 
     // important to be forced
-    table.set_forced_width(50);
+    table.set().forced_width(50, true);
 
     std::ostringstream out;
     out << table;

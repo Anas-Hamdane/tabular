@@ -48,11 +48,11 @@ TEST(width_table_test, output_eq_expected) {
     table.add_row({"#4", "China"});
     table.add_row({"#5", "Brazil"});
 
-    table.rows.at(0).set_row_align(Alignment::center);
+    table[0].config().alignment(Alignment::center);
 
-    table.set_forced_width(50);
+    table.set().forced_width(50, true);
  
-    table.configure().set_cols_width(4, 0, Range(1, 5));
+    table.config().columns_width(4, 0, Range(1, 5));
 
     std::ostringstream out;
     out << table;

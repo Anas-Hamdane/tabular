@@ -48,15 +48,15 @@ TEST(ansi_table_test, output_eq_expected) {
     table.add_row({"Carnegie Mellon University", "91.2"});
     table.add_row({"National University of Singapore (NUS)", "90.6"});
 
-    table.rows[0].set_row_padding(1);
-    table.configure().set_global_align(Alignment::center);
+    table[0].config().padding(1);
+    table.config().alignment(Alignment::center);
 
     table.format().border(BorderStyle::ANSI);
 
     // important to be forced
-    table.set_forced_width(50);
+    table.set().forced_width(50, true);
 
-    table.set_forced_ansi();
+    table.set().forced_ansi(true);
 
     std::stringstream out;
     out << table;

@@ -16,9 +16,71 @@
 
 #include <tabular/column.hpp>
 
+#include <stdexcept>
+
 namespace tabular {
     class Row {
         Alignment alignment;
+
+        class Config {
+            Row& row;
+
+            class Fonts {
+                Row& row;
+
+            public:
+                Fonts(Row& row) : row(row) {}
+
+                Fonts& add(const FontStylesVector& styles) {
+                    for (Column& column : row.columns)
+                        column.config().fonts().add(styles);
+
+                    return *this;
+                }
+
+                Fonts& remove(const FontStylesVector& styles) {
+                    for (Column& col : row.columns)
+                        col.config().fonts().remove(styles);
+
+                    return *this;
+                }
+            };
+
+        public:
+            Config(Row& row) : row(row){}
+
+            Fonts fonts() { return Fonts(row); }
+
+            Config& alignment(Alignment alignment) {
+                row.alignment = alignment;
+
+                for (Column& col : row.columns)
+                    col.config().alignment(alignment);
+
+                return *this;
+            }
+
+            Config& padding(int padding) {
+                for (Column& col : row.columns)
+                    col.config().padding(padding);
+
+                return *this;
+            }
+
+            Config& top_padding(int padding) {
+                for (Column& col : row.columns)
+                    col.config().top_padding(padding);
+
+                return *this;
+            }
+
+            Config& bottom_padding(int padding) {
+                for (Column& col : row.columns)
+                    col.config().bottom_padding(padding);
+
+                return *this;
+            }
+        };
 
     public:
         std::vector<Column> columns;
@@ -26,59 +88,24 @@ namespace tabular {
         Row(std::vector<Column> columns)
             : columns(columns), alignment(Alignment::left) {}
 
+        Config config() { return Config(*this); }
+
         int get_columns_number() { return columns.size(); }
-
-        Row& set_row_align(Alignment alignment) {
-            this->alignment = alignment;
-
-            for (Column& col : columns)
-                col.set_column_align(alignment);
-
-            return *this;
-        }
-        
-        Row& set_row_padding(int padding) {
-            for (Column& col : columns)
-                col.set_column_padding(padding);
-
-            return *this;
-        }
-
-        Row& set_row_top_padding(int padding) {
-            for (Column& col : columns)
-                col.set_column_top_padding(padding);
-
-            return *this;
-        }
-        
-        Row& set_row_bottom_padding(int padding) {
-            for (Column& col : columns)
-                col.set_column_bottom_padding(padding);
-
-            return *this;
-        }
-
-        Row& font_styles(FontStylesVector font_styles) {
-            for (Column& col : columns)
-                col.col_font_styles(font_styles);
-
-            return *this;
-        }
-        
-        Row& remove_row_font_styles(FontStylesVector font_styles) {
-            for (Column& col : columns)
-                col.remove_font_styles(font_styles);
-
-            return *this;
-        }
 
         unsigned int get_full_row_width() {
             unsigned int width = columns.size() + 1;
 
-            for (Column col : columns)
-                width += col.get_width();
+            for (Column column : columns)
+                width += column.get().width();
 
             return width;
+        }
+
+        Column& operator[](int index) {
+            if (index >= this->columns.size() || index < 0)
+                throw std::out_of_range("Index out of bounds");
+            
+            return this->columns[index];
         }
     };
 } // namespace tabular

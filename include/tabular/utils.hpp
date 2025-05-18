@@ -149,14 +149,14 @@ namespace tabular {
             sub.clear();
         }
 
-        inline StringVector prepare_col_content(Column col, int max_width) {
-            std::string str = col.content;
-            Alignment col_align = col.get_column_align();
-            unsigned int top_padding = col.get_top_padding();
-            unsigned int bottom_padding = col.get_bottom_padding();
+        inline StringVector prepare_col_content(Column& column, int max_width) {
+            std::string str = column.content;
+            Alignment col_align = column.get().alignment();
+            unsigned int top_padding = column.get().top_padding();
+            unsigned int bottom_padding = column.get().bottom_padding();
 
             // which width to use
-            if (col.get_width() != 0) max_width = col.get_width();
+            if (column.get().width() != 0) max_width = column.get().width();
 
             if (str.empty() || max_width == 0)
                 return StringVector();
@@ -167,13 +167,13 @@ namespace tabular {
             // the return result
             StringVector result;
 
-            FontStylesVector font_styles = col.get_font_styles();
+            FontStylesVector font_styles = column.get().font_styles();
 
             // TOP padding
             for (unsigned int i = 0; i < top_padding; i++)
                 result.push_back(std::string());
 
-            const int usable_width = (max_width - 2);                           // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
+            const int usable_width = (max_width - 2);  // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
             const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT); // don't go back more than 30% when the last word is too long
 
             std::string sub;
@@ -218,8 +218,6 @@ namespace tabular {
             for (unsigned int i = 0; i < bottom_padding; i++)
                 result.push_back(std::string());
 
-            // reset font styles
-
             return result;
         }
 
@@ -232,9 +230,9 @@ namespace tabular {
                 return;
 
             // for other columns width calculation we should decrease the specific ones
-            for (Column col : row.columns) {
-                if (col.get_width() != 0) {
-                    width -= col.get_width();
+            for (Column& column : row.columns) {
+                if (column.get().width() != 0) {
+                    width -= column.get().width();
                     cols_num--;
                 }
             }
@@ -247,18 +245,18 @@ namespace tabular {
             }
 
             for (Column& col : row.columns) {
-                if (col.get_width() != 0)
-                    col.set_splitted_content(prepare_col_content(col, col.get_width()));
+                if (col.get().width() != 0)
+                    col.set().splitted_content(prepare_col_content(col, col.get().width()));
 
                 else if (rest > 0) {
-                    col.set_splitted_content(prepare_col_content(col, individual_col_width + 1));
+                    col.set().splitted_content(prepare_col_content(col, individual_col_width + 1));
 
-                    col.set_width(individual_col_width + 1);
+                    col.set().width(individual_col_width + 1);
                     rest--;
                 } else {
-                    col.set_splitted_content(prepare_col_content(col, individual_col_width));
+                    col.set().splitted_content(prepare_col_content(col, individual_col_width));
 
-                    col.set_width(individual_col_width);
+                    col.set().width(individual_col_width);
                 }
             }
         }
@@ -267,7 +265,7 @@ namespace tabular {
         inline size_t find_max_splitted_content_size(Row row) {
             size_t result = 0;
             for (Column col : row.columns) {
-                size_t splitted_content_size = col.get_splitted_content().size();
+                size_t splitted_content_size = col.get().splitted_content().size();
                 if (splitted_content_size > result)
                     result = splitted_content_size;
             }

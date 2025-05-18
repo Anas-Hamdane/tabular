@@ -49,15 +49,15 @@ TEST(irr_ansi_table_test, output_eq_expected) {
     table.add_row({"University of Cambridge", "92.5"});
     table.add_row({"Stanford University", "91.6"});
 
-    table.rows[0].set_row_padding(1);
-    table.configure().set_global_align(Alignment::center);
+    table[0].config().padding(1);
+    table.config().alignment(Alignment::center);
 
     table.format().border(BorderStyle::ANSI);
 
     // important to be forced
-    table.set_forced_width(50);
+    table.set().forced_width(50, true);
 
-    table.set_forced_ansi();
+    table.set().forced_ansi(true);
 
     std::stringstream out;
     out << table;

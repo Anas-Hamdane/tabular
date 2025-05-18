@@ -28,10 +28,10 @@ int main() {
     table.add_row({ "Amazon", "$2.039 T"});
     table.add_row({ "Google", "$1.880 T"});
 
-    table.rows.at(0).set_row_align(Alignment::center);
-    table.set_width(50);
-
-    table.rows.at(0).set_row_padding(1);
+    table[0].config().alignment(Alignment::center);
+    table[0].config().padding(1);
+    
+    table.set().width(50);
     
     std::cout << table << std::endl;
     return 0;

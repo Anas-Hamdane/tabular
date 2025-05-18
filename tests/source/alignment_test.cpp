@@ -47,13 +47,13 @@ TEST(alignment_table_test, output_eq_expected) {
     table.add_row({"United States", "Washington"});
     table.add_row({"Brazil", "Brasilia"});
 
-    table.configure().set_all_cols_align(Alignment::left, 0);
-    table.configure().set_all_cols_align(Alignment::right, 1);
+    table.config().alignment(Alignment::left, 0);
+    table.config().alignment(Alignment::right, 1);
 
-    table.rows.at(0).set_row_align(Alignment::center);
+    table[0].config().alignment(Alignment::center);
 
     // important to be forced
-    table.set_forced_width(50);
+    table.set().forced_width(50, true);
 
     std::ostringstream out;
     out << table;

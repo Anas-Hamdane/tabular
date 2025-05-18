@@ -48,12 +48,12 @@ TEST(simple_table_test, output_eq_expected) {
     table.add_row({ "Amazon", "$2.039 T"});
     table.add_row({ "Google", "$1.880 T"});
 
-    table.rows.at(0).set_row_align(Alignment::center);
+    table[0].config().alignment(Alignment::center);
 
-    table.rows.at(0).set_row_padding(1);
+    table[0].config().padding(1);
 
     // important to be forced
-    table.set_forced_width(50);
+    table.set().forced_width(50, true);
 
     std::ostringstream out;
     out << table;

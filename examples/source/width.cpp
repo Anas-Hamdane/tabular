@@ -28,11 +28,11 @@ int main() {
     table.add_row({"#4", "China"});
     table.add_row({"#5", "Brazil"});
 
-    table.rows.at(0).set_row_align(Alignment::center);
+    table[0].config().alignment(Alignment::center);
 
-    table.set_width(50);
+    table.set().width(50);
  
-    table.configure().set_cols_width(4, 0, Range(1, 5));
+    table.config().columns_width(4, 0, Range(1, 5));
  
     std::cout << table << std::endl;
     return 0;

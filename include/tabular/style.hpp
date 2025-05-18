@@ -34,10 +34,10 @@ namespace tabular {
 
             std::string middle_separator; // +
 
-            std::string middle_left_to_right;
-            std::string middle_right_to_left;
-            std::string middle_bottom_to_top;
-            std::string middle_top_to_bottom;
+            std::string left_to_right;
+            std::string right_to_left;
+            std::string bottom_to_top;
+            std::string top_to_bottom;
         };
 
         static Border get_border_template(BorderStyle borderStyle) {

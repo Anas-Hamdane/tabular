@@ -31,94 +31,150 @@ namespace tabular {
         unsigned int top_padding;
         unsigned int bottom_padding;
 
+        class Config {
+            Column& column;
+
+            class Fonts {
+                Column& column;
+
+            public:
+                Fonts(Column& column) : column(column) {}
+
+                Fonts& add(FontStylesVector styles) {
+                    column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
+
+                    return *this;
+                }
+
+                // removing every element of font_styles exist in this->font_styles
+                Fonts& remove(FontStylesVector styles) {
+
+                    // better performance
+                    std::unordered_set<FontStyle> to_remove(styles.begin(), styles.end());
+
+                    column.font_styles.erase(
+                        std::remove_if(
+                            column.font_styles.begin(),
+                            column.font_styles.end(),
+
+                            [&to_remove](FontStyle font_style) {
+                                return to_remove.find(font_style) != to_remove.end();
+                            }),
+
+                        column.font_styles.end());
+
+                    return *this;
+                }
+
+            };
+
+        public:
+            Config(Column& column) : column(column) {}
+
+            Fonts fonts() { return Fonts(column); }
+
+            Config& alignment(Alignment align) {
+                column.alignment = align;
+
+                return *this;
+            }
+
+            Config& width(int w) {
+                if (w <= 0)
+                    w = 0;
+
+                column.width = static_cast<unsigned int>(w);
+
+                return *this;
+            }
+
+            Config& padding(int padd) {
+                if (padd <= 0)
+                    padd = 0;
+
+                column.top_padding = padd;
+                column.bottom_padding = padd;
+
+                return *this;
+            }
+
+            Config& top_padding(int padd) {
+                if (padd <= 0)
+                    column.top_padding = 0;
+                else
+                    column.top_padding = static_cast<unsigned int>(padd);
+
+                return *this;
+            }
+
+            Config& bottom_padding(int padd) {
+                if (padd <= 0)
+                    column.bottom_padding = 0;
+                else
+                    column.bottom_padding = static_cast<unsigned int>(padd);
+
+                return *this;
+            }
+        };
+
+        class Getters {
+            Column& column;
+
+        public:
+            Getters(Column& column) : column(column) {}
+
+            Alignment alignment() { return column.alignment; }
+
+            unsigned int width() { return column.width; }
+
+            unsigned int top_padding() { return column.top_padding; }
+
+            unsigned int bottom_padding() { return column.bottom_padding; }
+
+            StringVector splitted_content() { return column.splitted_content; }
+
+            FontStylesVector font_styles() { return column.font_styles; }
+
+            StringList words() { return column.words; }
+        };
+
+        class Setters {
+            Column& column;
+
+        public:
+            Setters(Column& column) : column(column) {}
+
+            Setters& splitted_content(StringVector splittedContent) {
+                column.splitted_content = splittedContent;
+                return *this;
+            }
+
+            Setters& words(StringList words) {
+                column.words = words;
+                return *this;
+            }
+
+            Setters& width(int width) {
+                if (width <= 0)
+                    width = 0;
+
+                column.width = static_cast<unsigned int>(width);
+
+                return *this;
+            }
+        };
+
     public:
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0) {};
+            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0){};
 
-        void set_column_align(Alignment alignment) { this->alignment = alignment; }
+        Config config() { return Config(*this); }
 
-        Alignment get_column_align() { return alignment; }
+        Getters get() { return Getters(*this); }
 
-        Column& set_width(int width) {
-            if (width <= 0)
-                width = 0;
-
-            this->width = static_cast<unsigned int>(width);
-
-            return *this;
-        }
-
-        unsigned int get_width() { return this->width; }
-
-        Column& set_column_padding(int padding) {
-            if (padding <= 0)
-                padding = 0;
-
-            this->top_padding = padding;
-            this->bottom_padding = padding;
-
-            return *this;
-        }
-
-        Column& set_column_top_padding(int padding) {
-            if (padding <= 0)
-                this->top_padding = 0;
-            else
-                this->top_padding = static_cast<unsigned int>(padding);
-
-            return *this;
-        }
-
-        Column& set_column_bottom_padding(int padding) {
-            if (padding <= 0)
-                this->bottom_padding = 0;
-            else
-                this->bottom_padding = static_cast<unsigned int>(padding);
-
-            return *this;
-        }
-
-        Column& col_font_styles(FontStylesVector font_styles) {
-            this->font_styles.insert(this->font_styles.begin(), font_styles.begin(), font_styles.end());
-
-            return *this;
-        }
-
-        // removing every element of font_styles exist in this->font_styles
-        Column& remove_font_styles(FontStylesVector font_styles) {
-
-            // better performance
-            std::unordered_set<FontStyle> to_remove(font_styles.begin(), font_styles.end());
-
-            this->font_styles.erase(
-                std::remove_if(
-                    this->font_styles.begin(),
-                    this->font_styles.end(),
-
-                    [&to_remove](FontStyle font_style) {
-                        return to_remove.find(font_style) != to_remove.end();
-                    }),
-
-                this->font_styles.end());
-
-            return *this;
-        }
-
-        unsigned int get_top_padding() { return top_padding; }
-
-        unsigned int get_bottom_padding() { return bottom_padding; }
-
-        void set_splitted_content(StringVector splittedContent) { this->splitted_content = splittedContent; }
-
-        StringVector get_splitted_content() { return splitted_content; }
-
-        void set_words(StringList words) { this->words = words; }
-
-        StringList get_words() { return words; }
-
-        FontStylesVector get_font_styles() { return font_styles; }
+        Setters set() { return Setters(*this); }
     };
 } // namespace tabular
 

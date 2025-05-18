@@ -34,7 +34,7 @@ namespace tabular {
         underline,
         blink,
         reverse,
-        concealed,
+        concealed, // doesn't work for windows
         crossed
     };
 
