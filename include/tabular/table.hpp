@@ -18,6 +18,7 @@
       -  [x] ANSI Support
       -  [x] Alignment support
       -  [ ] terminal colors and highlights support
+      -  [ ] terminal font styles support
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
@@ -28,7 +29,6 @@
 #include <algorithm>
 #include <ostream>
 #include <vector>
-
 
 // headers
 #include <tabular/column.hpp>
@@ -285,6 +285,82 @@ namespace tabular {
             int set_all_cols_width(int width, int cols_index) {
                 return set_cols_width(width, cols_index, Range(0, table.rows.size() - 1));
             }
+
+            /* -----------------ADD FONT STYLES--------------------- */
+
+            // Set All Columns Alignments in the table
+            void set_global_font_styles(FontStylesVector font_styles) {
+                for (Row& row : table.rows)
+                    row.font_styles(font_styles);
+            }
+
+            // set the alignment of all cols in index "cols_index" from row "from" to "to"
+            // note: "from" and "to" are indices
+            int set_cols_font_styles(FontStylesVector font_styles, int cols_index, Range range) {
+                if (cols_index < 0)
+                    return 2;
+
+                if (range.from < 0)
+                    return 3;
+
+                if (range.to < 0)
+                    return 4;
+
+                size_t rows_size = table.rows.size();
+                if (range.to >= rows_size)
+                    range.to = rows_size - 1; // last element
+
+                for (int i = range.from; i <= range.to; i++) {
+                    Row& row = table.rows[i];
+                    row.columns[cols_index].col_font_styles(font_styles);
+                }
+
+                return 1; // done (true)
+            }
+
+            // set all the columns with "cols_index" to the "align"
+            int set_all_cols_font_styles(FontStylesVector font_styles, int cols_index) {
+                return set_cols_font_styles(font_styles, cols_index,
+                                            Range(0, table.rows.size() - 1));
+            }
+
+            /* -----------------REMOVE FONT STYLES--------------------- */
+
+            // Set All Columns Alignments in the table
+            void remove_global_font_styles(FontStylesVector font_styles) {
+                for (Row& row : table.rows)
+                    row.remove_row_font_styles(font_styles);
+            }
+
+            // set the alignment of all cols in index "cols_index" from row "from" to "to"
+            // note: "from" and "to" are indices
+            int remove_cols_font_styles(FontStylesVector font_styles, int cols_index, Range range) {
+                if (cols_index < 0)
+                    return 2;
+
+                if (range.from < 0)
+                    return 3;
+
+                if (range.to < 0)
+                    return 4;
+
+                size_t rows_size = table.rows.size();
+                if (range.to >= rows_size)
+                    range.to = rows_size - 1; // last element
+
+                for (int i = range.from; i <= range.to; i++) {
+                    Row& row = table.rows[i];
+                    row.columns[cols_index].remove_font_styles(font_styles);
+                }
+
+                return 1; // done (true)
+            }
+
+            // set all the columns with "cols_index" to the "align"
+            int remove_all_cols_font_styles(FontStylesVector font_styles, int cols_index) {
+                return remove_cols_font_styles(font_styles, cols_index,
+                                               Range(0, table.rows.size() - 1));
+            }
         };
 
         struct Format {
@@ -332,9 +408,6 @@ namespace tabular {
 
             std::string vertical = border_templates.vertical;
 
-            if (border_style == BorderStyle::ANSI)
-                vertical = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_VERTICAL)) + RESET_TABLE_MODE;
-
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
                 stream << '\n'
@@ -348,7 +421,13 @@ namespace tabular {
                     if (i < splitted_content_size) {
                         current_line = col.get_splitted_content().at(i);
                         stream << current_line;
-                        rest -= current_line.size(); // to balance the line
+
+                        int special_characters = 0;
+                        FontStylesVector font_styles = col.get_font_styles();
+                        if (!font_styles.empty())
+                            special_characters = 4 + (font_styles.size() * 4); // 4 fixed for RESET extra characters and (font_styles.size() * 4) = (font_styles.size() * 2) + (font_styles.size() * 2), means 2 characters for each font_style + 2 characters fir CSI for each font_style
+
+                        rest -= current_line.size() - special_characters; // to balance the line
                     }
 
                     for (int k = 0; k < rest; k++)
@@ -369,56 +448,41 @@ namespace tabular {
             else if (!is_last)
                 next_row_corners = find_stops(*(it + 1));
 
-            // (vertical separators)/corners
-            std::string left_corner = border_templates.corner;
-            std::string right_corner = border_templates.corner;
-
-            std::string horizontal = border_templates.horizontal;
-
-            // horizontal separator
-            std::string middle_separator = border_templates.corner;
-            std::string top_to_bottom = border_templates.corner;
-            std::string bottom_to_top = border_templates.corner;
-
-            bool is_ANSI = (border_style == BorderStyle::ANSI);
-
             if (!is_first)
                 stream << '\n';
 
-            if (is_ANSI)
-                horizontal = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_HORIZONTAL)) + RESET_TABLE_MODE;
+            std::string horizontal = border_templates.horizontal;
 
-            if (is_first && is_ANSI) {
-                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_TOP_LEFT_CORNER)) + RESET_TABLE_MODE;
-                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_TOP_RIGHT_CORNER)) + RESET_TABLE_MODE;
+            // (vertical separators)/corners
+            std::string left_corner;
+            std::string right_corner;
 
-                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+            // horizontal separator
+            std::string middle_separator;
+            std::string top_to_bottom;
+            std::string bottom_to_top;
 
-                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
+            if (is_first) {
+                left_corner = border_templates.top_left_corner;
+                right_corner = border_templates.top_right_corner;
 
-                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
-            }
+                middle_separator = border_templates.middle_top_to_bottom;
+                top_to_bottom = border_templates.middle_top_to_bottom;
+                bottom_to_top = border_templates.middle_top_to_bottom;
+            } else if (is_last) {
+                left_corner = border_templates.bottom_left_corner;
+                right_corner = border_templates.bottom_right_corner;
 
-            else if (!(is_first || is_last) && is_ANSI) {
-                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_LEFT_TO_RIGHT)) + RESET_TABLE_MODE;
-                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_RIGHT_TO_LEFT)) + RESET_TABLE_MODE;
+                middle_separator = border_templates.middle_bottom_to_top;
+                top_to_bottom = border_templates.middle_bottom_to_top;
+                bottom_to_top = border_templates.middle_bottom_to_top;
+            } else {
+                left_corner = border_templates.middle_left_to_right;
+                right_corner = border_templates.middle_right_to_left;
 
-                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_SEPARATOR)) + RESET_TABLE_MODE;
-
-                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_TOP_TO_BOTTOM)) + RESET_TABLE_MODE;
-
-                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
-            }
-
-            else if (is_last && is_ANSI) {
-                left_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_BOTTOM_LEFT_CORNER)) + RESET_TABLE_MODE;
-                right_corner = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_BOTTOM_RIGHT_CORNER)) + RESET_TABLE_MODE;
-
-                middle_separator = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
-
-                top_to_bottom = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
-
-                bottom_to_top = TABLE_MODE + std::string(1, static_cast<char>(ANSI_TABLE_PARTS::TABLE_MIDDLE_BOTTOM_TO_TOP)) + RESET_TABLE_MODE;
+                middle_separator = border_templates.middle_separator;
+                top_to_bottom = border_templates.middle_top_to_bottom;
+                bottom_to_top = border_templates.middle_bottom_to_top;
             }
 
             stream << left_corner;
@@ -562,23 +626,25 @@ namespace tabular {
             // check if the table has consistent number of columns across all rows
             bool regular = is_regular();
 
-            if (border_style == BorderStyle::ANSI) {
-                // if (!regular) // no support for irregular tables
-                //     border_style = BorderStyle::standard;
-                if (!utils::check_terminal() && !force_ansi) // for testing/redirecting to files (not a terminal)
+            if (border_style == BorderStyle::ANSI)
+                if (!utils::check_terminal() && !force_ansi)
                     border_style = BorderStyle::standard;
-            }
 
-            if (border_style != BorderStyle::ANSI) {
-                // adjusting border style
-                style::Border templates = style::get_border_template(border_style);
+            style::Border templates = border_templates;
+            border_templates = style::get_border_template(border_style);
 
-                if (border_templates.corner.empty()) border_templates.corner = templates.corner;
-                if (border_templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
-                if (border_templates.vertical.empty()) border_templates.vertical = templates.vertical;
-
-                // if (!regular) border_templates.corner = border_templates.horizontal; // for styling
-            }
+            if (!templates.corner.empty()) border_templates.corner = templates.corner;
+            if (!templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
+            if (!templates.vertical.empty()) border_templates.vertical = templates.vertical;
+            if (!templates.top_left_corner.empty()) border_templates.top_left_corner = templates.top_left_corner;
+            if (!templates.top_right_corner.empty()) border_templates.top_right_corner = templates.top_right_corner;
+            if (!templates.bottom_left_corner.empty()) border_templates.bottom_left_corner = templates.bottom_left_corner;
+            if (!templates.bottom_right_corner.empty()) border_templates.bottom_right_corner = templates.bottom_right_corner;
+            if (!templates.middle_separator.empty()) border_templates.middle_separator = templates.middle_separator;
+            if (!templates.middle_left_to_right.empty()) border_templates.middle_left_to_right = templates.middle_left_to_right;
+            if (!templates.middle_right_to_left.empty()) border_templates.middle_right_to_left = templates.middle_right_to_left;
+            if (!templates.middle_top_to_bottom.empty()) border_templates.middle_top_to_bottom = templates.middle_top_to_bottom;
+            if (!templates.middle_bottom_to_top.empty()) border_templates.middle_bottom_to_top = templates.middle_bottom_to_top;
 
             /* ------ printing the table ------- */
 
@@ -589,7 +655,7 @@ namespace tabular {
                 for (auto it = rows.begin(); it != rows.end(); ++it)
                     utils::format_row(row_width_reference - (it->columns.size() + 1), *it);
 
-            bool is_first = true, is_last;
+            bool is_first = true, is_last = false;
             if (rows.size() == 1)
                 is_last = true;
 

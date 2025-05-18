@@ -111,7 +111,7 @@ namespace tabular {
         }
 
         // note: add_spaces(line, 1); for space side
-        inline void set_content_align(std::string& line, std::string sub, int usable_width, Alignment align) {
+        inline void set_content_align(std::string& line, std::string sub, int usable_width, Alignment align, FontStylesVector font_styles) {
             if (line.empty())
                 add_spaces(line, 1);
 
@@ -124,14 +124,26 @@ namespace tabular {
                 start = 0;
 
             add_spaces(line, start);
+
+            bool is_empty = font_styles.empty();
+            if (!is_empty) {
+                for (FontStyle font_style : font_styles)
+                    line.append(CSI + (style::get_font_style(font_style)));
+            }
+
             line.append(sub);
+
+            if (!is_empty)
+                line.append(RESET);
+
             add_spaces(line, 1);
         }
 
-        inline void append_and_clear(StringVector& result, std::string& sub, int usable_width, Alignment col_align) {
+        inline void append_and_clear(StringVector& result, std::string& sub, int usable_width, Alignment col_align, FontStylesVector font_styles) {
             std::string line;
 
-            set_content_align(line, sub, usable_width, col_align);
+            set_content_align(line, sub, usable_width, col_align, font_styles);
+
             result.push_back(line);
 
             sub.clear();
@@ -155,6 +167,8 @@ namespace tabular {
             // the return result
             StringVector result;
 
+            FontStylesVector font_styles = col.get_font_styles();
+
             // TOP padding
             for (unsigned int i = 0; i < top_padding; i++)
                 result.push_back(std::string());
@@ -168,7 +182,7 @@ namespace tabular {
 
                 // add existing content if we reach new line
                 if (word == "\n") {
-                    append_and_clear(result, sub, usable_width, col_align);
+                    append_and_clear(result, sub, usable_width, col_align, font_styles);
                     continue;
                 }
 
@@ -183,13 +197,13 @@ namespace tabular {
                         part += '-';
 
                         sub += part;
-                        append_and_clear(result, sub, usable_width, col_align);
+                        append_and_clear(result, sub, usable_width, col_align, font_styles);
 
                         std::string remaining = word.substr(diff - 1);
                         words.insert(std::next(it), remaining);
                     } else {
                         sub.pop_back(); // pop the space added previously
-                        append_and_clear(result, sub, usable_width, col_align);
+                        append_and_clear(result, sub, usable_width, col_align, font_styles);
                         --it;
                     }
                 } else
@@ -198,11 +212,13 @@ namespace tabular {
 
             // any remaining words
             if (!sub.empty())
-                append_and_clear(result, sub, usable_width, col_align);
+                append_and_clear(result, sub, usable_width, col_align, font_styles);
 
             // BOTTOM padding
             for (unsigned int i = 0; i < bottom_padding; i++)
                 result.push_back(std::string());
+
+            // reset font styles
 
             return result;
         }

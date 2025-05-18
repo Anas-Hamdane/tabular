@@ -14,12 +14,16 @@
 #ifndef TABULAR_COLUMN_HPP
 #define TABULAR_COLUMN_HPP
 
-#include <tabular/global_vars.hpp>
+#include <algorithm>
+#include <unordered_set>
+
 #include <tabular/definitions.hpp>
+#include <tabular/global_vars.hpp>
+#include <tabular/style.hpp>
 
 namespace tabular {
     class Column {
-        std::vector<FontStyle> font_styles;
+        FontStylesVector font_styles;
         StringVector splitted_content;
         StringList words;
         Alignment alignment;
@@ -66,7 +70,7 @@ namespace tabular {
 
             return *this;
         }
-        
+
         Column& set_column_bottom_padding(int padding) {
             if (padding <= 0)
                 this->bottom_padding = 0;
@@ -76,8 +80,34 @@ namespace tabular {
             return *this;
         }
 
+        Column& col_font_styles(FontStylesVector font_styles) {
+            this->font_styles.insert(this->font_styles.begin(), font_styles.begin(), font_styles.end());
+
+            return *this;
+        }
+
+        // removing every element of font_styles exist in this->font_styles
+        Column& remove_font_styles(FontStylesVector font_styles) {
+
+            // better performance
+            std::unordered_set<FontStyle> to_remove(font_styles.begin(), font_styles.end());
+
+            this->font_styles.erase(
+                std::remove_if(
+                    this->font_styles.begin(),
+                    this->font_styles.end(),
+
+                    [&to_remove](FontStyle font_style) {
+                        return to_remove.find(font_style) != to_remove.end();
+                    }),
+
+                this->font_styles.end());
+
+            return *this;
+        }
+
         unsigned int get_top_padding() { return top_padding; }
-        
+
         unsigned int get_bottom_padding() { return bottom_padding; }
 
         void set_splitted_content(StringVector splittedContent) { this->splitted_content = splittedContent; }
@@ -87,6 +117,8 @@ namespace tabular {
         void set_words(StringList words) { this->words = words; }
 
         StringList get_words() { return words; }
+
+        FontStylesVector get_font_styles() { return font_styles; }
     };
 } // namespace tabular
 

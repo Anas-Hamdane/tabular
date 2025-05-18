@@ -19,7 +19,6 @@
 namespace tabular {
     class Row {
         Alignment alignment;
-        std::vector<FontStyle> font_styles;
 
     public:
         std::vector<Column> columns;
@@ -55,6 +54,20 @@ namespace tabular {
         Row& set_row_bottom_padding(int padding) {
             for (Column& col : columns)
                 col.set_column_bottom_padding(padding);
+
+            return *this;
+        }
+
+        Row& font_styles(FontStylesVector font_styles) {
+            for (Column& col : columns)
+                col.col_font_styles(font_styles);
+
+            return *this;
+        }
+        
+        Row& remove_row_font_styles(FontStylesVector font_styles) {
+            for (Column& col : columns)
+                col.remove_font_styles(font_styles);
 
             return *this;
         }

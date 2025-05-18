@@ -19,6 +19,8 @@
 #include <string>
 #include <list>
 
+#include <tabular/global_vars.hpp>
+
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS
 #elif defined(__APPLE__)
@@ -40,11 +42,17 @@
 
 #define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
+
+// table ANSI printing
 #define TABLE_MODE "\x1b(0"
 #define RESET_TABLE_MODE "\x1B(B"
+
+// Control sequence introducer (for font styles and colors)
 #define CSI "\x1b["
+#define RESET "\x1b[0m"
 
 typedef std::vector<std::string> StringVector;
+typedef std::vector<tabular::FontStyle> FontStylesVector;
 typedef std::list<std::string> StringList;
 
 #endif // TABULAR_GL_VARS_HPP
