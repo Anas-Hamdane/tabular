@@ -731,5 +731,4 @@ namespace tabular {
         return stream;
     }
 
-
 } // namespace tabular

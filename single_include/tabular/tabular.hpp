@@ -11,6 +11,12 @@
 
 */
 
+
+
+
+
+
+
 /*
     TODO:
       -  [x] implement Dynamic table logic
@@ -22,18 +28,16 @@
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
-
-    ! NOTE: add more border control by editing the Border struct to be like the ANSI, switch to chars for better performance, and maybe move configure to namespace style, merge tests in one test with all the cases and better handling.
 */
 
-#include <unordered_set>
 #include <algorithm>
 #include <climits>
-#include <ostream>
-#include <vector>
-#include <string>
 #include <list>
 #include <map>
+#include <ostream>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS
@@ -244,7 +248,7 @@ namespace tabular {
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0) {};
+            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0){};
 
         Config config() { return Config(*this); }
 
