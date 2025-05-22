@@ -18,7 +18,8 @@
 #include <string>
 
 #include <tabular/definitions.hpp>
-#include <tabular/global_vars.hpp>
+#include <tabular/border_style.hpp>
+#include <tabular/font_style.hpp>
 
 namespace tabular {
     namespace style {

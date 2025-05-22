@@ -19,7 +19,7 @@
 #include <string>
 #include <list>
 
-#include <tabular/global_vars.hpp>
+#include <tabular/font_style.hpp>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS
@@ -42,6 +42,9 @@
 
 #define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
+
+#define DONE 1
+#define ERROR 2
 
 // table ANSI printing
 #define TABLE_MODE "\x1b(0"

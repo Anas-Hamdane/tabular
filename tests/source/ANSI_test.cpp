@@ -52,7 +52,7 @@ TEST(ansi_table_test, output_eq_expected) {
     table[0].config().padding(1);
     table.config().alignment(Alignment::center);
 
-    table.format().border(BorderStyle::ANSI);
+    table.config().border(BorderStyle::ANSI);
 
     // important to be forced
     table.set().forced_width(50, true);

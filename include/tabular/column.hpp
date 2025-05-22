@@ -18,7 +18,11 @@
 #include <unordered_set>
 
 #include <tabular/definitions.hpp>
-#include <tabular/global_vars.hpp>
+
+#include <tabular/font_style.hpp>
+#include <tabular/border_style.hpp>
+#include <tabular/alignment.hpp>
+
 #include <tabular/style.hpp>
 
 namespace tabular {
@@ -34,44 +38,8 @@ namespace tabular {
         class Config {
             Column& column;
 
-            class Fonts {
-                Column& column;
-
-            public:
-                Fonts(Column& column) : column(column) {}
-
-                Fonts& add(FontStylesVector styles) {
-                    column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
-
-                    return *this;
-                }
-
-                // removing every element of font_styles exist in this->font_styles
-                Fonts& remove(FontStylesVector styles) {
-
-                    // better performance
-                    std::unordered_set<FontStyle> to_remove(styles.begin(), styles.end());
-
-                    column.font_styles.erase(
-                        std::remove_if(
-                            column.font_styles.begin(),
-                            column.font_styles.end(),
-
-                            [&to_remove](FontStyle font_style) {
-                                return to_remove.find(font_style) != to_remove.end();
-                            }),
-
-                        column.font_styles.end());
-
-                    return *this;
-                }
-
-            };
-
         public:
             Config(Column& column) : column(column) {}
-
-            Fonts fonts() { return Fonts(column); }
 
             Config& alignment(Alignment align) {
                 column.alignment = align;
@@ -112,6 +80,32 @@ namespace tabular {
                     column.bottom_padding = 0;
                 else
                     column.bottom_padding = static_cast<unsigned int>(padd);
+
+                return *this;
+            }
+
+            Config& add_font_styles(FontStylesVector styles) {
+                column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
+
+                return *this;
+            }
+
+            // removing every element of font_styles exist in this->font_styles
+            Config& remove_font_styles(FontStylesVector styles) {
+
+                // better performance
+                std::unordered_set<FontStyle> to_remove(styles.begin(), styles.end());
+
+                column.font_styles.erase(
+                    std::remove_if(
+                        column.font_styles.begin(),
+                        column.font_styles.end(),
+
+                        [&to_remove](FontStyle font_style) {
+                            return to_remove.find(font_style) != to_remove.end();
+                        }),
+
+                    column.font_styles.end());
 
                 return *this;
             }

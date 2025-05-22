@@ -11,22 +11,10 @@
 
 */
 
-#ifndef TABULAR_ENUMS_HPP
-#define TABULAR_ENUMS_HPP
+#ifndef TABULAR_FONT_STYLE_HPP
+#define TABULAR_FONT_STYLE_HPP
 
 namespace tabular {
-    enum class Alignment {
-        left,
-        center,
-        right
-    };
-
-    enum class BorderStyle {
-        standard,
-        empty,
-        ANSI
-    };
-
     enum class FontStyle {
         bold,
         dark,
@@ -37,13 +25,6 @@ namespace tabular {
         concealed, // doesn't work for windows
         crossed
     };
+}
 
-    typedef struct Range {
-        int from;
-        int to;
-
-        Range(int from, int to) : from(from), to(to) {}
-    } Range;
-} // namespace tabular
-
-#endif // TABULAR_ENUMS_HPP
+#endif // TABULAR_FONT_STYLE_HPP

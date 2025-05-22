@@ -25,31 +25,8 @@ namespace tabular {
         class Config {
             Row& row;
 
-            class Fonts {
-                Row& row;
-
-            public:
-                Fonts(Row& row) : row(row) {}
-
-                Fonts& add(const FontStylesVector& styles) {
-                    for (Column& column : row.columns)
-                        column.config().fonts().add(styles);
-
-                    return *this;
-                }
-
-                Fonts& remove(const FontStylesVector& styles) {
-                    for (Column& col : row.columns)
-                        col.config().fonts().remove(styles);
-
-                    return *this;
-                }
-            };
-
         public:
-            Config(Row& row) : row(row){}
-
-            Fonts fonts() { return Fonts(row); }
+            Config(Row& row) : row(row) {}
 
             Config& alignment(Alignment alignment) {
                 row.alignment = alignment;
@@ -80,6 +57,20 @@ namespace tabular {
 
                 return *this;
             }
+
+            Config& add_font_styles(const FontStylesVector& styles) {
+                for (Column& column : row.columns)
+                    column.config().add_font_styles(styles);
+
+                return *this;
+            }
+
+            Config& remove_font_styles(const FontStylesVector& styles) {
+                for (Column& col : row.columns)
+                    col.config().remove_font_styles(styles);
+
+                return *this;
+            }
         };
 
     public:
@@ -104,7 +95,7 @@ namespace tabular {
         Column& operator[](int index) {
             if (index >= this->columns.size() || index < 0)
                 throw std::out_of_range("Index out of bounds");
-            
+
             return this->columns[index];
         }
     };

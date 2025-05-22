@@ -22,8 +22,6 @@
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
-
-    ! NOTE: add more border control by editing the Border struct to be like the ANSI, switch to chars for better performance, and maybe move configure to namespace style, merge tests in one test with all the cases and better handling.
 */
 
 #include <algorithm>
@@ -38,7 +36,11 @@
 #include <tabular/utils.hpp>
 
 #include <tabular/definitions.hpp>
-#include <tabular/global_vars.hpp>
+
+#include <tabular/alignment.hpp>
+#include <tabular/border_style.hpp>
+#include <tabular/font_style.hpp>
+#include <tabular/range.hpp>
 
 namespace tabular {
     class Table {
@@ -51,28 +53,11 @@ namespace tabular {
         class Config {
             Table& table;
 
-            /*
-                ! ERROR CODES:
-                    * 1: true done
-                    * 2: error code for "cols_index" problems
-                    * 3: error code for "range.from" problems
-                    * 4: error code for "range.to" problems
-                    * 5: error code for "padding"'s problems
-                    * 6: error code for "width" problems
-                    * 7: error code for regularity problems
-            */
+            bool validate_params(int column_index, const Range& range) const {
+                if (column_index < 0 || range.from < 0 || range.to < 0)
+                    return false;
 
-            int validate_params(int column_index, const Range& range) const {
-                if (column_index < 0)
-                    return 2; // Column index error
-
-                if (range.from < 0)
-                    return 3; // Range start error
-
-                if (range.to < 0)
-                    return 4; // Range end error
-
-                return 1;
+                return true;
             }
 
             Range normalize_range(Range range) {
@@ -90,10 +75,9 @@ namespace tabular {
 
             /* -----------------ALIGNMENT--------------------- */
 
-            int alignment(Alignment align, int column_index, Range range) {
-                int validation_code = validate_params(column_index, range);
-                if (validation_code != 1)
-                    return validation_code;
+            Config& alignment(Alignment align, int column_index, Range range) {
+                if (!validate_params(column_index, range))
+                    return *this;
 
                 range = normalize_range(range);
 
@@ -102,30 +86,29 @@ namespace tabular {
                     row.columns[column_index].config().alignment(align);
                 }
 
-                return 1; // done (true)
+                return *this; // done (true)
             }
 
-            int alignment(Alignment align, int column_index) {
+            Config& alignment(Alignment align, int column_index) {
                 return alignment(align, column_index,
                                  Range(0, table.rows.size() - 1));
             }
 
-            int alignment(Alignment align) {
+            Config& alignment(Alignment align) {
                 for (Row& row : table.rows)
                     row.config().alignment(align);
 
-                return 1;
+                return *this;
             }
 
             /* -----------------PADDING--------------------- */
 
-            int padding(int pad, int column_index, Range range) {
+            Config& padding(int pad, int column_index, Range range) {
                 if (pad < 0)
-                    return 5; // Invalid padding
+                    return *this; // Invalid padding
 
-                int validation = validate_params(column_index, range);
-                if (validation != 1)
-                    return validation;
+                if (!validate_params(column_index, range))
+                    return *this;
 
                 range = normalize_range(range);
 
@@ -134,32 +117,31 @@ namespace tabular {
                     row.columns[column_index].config().padding(pad);
                 }
 
-                return 1;
+                return *this;
             }
 
-            int padding(int pad, int column_index) {
+            Config& padding(int pad, int column_index) {
                 return padding(pad, column_index, Range(0, table.rows.size() - 1));
             }
 
-            int padding(int pad) {
+            Config& padding(int pad) {
                 if (pad < 0)
-                    return 5; // Invalid padding
+                    return *this; // Invalid padding
 
                 for (Row& row : table.rows)
                     row.config().padding(pad);
 
-                return 1;
+                return *this;
             }
 
             /* -----------------TOP_PADDING--------------------- */
 
-            int top_padding(int pad, int column_index, Range range) {
+            Config& top_padding(int pad, int column_index, Range range) {
                 if (pad < 0)
-                    return 5; // Invalid padding
+                    return *this; // Invalid padding
 
-                int validation = validate_params(column_index, range);
-                if (validation != 1)
-                    return validation;
+                if (!validate_params(column_index, range))
+                    return *this;
 
                 range = normalize_range(range);
 
@@ -168,32 +150,31 @@ namespace tabular {
                     row.columns[column_index].config().top_padding(pad);
                 }
 
-                return 1;
+                return *this;
             }
 
-            int top_padding(int pad, int column_index) {
+            Config& top_padding(int pad, int column_index) {
                 return top_padding(pad, column_index, Range(0, table.rows.size() - 1));
             }
 
-            int top_padding(int pad) {
+            Config& top_padding(int pad) {
                 if (pad < 0)
-                    return 5; // Invalid padding
+                    return *this; // Invalid padding
 
                 for (Row& row : table.rows)
                     row.config().top_padding(pad);
 
-                return 1;
+                return *this;
             }
 
             /* -----------------BOTTOM_PADDING--------------------- */
 
-            int bottom_padding(int pad, int column_index, Range range) {
+            Config& bottom_padding(int pad, int column_index, Range range) {
                 if (pad < 0)
-                    return 5; // Invalid padding
+                    return *this; // Invalid padding
 
-                int validation = validate_params(column_index, range);
-                if (validation != 1)
-                    return validation;
+                if (!validate_params(column_index, range))
+                    return *this;
 
                 range = normalize_range(range);
 
@@ -202,216 +183,180 @@ namespace tabular {
                     row.columns[column_index].config().bottom_padding(pad);
                 }
 
-                return 1;
+                return *this;
             }
 
-            int bottom_padding(int pad, int column_index) {
+            Config& bottom_padding(int pad, int column_index) {
                 return bottom_padding(pad, column_index, Range(0, table.rows.size() - 1));
             }
 
-            int bottom_padding(int pad) {
+            Config& bottom_padding(int pad) {
                 if (pad < 0)
-                    return 5; // Invalid padding
+                    return *this; // Invalid padding
 
                 for (Row& row : table.rows)
                     row.config().bottom_padding(pad);
 
-                return 1;
+                return *this;
             }
 
             /* -----------------WIDTH--------------------- */
 
-            int table_width(int width) {
+            Config& table_width(int width) {
                 if (width <= 0)
-                    return 6; // Invalid width
+                    return *this; // Invalid width
 
                 table.width = width;
 
-                return 1;
+                return *this;
             }
 
-            int columns_width(int width, int column_index, Range range) {
+            Config& columns_width(int width, int column_index, Range range) {
                 if (width < 0)
-                    return 6; // Invalid width
+                    return *this; // Invalid width
 
-                int validation = validate_params(column_index, range);
-                if (validation != 1)
-                    return validation;
+                if (!validate_params(column_index, range))
+                    return *this;
 
                 range = normalize_range(range);
 
                 // Check regularity
                 if (!table.is_regular(range))
-                    return 7;
+                    return *this;
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
                     row.columns[column_index].config().width(width);
                 }
 
-                return 1;
+                return *this;
             }
 
-            int columns_width(int width, int column_index) {
+            Config& columns_width(int width, int column_index) {
                 return columns_width(width, column_index, Range(0, table.rows.size() - 1));
             }
-        };
 
-        class Format {
-            Table& table;
+            /* -----------------ADD FONT STYLES--------------------- */
 
-            class Fonts {
-                Table& table;
+            Config& add_font_styles(FontStylesVector styles, int column_index, Range range) {
+                if (!validate_params(column_index, range))
+                    return *this;
 
-                int validate_params(int column_index, const Range& range) const {
-                    if (column_index < 0)
-                        return 2; // Column index error
+                range = normalize_range(range);
 
-                    if (range.from < 0)
-                        return 3; // Range start error
-
-                    if (range.to < 0)
-                        return 4; // Range end error
-
-                    return 1;
+                for (int i = range.from; i <= range.to; i++) {
+                    Row& row = table.rows[i];
+                    row.columns[column_index].config().add_font_styles(styles);
                 }
 
-                Range normalize_range(Range range) {
-                    Range result = range;
-                    size_t rowsSize = table.rows.size();
-
-                    if (result.to >= rowsSize)
-                        result.to = rowsSize - 1;
-
-                    return result;
-                }
-
-            public:
-                Fonts(Table& table) : table(table) {}
-
-                /* -----------------ADD FONT STYLES--------------------- */
-
-                int add(FontStylesVector styles, int column_index, Range range) {
-                    int validation = validate_params(column_index, range);
-                    if (validation != 1)
-                        return validation;
-
-                    range = normalize_range(range);
-
-                    for (int i = range.from; i <= range.to; i++) {
-                        Row& row = table.rows[i];
-                        row.columns[column_index].config().fonts().add(styles);
-                    }
-
-                    return 1; // done (true)
-                }
-
-                int add(FontStylesVector styles, int column_index) {
-                    return add(styles, column_index,
-                               Range(0, table.rows.size() - 1));
-                }
-
-                void add(FontStylesVector styles) {
-                    for (Row& row : table.rows)
-                        row.config().fonts().add(styles);
-                }
-
-                /* -----------------REMOVE FONT STYLES--------------------- */
-
-                int remove(const FontStylesVector& styles, int column_index, Range range) {
-                    int validation = validate_params(column_index, range);
-                    if (validation != 1)
-                        return validation;
-
-                    range = normalize_range(range);
-
-                    for (int i = range.from; i <= range.to; i++) {
-                        Row& row = table.rows[i];
-                        row.columns[column_index].config().fonts().remove(styles);
-                    }
-
-                    return 1;
-                }
-
-                int remove(const FontStylesVector& styles, int column_index) {
-                    return remove(styles, column_index, Range(0, table.rows.size() - 1));
-                }
-
-                int remove(const FontStylesVector& styles) {
-                    for (Row& row : table.rows)
-                        row.config().fonts().remove(styles);
-
-                    return 1;
-                }
-            };
-
-        public:
-            Format(Table& table) : table(table) {
+                return *this;
             }
 
-            Fonts fonts() { return Fonts(table); }
+            Config& add_font_styles(FontStylesVector styles, int column_index) {
+                return add_font_styles(styles, column_index,
+                                       Range(0, table.rows.size() - 1));
+            }
 
-            Format& corner(char corner) {
+            Config& add_font_styles(FontStylesVector styles) {
+                for (Row& row : table.rows)
+                    row.config().add_font_styles(styles);
+
+                return *this;
+            }
+
+            /* -----------------REMOVE FONT STYLES--------------------- */
+
+            Config& remove_font_styles(const FontStylesVector& styles, int column_index, Range range) {
+                if (!validate_params(column_index, range))
+                    return *this;
+
+                range = normalize_range(range);
+
+                for (int i = range.from; i <= range.to; i++) {
+                    Row& row = table.rows[i];
+                    row.columns[column_index].config().remove_font_styles(styles);
+                }
+
+                return *this;
+            }
+
+            Config& remove_font_styles(const FontStylesVector& styles, int column_index) {
+                return remove_font_styles(styles, column_index, Range(0, table.rows.size() - 1));
+            }
+
+            Config& remove_font_styles(const FontStylesVector& styles) {
+                for (Row& row : table.rows)
+                    row.config().remove_font_styles(styles);
+
+                return *this;
+            }
+
+            /* -----------------BORDER PARTS--------------------- */
+
+            Config& corner(char corner) {
                 table.border_templates.corner = corner;
                 return *this;
             }
 
-            Format& horizontal(char horizontal) {
+            Config& horizontal(char horizontal) {
                 table.border_templates.horizontal = horizontal;
                 return *this;
             }
 
-            Format& vertical(char vertical) {
+            Config& vertical(char vertical) {
                 table.border_templates.vertical = vertical;
                 return *this;
             }
 
-            Format& bottom_right_corner(char corner) {
+            Config& bottom_right_corner(char corner) {
                 table.border_templates.bottom_right_corner = corner;
                 return *this;
             }
 
-            Format& top_right_corner(char corner) {
+            Config& top_right_corner(char corner) {
                 table.border_templates.top_right_corner = corner;
                 return *this;
             }
 
-            Format& top_left_corner(char corner) {
+            Config& top_left_corner(char corner) {
                 table.border_templates.top_left_corner = corner;
                 return *this;
             }
 
-            Format& bottom_left_corner(char corner) {
+            Config& bottom_left_corner(char corner) {
                 table.border_templates.bottom_left_corner = corner;
                 return *this;
             }
 
-            Format& middle_separator(char separator) {
+            Config& middle_separator(char separator) {
                 table.border_templates.middle_separator = separator;
                 return *this;
             }
 
-            Format& middle_left_to_right(char connector) {
+            Config& middle_left_to_right(char connector) {
                 table.border_templates.left_to_right = connector;
                 return *this;
             }
 
-            Format& middle_right_to_left(char connector) {
+            Config& middle_right_to_left(char connector) {
                 table.border_templates.right_to_left = connector;
                 return *this;
             }
 
-            Format& middle_bottom_to_top(char connector) {
+            Config& middle_bottom_to_top(char connector) {
                 table.border_templates.bottom_to_top = connector;
                 return *this;
             }
 
-            Format& middle_top_to_bottom(char connector) {
+            Config& middle_top_to_bottom(char connector) {
                 table.border_templates.top_to_bottom = connector;
                 return *this;
             }
 
-            void border(BorderStyle style) { table.border_style = style; }
+            Config& border(BorderStyle style) {
+                table.border_style = style;
+                return *this;
+            }
         };
 
         class Setters {
@@ -603,8 +548,6 @@ namespace tabular {
 
         // configure the table
         Config config() { return Config(*this); }
-
-        Format format() { return Format(*this); }
 
         Setters set() { return Setters(*this); }
 
