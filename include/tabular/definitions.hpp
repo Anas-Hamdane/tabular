@@ -43,9 +43,6 @@
 #define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
 
-#define DONE 1
-#define ERROR 2
-
 // table ANSI printing
 #define TABLE_MODE "\x1b(0"
 #define RESET_TABLE_MODE "\x1B(B"
