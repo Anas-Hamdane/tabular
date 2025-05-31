@@ -27,15 +27,15 @@ int main() {
 
     table.config().border(BorderStyle::ANSI);
 
-    table[0][0].config().width(12).add_font_styles({FontStyle::bold});
-    table[0][1].config().width(9).add_font_styles({FontStyle::italic});
-    table[0][2].config().width(16).add_font_styles({FontStyle::italic, FontStyle::bold});
-    table[0][3].config().width(28).add_font_styles({FontStyle::blink});
+    table[0][0].config().width(12).add_font_style({FontStyle::bold});
+    table[0][1].config().width(9).add_font_style({FontStyle::italic});
+    table[0][2].config().width(16).add_font_style({FontStyle::italic, FontStyle::bold});
+    table[0][3].config().width(28).add_font_style({FontStyle::blink});
     
-    table[1][0].config().width(12).add_font_styles({FontStyle::underline});
-    table[1][1].config().width(9).add_font_styles({FontStyle::crossed});
-    table[1][2].config().width(16).add_font_styles({FontStyle::dark});
-    table[1][3].config().width(28).add_font_styles({FontStyle::bold, FontStyle::italic, FontStyle::underline});
+    table[1][0].config().width(12).add_font_style({FontStyle::underline});
+    table[1][1].config().width(9).add_font_style({FontStyle::crossed});
+    table[1][2].config().width(16).add_font_style({FontStyle::dark});
+    table[1][3].config().width(28).add_font_style({FontStyle::bold, FontStyle::italic, FontStyle::underline});
 
     table.config().border(BorderStyle::ANSI);
 

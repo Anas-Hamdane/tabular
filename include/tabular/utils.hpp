@@ -11,7 +11,7 @@
 
 */
 
-#include <tabular/definitions.hpp>
+#include <climits>
 #include <tabular/row.hpp>
 
 #ifndef TABULAR_UTILITIES_HPP
@@ -54,6 +54,7 @@ namespace tabular {
 
         inline bool check_terminal() {
             #if defined(OS_WINDOWS)
+                // if it is not a valid terminal, enabling VTP will fail so we don't have to check :)
                 static bool initialized = []() -> bool {
                     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
                     if (hOut == INVALID_HANDLE_VALUE)
@@ -72,6 +73,7 @@ namespace tabular {
                 // SetConsoleOutputCP(CP_UTF8);
                 return initialized;
             #else
+                if (!isatty(STDIN_FILENO)) return false; // not a valid terminal
                 return true;
             #endif
         }
@@ -173,7 +175,7 @@ namespace tabular {
             for (unsigned int i = 0; i < top_padding; i++)
                 result.push_back(std::string());
 
-            const int usable_width = (max_width - 2);  // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
+            const int usable_width = (max_width - 2); // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
             const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT); // don't go back more than 30% when the last word is too long
 
             std::string sub;

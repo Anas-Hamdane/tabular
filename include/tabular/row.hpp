@@ -58,16 +58,30 @@ namespace tabular {
                 return *this;
             }
 
-            Config& add_font_styles(const FontStylesVector& styles) {
+            Config& add_font_style(const FontStylesVector& styles) {
                 for (Column& column : row.columns)
-                    column.config().add_font_styles(styles);
+                    column.config().add_font_style(styles);
 
                 return *this;
             }
 
-            Config& remove_font_styles(const FontStylesVector& styles) {
+            Config& remove_font_style(const FontStylesVector& styles) {
                 for (Column& col : row.columns)
-                    col.config().remove_font_styles(styles);
+                    col.config().remove_font_style(styles);
+
+                return *this;
+            }
+
+            Config& add_font_style(const FontStyle& style) {
+                for (Column& column : row.columns)
+                    column.config().add_font_style(style);
+
+                return *this;
+            }
+
+            Config& remove_font_style(const FontStyle& style) {
+                for (Column& col : row.columns)
+                    col.config().remove_font_style(style);
 
                 return *this;
             }

@@ -14,7 +14,6 @@
 #ifndef TABULAR_GL_VARS_HPP
 #define TABULAR_GL_VARS_HPP
 
-#include <climits>
 #include <vector>
 #include <string>
 #include <list>

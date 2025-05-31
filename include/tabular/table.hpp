@@ -17,29 +17,20 @@
       -  [x] default padding
       -  [x] ANSI Support
       -  [x] Alignment support
-      -  [ ] terminal colors and highlights support
+      -  [ ] terminal colors and highlights support (16 colors and rgb)
       -  [x] terminal font styles support
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
+      -  [ ] ability of adding rows into columns
+      -  [ ] vertical rows
 */
 
-#include <algorithm>
 #include <ostream>
 #include <vector>
 
-// headers
-#include <tabular/column.hpp>
-#include <tabular/row.hpp>
-
-#include <tabular/style.hpp>
+// those include all headers
 #include <tabular/utils.hpp>
-
-#include <tabular/definitions.hpp>
-
-#include <tabular/alignment.hpp>
-#include <tabular/border_style.hpp>
-#include <tabular/font_style.hpp>
 #include <tabular/range.hpp>
 
 namespace tabular {
@@ -246,7 +237,7 @@ namespace tabular {
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[column_index].config().add_font_styles(styles);
+                    row.columns[column_index].config().add_font_style(styles);
                 }
 
                 return *this;
@@ -259,7 +250,7 @@ namespace tabular {
 
             Config& add_font_styles(FontStylesVector styles) {
                 for (Row& row : table.rows)
-                    row.config().add_font_styles(styles);
+                    row.config().add_font_style(styles);
 
                 return *this;
             }
@@ -274,7 +265,7 @@ namespace tabular {
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[column_index].config().remove_font_styles(styles);
+                    row.columns[column_index].config().remove_font_style(styles);
                 }
 
                 return *this;
@@ -286,7 +277,7 @@ namespace tabular {
 
             Config& remove_font_styles(const FontStylesVector& styles) {
                 for (Row& row : table.rows)
-                    row.config().remove_font_styles(styles);
+                    row.config().remove_font_style(styles);
 
                 return *this;
             }

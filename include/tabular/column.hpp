@@ -19,14 +19,13 @@
 
 #include <tabular/definitions.hpp>
 
-#include <tabular/font_style.hpp>
-#include <tabular/border_style.hpp>
 #include <tabular/alignment.hpp>
-
 #include <tabular/style.hpp>
 
 namespace tabular {
+    class Row;
     class Column {
+        std::vector<Row> rows; // feature: nested rows
         FontStylesVector font_styles;
         StringVector splitted_content;
         StringList words;
@@ -84,15 +83,13 @@ namespace tabular {
                 return *this;
             }
 
-            Config& add_font_styles(FontStylesVector styles) {
+            Config& add_font_style(FontStylesVector styles) {
                 column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
-
                 return *this;
             }
 
             // removing every element of font_styles exist in this->font_styles
-            Config& remove_font_styles(FontStylesVector styles) {
-
+            Config& remove_font_style(FontStylesVector styles) {
                 // better performance
                 std::unordered_set<FontStyle> to_remove(styles.begin(), styles.end());
 
@@ -106,6 +103,23 @@ namespace tabular {
                         }),
 
                     column.font_styles.end());
+
+                return *this;
+            }
+
+            // adding a font style
+            Config& add_font_style(FontStyle style) {
+                column.font_styles.push_back(style);
+                return *this;
+            }
+
+            // removing a font style
+            Config& remove_font_style(FontStyle style) {
+                auto& fs = column.font_styles;
+
+                fs.erase(
+                    std::remove(fs.begin(), fs.end(), style),
+                    fs.end());
 
                 return *this;
             }
@@ -162,7 +176,7 @@ namespace tabular {
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0){};
+            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0) {};
 
         Config config() { return Config(*this); }
 
