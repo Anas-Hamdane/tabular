@@ -23,9 +23,7 @@
 #include <tabular/style.hpp>
 
 namespace tabular {
-    class Row;
     class Column {
-        std::vector<Row> rows; // feature: nested rows
         FontStylesVector font_styles;
         StringVector splitted_content;
         StringList words;

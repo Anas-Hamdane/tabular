@@ -544,7 +544,7 @@ namespace tabular {
 
         unsigned int get_width() { return width; }
 
-        void add_row(std::vector<std::string> contents) {
+        void add_row(StringVector contents) {
             std::vector<Column> columns;
             for (std::string content : contents)
                 columns.push_back(Column(content));
@@ -552,7 +552,14 @@ namespace tabular {
             rows.push_back(Row(columns));
         }
 
-        /* Regularity means it has the same number of columns in each rows */
+        void add_row(std::string content) {
+            std::vector<Column> columns;
+            columns.push_back(Column(content));
+
+            rows.push_back(Row(columns));
+        }
+
+        /* Regularity means it has the same number of columns in each row */
         bool is_regular(Range range) {
             size_t reference = rows[range.from].columns.size();
 
