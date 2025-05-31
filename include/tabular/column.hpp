@@ -16,17 +16,23 @@
 
 #include <algorithm>
 #include <unordered_set>
+#include <vector>
+#include <list>
 
 #include <tabular/definitions.hpp>
+#include <tabular/font_style.hpp>
+#include <tabular/colors.hpp>
 
 #include <tabular/alignment.hpp>
 #include <tabular/style.hpp>
 
 namespace tabular {
     class Column {
-        FontStylesVector font_styles;
-        StringVector splitted_content;
-        StringList words;
+        std::vector<tabular::Font> font_styles;
+        BackgroundColor back_color;
+        Color for_color;
+        std::vector<std::string> splitted_content;
+        std::list<std::string> words;
         Alignment alignment;
         unsigned int width;
         unsigned int top_padding;
@@ -81,22 +87,22 @@ namespace tabular {
                 return *this;
             }
 
-            Config& add_font_style(FontStylesVector styles) {
+            Config& add_font_style(std::vector<tabular::Font> styles) {
                 column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
                 return *this;
             }
 
             // removing every element of font_styles exist in this->font_styles
-            Config& remove_font_style(FontStylesVector styles) {
+            Config& remove_font_style(std::vector<tabular::Font> styles) {
                 // better performance
-                std::unordered_set<FontStyle> to_remove(styles.begin(), styles.end());
+                std::unordered_set<Font> to_remove(styles.begin(), styles.end());
 
                 column.font_styles.erase(
                     std::remove_if(
                         column.font_styles.begin(),
                         column.font_styles.end(),
 
-                        [&to_remove](FontStyle font_style) {
+                        [&to_remove](Font font_style) {
                             return to_remove.find(font_style) != to_remove.end();
                         }),
 
@@ -106,19 +112,29 @@ namespace tabular {
             }
 
             // adding a font style
-            Config& add_font_style(FontStyle style) {
+            Config& add_font_style(Font style) {
                 column.font_styles.push_back(style);
                 return *this;
             }
 
             // removing a font style
-            Config& remove_font_style(FontStyle style) {
+            Config& remove_font_style(Font style) {
                 auto& fs = column.font_styles;
 
                 fs.erase(
                     std::remove(fs.begin(), fs.end(), style),
                     fs.end());
 
+                return *this;
+            }
+
+            Config& background_color(BackgroundColor back_color) {
+                column.back_color = back_color;
+                return *this;
+            }
+
+            Config& color(Color for_color) {
+                column.for_color = for_color;
                 return *this;
             }
         };
@@ -137,11 +153,15 @@ namespace tabular {
 
             unsigned int bottom_padding() { return column.bottom_padding; }
 
-            StringVector splitted_content() { return column.splitted_content; }
+            std::vector<std::string> splitted_content() { return column.splitted_content; }
 
-            FontStylesVector font_styles() { return column.font_styles; }
+            std::vector<tabular::Font> font_styles() { return column.font_styles; }
 
-            StringList words() { return column.words; }
+            std::list<std::string> words() { return column.words; }
+
+            BackgroundColor background_color() { return column.back_color; }
+
+            Color foreground_color() { return column.for_color; }
         };
 
         class Setters {
@@ -150,12 +170,12 @@ namespace tabular {
         public:
             Setters(Column& column) : column(column) {}
 
-            Setters& splitted_content(StringVector splittedContent) {
+            Setters& splitted_content(std::vector<std::string> splittedContent) {
                 column.splitted_content = splittedContent;
                 return *this;
             }
 
-            Setters& words(StringList words) {
+            Setters& words(std::list<std::string> words) {
                 column.words = words;
                 return *this;
             }
@@ -174,7 +194,7 @@ namespace tabular {
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0) {};
+            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0), back_color(BackgroundColor::normal), for_color(Color::normal) {};
 
         Config config() { return Config(*this); }
 

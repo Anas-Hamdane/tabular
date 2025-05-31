@@ -85,8 +85,8 @@ namespace tabular {
         }
 
         // split by words AND save '\n' as a word too
-        inline StringList split_text(std::string str) {
-            StringList result;
+        inline std::list<std::string>split_text(std::string str) {
+            std::list<std::string> result;
 
             size_t str_size = str.size();
             size_t prev_start = 0;
@@ -101,6 +101,7 @@ namespace tabular {
                     if (i > prev_start)
                         result.push_back(str.substr(prev_start, i - prev_start));
 
+                    result.push_back(" ");
                     prev_start = i + 1;
                 }
             }
@@ -113,7 +114,12 @@ namespace tabular {
         }
 
         // note: add_spaces(line, 1); for space side
-        inline void set_content_align(std::string& line, std::string sub, int usable_width, Alignment align, FontStylesVector font_styles) {
+        inline void set_content_align(std::string& line, std::string sub, int usable_width, Column column) {
+            Alignment align = column.get().alignment();
+            auto font_styles = column.get().font_styles();
+            BackgroundColor back_color = column.get().background_color();
+            Color for_color = column.get().foreground_color();
+
             if (line.empty())
                 add_spaces(line, 1);
 
@@ -129,29 +135,35 @@ namespace tabular {
 
             bool is_empty = font_styles.empty();
             if (!is_empty) {
-                for (FontStyle font_style : font_styles)
-                    line.append(CSI + (style::get_font_style(font_style)));
+                for (Font font_style : font_styles)
+                    line.append(CSI + std::to_string(static_cast<int>(font_style)) + "m");
             }
+            if (back_color != BackgroundColor::normal)
+                line.append(CSI + std::to_string(static_cast<int>(back_color)) + "m");
+            if (for_color != Color::normal)
+                line.append(CSI + std::to_string(static_cast<int>(for_color)) + "m" );
 
             line.append(sub);
 
-            if (!is_empty)
+            if (!is_empty || back_color != BackgroundColor::normal || for_color != Color::normal)
                 line.append(RESET);
 
             add_spaces(line, 1);
         }
 
-        inline void append_and_clear(StringVector& result, std::string& sub, int usable_width, Alignment col_align, FontStylesVector font_styles) {
+        inline void append_and_clear(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
+            Alignment col_align = column.get().alignment();
+            auto font_styles = column.get().font_styles();
             std::string line;
 
-            set_content_align(line, sub, usable_width, col_align, font_styles);
+            set_content_align(line, sub, usable_width, column);
 
             result.push_back(line);
 
             sub.clear();
         }
 
-        inline StringVector prepare_col_content(Column& column, int max_width) {
+        inline std::vector<std::string> prepare_col_content(Column& column, int max_width) {
             std::string str = column.content;
             Alignment col_align = column.get().alignment();
             unsigned int top_padding = column.get().top_padding();
@@ -161,15 +173,15 @@ namespace tabular {
             if (column.get().width() != 0) max_width = column.get().width();
 
             if (str.empty() || max_width == 0)
-                return StringVector();
+                return std::vector<std::string>();
 
             // split the content into words to easily manipulate it
-            StringList words = split_text(str);
+            auto words = split_text(str);
 
             // the return result
-            StringVector result;
+            std::vector<std::string> result;
 
-            FontStylesVector font_styles = column.get().font_styles();
+            auto font_styles = column.get().font_styles();
 
             // TOP padding
             for (unsigned int i = 0; i < top_padding; i++)
@@ -184,12 +196,12 @@ namespace tabular {
 
                 // add existing content if we reach new line
                 if (word == "\n") {
-                    append_and_clear(result, sub, usable_width, col_align, font_styles);
+                    append_and_clear(result, sub, usable_width, column);
                     continue;
                 }
 
-                if (!sub.empty())
-                    sub += ' ';
+                // if (!sub.empty())
+                //     sub += ' ';
 
                 // we need split
                 if ((sub.size() + word.size()) > usable_width) {
@@ -199,13 +211,13 @@ namespace tabular {
                         part += '-';
 
                         sub += part;
-                        append_and_clear(result, sub, usable_width, col_align, font_styles);
+                        append_and_clear(result, sub, usable_width, column);
 
                         std::string remaining = word.substr(diff - 1);
                         words.insert(std::next(it), remaining);
                     } else {
                         sub.pop_back(); // pop the space added previously
-                        append_and_clear(result, sub, usable_width, col_align, font_styles);
+                        append_and_clear(result, sub, usable_width, column);
                         --it;
                     }
                 } else
@@ -214,7 +226,7 @@ namespace tabular {
 
             // any remaining words
             if (!sub.empty())
-                append_and_clear(result, sub, usable_width, col_align, font_styles);
+                append_and_clear(result, sub, usable_width, column);
 
             // BOTTOM padding
             for (unsigned int i = 0; i < bottom_padding; i++)

@@ -14,12 +14,6 @@
 #ifndef TABULAR_GL_VARS_HPP
 #define TABULAR_GL_VARS_HPP
 
-#include <vector>
-#include <string>
-#include <list>
-
-#include <tabular/font_style.hpp>
-
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WINDOWS
 #elif defined(__APPLE__)
@@ -49,9 +43,5 @@
 // Control sequence introducer (for font styles and colors)
 #define CSI "\x1b["
 #define RESET "\x1b[0m"
-
-typedef std::vector<std::string> StringVector;
-typedef std::vector<tabular::FontStyle> FontStylesVector;
-typedef std::list<std::string> StringList;
 
 #endif // TABULAR_GL_VARS_HPP

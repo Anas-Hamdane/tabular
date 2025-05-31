@@ -41,7 +41,7 @@ TEST(long_table_test, output_eq_expected) {
     using namespace tabular;
 
     Table table;
-    table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\n with a '\\n' inside it"});
+    table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\nwith a '\\n' inside it"});
 
     // important to be forced
     table.set().forced_width(50, true);

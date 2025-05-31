@@ -15,14 +15,14 @@
 #define TABULAR_FONT_STYLE_HPP
 
 namespace tabular {
-    enum class FontStyle {
-        bold,
-        dark,
+    enum class Font {
+        bold = 1,
+        dim,
         italic,
         underline,
-        blink,
-        reverse,
-        concealed, // doesn't work for windows
+        blink, // rarely supported
+        reverse = 7,
+        concealed,
         crossed
     };
 }

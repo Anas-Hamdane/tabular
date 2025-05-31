@@ -60,20 +60,6 @@ namespace tabular {
                                     }}};
             return templates[borderStyle];
         }
-
-        static std::string get_font_style(FontStyle style) {
-            static std::map<FontStyle, std::string> styles{
-                // {FontStyle::reset, "0m"},
-                {FontStyle::bold, "1m"},
-                {FontStyle::dark, "2m"},
-                {FontStyle::italic, "3m"},
-                {FontStyle::underline, "4m"},
-                {FontStyle::blink, "5m"},
-                {FontStyle::reverse, "7m"},
-                {FontStyle::concealed, "8m"},
-                {FontStyle::crossed, "9m"}};
-            return styles[style];
-        }
     }; // namespace style
 } // namespace tabular
 
