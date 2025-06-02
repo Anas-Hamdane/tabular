@@ -230,7 +230,7 @@ namespace tabular {
 
             /* -------------------Colors------------------------- */
 
-            Config& color(Color c, int column_index, Range range) {
+            Config& color(Color color, int column_index, Range range) {
                 if (!validate_params(column_index, range))
                     return *this;
 
@@ -238,19 +238,19 @@ namespace tabular {
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row[column_index].config().color(c);
+                    row[column_index].config().color(color);
                 }
 
                 return *this;
             }
 
-            Config& color(Color c, int column_index) {
-                return color(c, column_index, Range(0, table.rows.size() - 1));
+            Config& color(Color col, int column_index) {
+                return color(col, column_index, Range(0, table.rows.size() - 1));
             }
 
-            Config& color(Color c) {
+            Config& color(Color color) {
                 for (Row& row : table.rows)
-                    row.config().color(c);
+                    row.config().color(color);
 
                 return *this;
             }

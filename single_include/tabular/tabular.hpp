@@ -17,20 +17,22 @@
       -  [x] default padding
       -  [x] ANSI Support
       -  [x] Alignment support
-      -  [ ] terminal colors and highlights support
+      -  [x] terminal colors and 16 colors support
+      -  [x] terminal colors rgb support
       -  [x] terminal font styles support
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
+      -  [ ] sub string styling support [VEEEEEEEEEEEEERY HAAAAAAAAAAARD]
 */
 
 #include <algorithm>
 #include <climits>
+#include <cstdint>
 #include <list>
 #include <map>
 #include <ostream>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -110,6 +112,54 @@ namespace tabular {
         normal = 49,
     };
 
+    enum class Style {
+        bold = 1,
+        dim = 2,
+        italic = 3,
+
+        underline = 4,
+        double_underline = 21, // not popular
+
+        blink = 5,      // rarely supported
+        fast_blink = 6, // rarely supported
+        reverse = 7,
+        concealed = 8,
+        crossed = 9,
+    };
+
+    enum class ResetStyle {
+        bold = 22,
+        dim = 22,
+        italic = 23,
+
+        underline = 24,
+        double_underline = 24,
+
+        blink = 25,
+        fast_blink = 25,
+        reverse = 27,
+        concealed = 28,
+        crossed = 29
+    };
+
+    struct Border {
+        std::string vertical;
+        std::string horizontal;
+
+        std::string corner;
+        std::string bottom_right_corner;
+        std::string top_right_corner;
+        std::string top_left_corner;
+        std::string bottom_left_corner;
+
+        std::string middle_separator; // +
+
+        std::string left_to_right;
+        std::string right_to_left;
+        std::string bottom_to_top;
+        std::string top_to_bottom;
+    };
+
     typedef struct Range {
         int from;
         int to;
@@ -117,16 +167,22 @@ namespace tabular {
         Range(int from, int to) : from(from), to(to) {}
     } Range;
 
+    typedef struct RGB {
+        uint8_t r, g, b;
+
+        RGB(uint8_t r, uint8_t g, uint8_t b) : r(r), g(g), b(b) {}
+    } RGB;
+
     class Column {
-        std::vector<tabular::Font> font_styles;
-        BackgroundColor back_color;
-        Color for_color;
+        // styles applied to the whole content OR a specific sub string
+        std::string global_styles;
         std::vector<std::string> splitted_content;
         std::list<std::string> words;
         Alignment alignment;
         unsigned int width;
         unsigned int top_padding;
         unsigned int bottom_padding;
+        unsigned int special_characters;
 
         class Config {
             Column& column;
@@ -177,54 +233,76 @@ namespace tabular {
                 return *this;
             }
 
-            Config& add_font_style(std::vector<tabular::Font> styles) {
-                column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
+            // add text style to the whole column
+            Config& text_style(Style style) {
+                // style statement
+                std::string style_stt = CSI + std::to_string(static_cast<int>(style)) + "m";
+
+                column.global_styles += style_stt;
+
+                // later add special_characters of RESET in utils in the last element of splitted_content
                 return *this;
             }
 
-            // removing every element of font_styles exist in this->font_styles
-            Config& remove_font_style(std::vector<tabular::Font> styles) {
-                // better performance
-                std::unordered_set<Font> to_remove(styles.begin(), styles.end());
+            // add multiple text styles to the whole column
+            Config& text_style(const std::vector<Style>& styles) {
+                if (styles.empty()) return *this;
 
-                column.font_styles.erase(
-                    std::remove_if(
-                        column.font_styles.begin(),
-                        column.font_styles.end(),
+                // Apply all styles at the beginning
+                std::string styles_stt;
+                for (const auto& style : styles) {
+                    styles_stt += CSI + std::to_string(static_cast<int>(style)) + "m";
+                }
 
-                        [&to_remove](Font font_style) {
-                            return to_remove.find(font_style) != to_remove.end();
-                        }),
-
-                    column.font_styles.end());
-
-                return *this;
-            }
-
-            // adding a font style
-            Config& add_font_style(Font style) {
-                column.font_styles.push_back(style);
-                return *this;
-            }
-
-            // removing a font style
-            Config& remove_font_style(Font style) {
-                auto& fs = column.font_styles;
-
-                fs.erase(
-                    std::remove(fs.begin(), fs.end(), style),
-                    fs.end());
+                column.global_styles += styles_stt;
 
                 return *this;
             }
 
-            Config& background_color(BackgroundColor back_color) {
-                column.back_color = back_color;
+            // add Background Color to the whole column
+            Config& background_color(BackgroundColor color) {
+
+                // Background Color statement
+                std::string back_color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                column.global_styles += back_color_stt;
+
                 return *this;
             }
 
-            Config& color(Color for_color) {
-                column.for_color = for_color;
+            // add Color to the whole column
+            Config& color(Color color) {
+
+                // Color statement
+                std::string color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                column.global_styles += color_stt;
+
+                return *this;
+            }
+
+            // add RGB to the whole column
+            Config& rgb(RGB rgb) {
+
+                // RGB statement
+                std::string rgb_stt = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                      std::to_string(rgb.g) + ";" +
+                                      std::to_string(rgb.b) + "m";
+
+                column.global_styles += rgb_stt;
+                return *this;
+            }
+
+            // add background RGB to the whole column
+            Config& background_rgb(RGB rgb) {
+
+                // RGB statement
+                std::string back_rgb_stt = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                           std::to_string(rgb.g) + ";" +
+                                           std::to_string(rgb.b) + "m";
+
+                column.global_styles += back_rgb_stt;
+
                 return *this;
             }
         };
@@ -243,15 +321,13 @@ namespace tabular {
 
             unsigned int bottom_padding() { return column.bottom_padding; }
 
-            std::vector<std::string> splitted_content() { return column.splitted_content; }
+            unsigned int special_characters() { return column.special_characters; }
 
-            std::vector<tabular::Font> font_styles() { return column.font_styles; }
+            std::vector<std::string> splitted_content() { return column.splitted_content; }
 
             std::list<std::string> words() { return column.words; }
 
-            BackgroundColor background_color() { return column.back_color; }
-
-            Color foreground_color() { return column.for_color; }
+            std::string global_styles() { return column.global_styles; }
         };
 
         class Setters {
@@ -284,7 +360,7 @@ namespace tabular {
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0), back_color(BackgroundColor::normal), for_color(Color::normal) {};
+            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0), special_characters(0) {};
 
         Config config() { return Config(*this); }
 
@@ -332,30 +408,16 @@ namespace tabular {
                 return *this;
             }
 
-            Config& add_font_style(const std::vector<tabular::Font>& styles) {
-                for (Column& column : row.columns)
-                    column.config().add_font_style(styles);
-
-                return *this;
-            }
-
-            Config& remove_font_style(const std::vector<tabular::Font>& styles) {
+            Config& color(Color c) {
                 for (Column& col : row.columns)
-                    col.config().remove_font_style(styles);
+                    col.config().color(c);
 
                 return *this;
             }
 
-            Config& add_font_style(const Font& style) {
-                for (Column& column : row.columns)
-                    column.config().add_font_style(style);
-
-                return *this;
-            }
-
-            Config& remove_font_style(const Font& style) {
+            Config& background_color(BackgroundColor back_color) {
                 for (Column& col : row.columns)
-                    col.config().remove_font_style(style);
+                    col.config().background_color(back_color);
 
                 return *this;
             }
@@ -388,25 +450,7 @@ namespace tabular {
         }
     };
 
-    namespace style {
-        struct Border {
-            std::string vertical;
-            std::string horizontal;
-
-            std::string corner;
-            std::string bottom_right_corner;
-            std::string top_right_corner;
-            std::string top_left_corner;
-            std::string bottom_left_corner;
-
-            std::string middle_separator; // +
-
-            std::string left_to_right;
-            std::string right_to_left;
-            std::string bottom_to_top;
-            std::string top_to_bottom;
-        };
-
+    namespace maps {
         static Border get_border_template(BorderStyle borderStyle) {
             static std::map<BorderStyle, Border> templates{
                 {BorderStyle::empty, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
@@ -427,7 +471,23 @@ namespace tabular {
                                     }}};
             return templates[borderStyle];
         }
-    }; // namespace style
+
+        static ResetStyle get_style_reset(Style style) {
+            static std::map<Style, ResetStyle> reset{
+                {Style::bold, ResetStyle::bold},
+                {Style::dim, ResetStyle::dim},
+                {Style::italic, ResetStyle::italic},
+                {Style::underline, ResetStyle::underline},
+                {Style::double_underline, ResetStyle::double_underline},
+                {Style::blink, ResetStyle::blink},
+                {Style::fast_blink, ResetStyle::fast_blink},
+                {Style::reverse, ResetStyle::reverse},
+                {Style::concealed, ResetStyle::concealed},
+                {Style::crossed, ResetStyle::crossed}};
+
+            return reset[style];
+        }
+    }; // namespace maps
 
     namespace utils {
 
@@ -525,12 +585,11 @@ namespace tabular {
         }
 
         // note: add_spaces(line, 1); for space side
-        inline void set_content_align(std::string& line, std::string sub, int usable_width, Column column) {
+        inline void append_and_clear(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
+            std::string line;
             Alignment align = column.get().alignment();
-            auto font_styles = column.get().font_styles();
-            BackgroundColor back_color = column.get().background_color();
-            Color for_color = column.get().foreground_color();
 
+            // auto horizontal padding of 1
             if (line.empty())
                 add_spaces(line, 1);
 
@@ -544,30 +603,17 @@ namespace tabular {
 
             add_spaces(line, start);
 
-            bool is_empty = font_styles.empty();
-            if (!is_empty) {
-                for (Font font_style : font_styles)
-                    line.append(CSI + std::to_string(static_cast<int>(font_style)) + "m");
-            }
-            if (back_color != BackgroundColor::normal)
-                line.append(CSI + std::to_string(static_cast<int>(back_color)) + "m");
-            if (for_color != Color::normal)
-                line.append(CSI + std::to_string(static_cast<int>(for_color)) + "m");
+            std::string global_styles = column.get().global_styles();
+            if (!global_styles.empty())
+                line.append(global_styles);
 
             line.append(sub);
 
-            if (!is_empty || back_color != BackgroundColor::normal || for_color != Color::normal)
+            if (!global_styles.empty())
                 line.append(RESET);
 
+            // auto horizontal padding
             add_spaces(line, 1);
-        }
-
-        inline void append_and_clear(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
-            Alignment col_align = column.get().alignment();
-            auto font_styles = column.get().font_styles();
-            std::string line;
-
-            set_content_align(line, sub, usable_width, column);
 
             result.push_back(line);
 
@@ -575,31 +621,31 @@ namespace tabular {
         }
 
         inline std::vector<std::string> prepare_col_content(Column& column, int max_width) {
-            std::string str = column.content;
-            Alignment col_align = column.get().alignment();
+            std::string content = column.content;
             unsigned int top_padding = column.get().top_padding();
             unsigned int bottom_padding = column.get().bottom_padding();
 
             // which width to use
             if (column.get().width() != 0) max_width = column.get().width();
 
-            if (str.empty() || max_width == 0)
+            if (content.empty() || max_width == 0)
                 return std::vector<std::string>();
 
             // split the content into words to easily manipulate it
-            auto words = split_text(str);
+            auto words = split_text(content);
 
             // the return result
             std::vector<std::string> result;
-
-            auto font_styles = column.get().font_styles();
 
             // TOP padding
             for (unsigned int i = 0; i < top_padding; i++)
                 result.push_back(std::string());
 
-            const int usable_width = (max_width - 2);                           // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
-            const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT); // don't go back more than 30% when the last word is too long
+            // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
+            const int usable_width = (max_width - 2);
+
+            // don't go back more than 30% when the last word is too long
+            const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT);
 
             std::string sub;
             for (auto it = words.begin(); it != words.end(); ++it) {
@@ -610,9 +656,6 @@ namespace tabular {
                     append_and_clear(result, sub, usable_width, column);
                     continue;
                 }
-
-                // if (!sub.empty())
-                //     sub += ' ';
 
                 // we need split
                 if ((sub.size() + word.size()) > usable_width) {
@@ -627,7 +670,7 @@ namespace tabular {
                         std::string remaining = word.substr(diff - 1);
                         words.insert(std::next(it), remaining);
                     } else {
-                        sub.pop_back(); // pop the space added previously
+                        sub.pop_back(); // pop the space added previously which is a word itself
                         append_and_clear(result, sub, usable_width, column);
                         --it;
                     }
@@ -702,7 +745,7 @@ namespace tabular {
 
     class Table {
         BorderStyle border_style;
-        style::Border border_templates;
+        Border border_templates;
         unsigned int width; // for width we check if it is bigger than the terminal width so no problem
         bool forced_width;
         bool force_ansi;
@@ -893,9 +936,9 @@ namespace tabular {
                 return columns_width(width, column_index, Range(0, table.rows.size() - 1));
             }
 
-            /* -----------------ADD FONT STYLES--------------------- */
+            /* -------------------Colors------------------------- */
 
-            Config& add_font_styles(std::vector<tabular::Font> styles, int column_index, Range range) {
+            Config& color(Color c, int column_index, Range range) {
                 if (!validate_params(column_index, range))
                     return *this;
 
@@ -903,27 +946,26 @@ namespace tabular {
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[column_index].config().add_font_style(styles);
+                    row[column_index].config().color(c);
                 }
 
                 return *this;
             }
 
-            Config& add_font_styles(std::vector<tabular::Font> styles, int column_index) {
-                return add_font_styles(styles, column_index,
-                                       Range(0, table.rows.size() - 1));
+            Config& color(Color c, int column_index) {
+                return color(c, column_index, Range(0, table.rows.size() - 1));
             }
 
-            Config& add_font_styles(std::vector<tabular::Font> styles) {
+            Config& color(Color c) {
                 for (Row& row : table.rows)
-                    row.config().add_font_style(styles);
+                    row.config().color(c);
 
                 return *this;
             }
 
-            /* -----------------REMOVE FONT STYLES--------------------- */
+            /* ---------------Background Colors--------------------- */
 
-            Config& remove_font_styles(const std::vector<tabular::Font>& styles, int column_index, Range range) {
+            Config& background_color(BackgroundColor back_color, int column_index, Range range) {
                 if (!validate_params(column_index, range))
                     return *this;
 
@@ -931,19 +973,19 @@ namespace tabular {
 
                 for (int i = range.from; i <= range.to; i++) {
                     Row& row = table.rows[i];
-                    row.columns[column_index].config().remove_font_style(styles);
+                    row[column_index].config().background_color(back_color);
                 }
 
                 return *this;
             }
 
-            Config& remove_font_styles(const std::vector<tabular::Font>& styles, int column_index) {
-                return remove_font_styles(styles, column_index, Range(0, table.rows.size() - 1));
+            Config& background_color(BackgroundColor back_color, int column_index) {
+                return background_color(back_color, column_index, Range(0, table.rows.size() - 1));
             }
 
-            Config& remove_font_styles(const std::vector<tabular::Font>& styles) {
+            Config& background_color(BackgroundColor back_color) {
                 for (Row& row : table.rows)
-                    row.config().remove_font_style(styles);
+                    row.config().background_color(back_color);
 
                 return *this;
             }
@@ -1090,20 +1132,15 @@ namespace tabular {
                         current_line = column.get().splitted_content().at(i);
                         stream << current_line;
 
-                        int special_characters = 0;
-                        auto font_styles = column.get().font_styles();
-                        BackgroundColor back_color = column.get().background_color();
-                        Color for_color = column.get().foreground_color();
+                        int special_characters = column.get().special_characters();
+                        std::string global_styles = column.get().global_styles();
 
-                        if (!font_styles.empty() || back_color != BackgroundColor::normal || for_color != Color::normal)
-                            special_characters += 4; // 4 Characters for RESET macro
-
-                        if (!font_styles.empty())
-                            special_characters += (font_styles.size() * 4); // (font_styles.size() * 4) = (font_styles.size() * 2) + (font_styles.size() * 2), means 2 characters for each font_style + 2 characters for CSI for each font_style
-                        if (back_color != BackgroundColor::normal)
-                            special_characters += 5; // 2 for background_color code "3X" and 1 for 'm' and 2 for CSI macro
-                        if (for_color != Color::normal)
-                            special_characters += 5;                      // 2 for foreground_color code "4X" and 1 for 'm' and 2 for CSI macro
+                        // for each splitted_content element has a one/more global_styles it has one RESET at the end
+                        if (!global_styles.empty()) {
+                            std::string reset = RESET;
+                            special_characters += reset.size();
+                            special_characters += global_styles.size();
+                        }
                         rest -= current_line.size() - special_characters; // to balance the line
                     }
 
@@ -1280,8 +1317,8 @@ namespace tabular {
                 if (!utils::check_terminal() && !force_ansi)
                     border_style = BorderStyle::standard;
 
-            style::Border templates = border_templates;
-            border_templates = style::get_border_template(border_style);
+            Border templates = border_templates;
+            border_templates = maps::get_border_template(border_style);
 
             if (!templates.corner.empty()) border_templates.corner = templates.corner;
             if (!templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;

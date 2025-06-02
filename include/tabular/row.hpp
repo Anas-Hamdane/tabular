@@ -58,20 +58,19 @@ namespace tabular {
                 return *this;
             }
 
-            Config& color(Color c) {
+            Config& color(Color color) {
                 for (Column& col : row.columns)
-                    col.config().color(c);
+                    col.config().color(color);
 
                 return *this;
             }
-        
+
             Config& background_color(BackgroundColor back_color) {
                 for (Column& col : row.columns)
                     col.config().background_color(back_color);
 
                 return *this;
             }
-        
         };
 
     public:
