@@ -42,6 +42,9 @@
 
 // Control sequence introducer (for font styles and colors)
 #define CSI "\x1b["
+
 #define RESET "\x1b[0m"
+#define FG_COLOR_RESET "\x1b[39m"
+#define BG_COLOR_RESET "\x1b[49m"
 
 #endif // TABULAR_GL_VARS_HPP

@@ -14,29 +14,28 @@
 #ifndef TABULAR_COLUMN_HPP
 #define TABULAR_COLUMN_HPP
 
-#include <algorithm>
-#include <unordered_set>
-#include <vector>
 #include <list>
-
-#include <tabular/definitions.hpp>
-#include <tabular/font_style.hpp>
-#include <tabular/colors.hpp>
+#include <vector>
 
 #include <tabular/alignment.hpp>
-#include <tabular/style.hpp>
+#include <tabular/colors.hpp>
+#include <tabular/definitions.hpp>
+#include <tabular/rgb.hpp>
+#include <tabular/styles.hpp>
+
+#include <tabular/maps.hpp>
 
 namespace tabular {
     class Column {
-        std::vector<tabular::Font> font_styles;
-        BackgroundColor back_color;
-        Color for_color;
+        // styles applied to the whole content OR a specific sub string
+        std::string global_styles;
         std::vector<std::string> splitted_content;
         std::list<std::string> words;
         Alignment alignment;
         unsigned int width;
         unsigned int top_padding;
         unsigned int bottom_padding;
+        unsigned int special_characters;
 
         class Config {
             Column& column;
@@ -87,54 +86,76 @@ namespace tabular {
                 return *this;
             }
 
-            Config& add_font_style(std::vector<tabular::Font> styles) {
-                column.font_styles.insert(column.font_styles.begin(), styles.begin(), styles.end());
+            // add text style to the whole column
+            Config& text_style(Style style) {
+                // style statement
+                std::string style_stt = CSI + std::to_string(static_cast<int>(style)) + "m";
+
+                column.global_styles += style_stt;
+
+                // later add special_characters of RESET in utils in the last element of splitted_content
                 return *this;
             }
 
-            // removing every element of font_styles exist in this->font_styles
-            Config& remove_font_style(std::vector<tabular::Font> styles) {
-                // better performance
-                std::unordered_set<Font> to_remove(styles.begin(), styles.end());
+            // add multiple text styles to the whole column
+            Config& text_style(const std::vector<Style>& styles) {
+                if (styles.empty()) return *this;
 
-                column.font_styles.erase(
-                    std::remove_if(
-                        column.font_styles.begin(),
-                        column.font_styles.end(),
+                // Apply all styles at the beginning
+                std::string styles_stt;
+                for (const auto& style : styles) {
+                    styles_stt += CSI + std::to_string(static_cast<int>(style)) + "m";
+                }
 
-                        [&to_remove](Font font_style) {
-                            return to_remove.find(font_style) != to_remove.end();
-                        }),
-
-                    column.font_styles.end());
-
-                return *this;
-            }
-
-            // adding a font style
-            Config& add_font_style(Font style) {
-                column.font_styles.push_back(style);
-                return *this;
-            }
-
-            // removing a font style
-            Config& remove_font_style(Font style) {
-                auto& fs = column.font_styles;
-
-                fs.erase(
-                    std::remove(fs.begin(), fs.end(), style),
-                    fs.end());
+                column.global_styles += styles_stt;
 
                 return *this;
             }
 
-            Config& background_color(BackgroundColor back_color) {
-                column.back_color = back_color;
+            // add Background Color to the whole column
+            Config& background_color(BackgroundColor color) {
+
+                // Background Color statement
+                std::string back_color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                column.global_styles += back_color_stt;
+
                 return *this;
             }
 
-            Config& color(Color for_color) {
-                column.for_color = for_color;
+            // add Color to the whole column
+            Config& color(Color color) {
+
+                // Color statement
+                std::string color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                column.global_styles += color_stt;
+
+                return *this;
+            }
+
+            // add RGB to the whole column
+            Config& rgb(RGB rgb) {
+
+                // RGB statement
+                std::string rgb_stt = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                      std::to_string(rgb.g) + ";" +
+                                      std::to_string(rgb.b) + "m";
+
+                column.global_styles += rgb_stt;
+                return *this;
+            }
+
+            // add background RGB to the whole column
+            Config& background_rgb(RGB rgb) {
+
+                // RGB statement
+                std::string back_rgb_stt = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                           std::to_string(rgb.g) + ";" +
+                                           std::to_string(rgb.b) + "m";
+
+                column.global_styles += back_rgb_stt;
+
                 return *this;
             }
         };
@@ -153,15 +174,13 @@ namespace tabular {
 
             unsigned int bottom_padding() { return column.bottom_padding; }
 
-            std::vector<std::string> splitted_content() { return column.splitted_content; }
+            unsigned int special_characters() { return column.special_characters; }
 
-            std::vector<tabular::Font> font_styles() { return column.font_styles; }
+            std::vector<std::string> splitted_content() { return column.splitted_content; }
 
             std::list<std::string> words() { return column.words; }
 
-            BackgroundColor background_color() { return column.back_color; }
-
-            Color foreground_color() { return column.for_color; }
+            std::string global_styles() { return column.global_styles; }
         };
 
         class Setters {
@@ -194,7 +213,7 @@ namespace tabular {
         std::string content;
 
         Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0), back_color(BackgroundColor::normal), for_color(Color::normal) {};
+            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0), special_characters(0) {};
 
         Config config() { return Config(*this); }
 

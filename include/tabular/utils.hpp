@@ -85,7 +85,7 @@ namespace tabular {
         }
 
         // split by words AND save '\n' as a word too
-        inline std::list<std::string>split_text(std::string str) {
+        inline std::list<std::string> split_text(std::string str) {
             std::list<std::string> result;
 
             size_t str_size = str.size();
@@ -114,12 +114,11 @@ namespace tabular {
         }
 
         // note: add_spaces(line, 1); for space side
-        inline void set_content_align(std::string& line, std::string sub, int usable_width, Column column) {
+        inline void append_and_clear(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
+            std::string line;
             Alignment align = column.get().alignment();
-            auto font_styles = column.get().font_styles();
-            BackgroundColor back_color = column.get().background_color();
-            Color for_color = column.get().foreground_color();
 
+            // auto horizontal padding of 1
             if (line.empty())
                 add_spaces(line, 1);
 
@@ -133,30 +132,17 @@ namespace tabular {
 
             add_spaces(line, start);
 
-            bool is_empty = font_styles.empty();
-            if (!is_empty) {
-                for (Font font_style : font_styles)
-                    line.append(CSI + std::to_string(static_cast<int>(font_style)) + "m");
-            }
-            if (back_color != BackgroundColor::normal)
-                line.append(CSI + std::to_string(static_cast<int>(back_color)) + "m");
-            if (for_color != Color::normal)
-                line.append(CSI + std::to_string(static_cast<int>(for_color)) + "m" );
+            std::string global_styles = column.get().global_styles();
+            if (!global_styles.empty())
+                line.append(global_styles);
 
             line.append(sub);
 
-            if (!is_empty || back_color != BackgroundColor::normal || for_color != Color::normal)
+            if (!global_styles.empty())
                 line.append(RESET);
 
+            // auto horizontal padding
             add_spaces(line, 1);
-        }
-
-        inline void append_and_clear(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
-            Alignment col_align = column.get().alignment();
-            auto font_styles = column.get().font_styles();
-            std::string line;
-
-            set_content_align(line, sub, usable_width, column);
 
             result.push_back(line);
 
@@ -164,31 +150,31 @@ namespace tabular {
         }
 
         inline std::vector<std::string> prepare_col_content(Column& column, int max_width) {
-            std::string str = column.content;
-            Alignment col_align = column.get().alignment();
+            std::string content = column.content;
             unsigned int top_padding = column.get().top_padding();
             unsigned int bottom_padding = column.get().bottom_padding();
 
             // which width to use
             if (column.get().width() != 0) max_width = column.get().width();
 
-            if (str.empty() || max_width == 0)
+            if (content.empty() || max_width == 0)
                 return std::vector<std::string>();
 
             // split the content into words to easily manipulate it
-            auto words = split_text(str);
+            auto words = split_text(content);
 
             // the return result
             std::vector<std::string> result;
-
-            auto font_styles = column.get().font_styles();
 
             // TOP padding
             for (unsigned int i = 0; i < top_padding; i++)
                 result.push_back(std::string());
 
-            const int usable_width = (max_width - 2); // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
-            const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT); // don't go back more than 30% when the last word is too long
+            // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
+            const int usable_width = (max_width - 2);
+
+            // don't go back more than 30% when the last word is too long
+            const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT);
 
             std::string sub;
             for (auto it = words.begin(); it != words.end(); ++it) {
@@ -199,9 +185,6 @@ namespace tabular {
                     append_and_clear(result, sub, usable_width, column);
                     continue;
                 }
-
-                // if (!sub.empty())
-                //     sub += ' ';
 
                 // we need split
                 if ((sub.size() + word.size()) > usable_width) {
@@ -216,7 +199,7 @@ namespace tabular {
                         std::string remaining = word.substr(diff - 1);
                         words.insert(std::next(it), remaining);
                     } else {
-                        sub.pop_back(); // pop the space added previously
+                        sub.pop_back(); // pop the space added previously which is a word itself
                         append_and_clear(result, sub, usable_width, column);
                         --it;
                     }

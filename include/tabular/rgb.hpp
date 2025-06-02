@@ -11,20 +11,17 @@
 
 */
 
-#ifndef TABULAR_FONT_STYLE_HPP
-#define TABULAR_FONT_STYLE_HPP
+#ifndef TABULAR_RGB_HPP
+#define TABULAR_RGB_HPP
+
+#include <cstdint>
 
 namespace tabular {
-    enum class Font {
-        bold = 1,
-        dim,
-        italic,
-        underline,
-        blink, // rarely supported
-        reverse = 7,
-        concealed,
-        crossed
-    };
-}
+    typedef struct RGB {
+        uint8_t r, g, b;
 
-#endif // TABULAR_FONT_STYLE_HPP
+        RGB(uint8_t r, uint8_t g, uint8_t b) : r(r), g(g), b(b) {}
+    } RGB;
+} // namespace tabular
+
+#endif // TABULAR_RGB_HPP

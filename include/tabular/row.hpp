@@ -58,33 +58,20 @@ namespace tabular {
                 return *this;
             }
 
-            Config& add_font_style(const std::vector<tabular::Font>& styles) {
-                for (Column& column : row.columns)
-                    column.config().add_font_style(styles);
-
-                return *this;
-            }
-
-            Config& remove_font_style(const std::vector<tabular::Font>& styles) {
+            Config& color(Color c) {
                 for (Column& col : row.columns)
-                    col.config().remove_font_style(styles);
+                    col.config().color(c);
 
                 return *this;
             }
-
-            Config& add_font_style(const Font& style) {
-                for (Column& column : row.columns)
-                    column.config().add_font_style(style);
-
-                return *this;
-            }
-
-            Config& remove_font_style(const Font& style) {
+        
+            Config& background_color(BackgroundColor back_color) {
                 for (Column& col : row.columns)
-                    col.config().remove_font_style(style);
+                    col.config().background_color(back_color);
 
                 return *this;
             }
+        
         };
 
     public:

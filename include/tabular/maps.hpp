@@ -11,35 +11,18 @@
 
 */
 
-#ifndef TABULAR_STYLE_HPP
-#define TABULAR_STYLE_HPP
+#ifndef TABULAR_MAPS_HPP
+#define TABULAR_MAPS_HPP
 
 #include <map>
-#include <string>
 
-#include <tabular/definitions.hpp>
+#include <tabular/border.hpp>
 #include <tabular/border_style.hpp>
+#include <tabular/definitions.hpp>
+#include <tabular/styles.hpp>
 
 namespace tabular {
-    namespace style {
-        struct Border {
-            std::string vertical;
-            std::string horizontal;
-
-            std::string corner;
-            std::string bottom_right_corner;
-            std::string top_right_corner;
-            std::string top_left_corner;
-            std::string bottom_left_corner;
-
-            std::string middle_separator; // +
-
-            std::string left_to_right;
-            std::string right_to_left;
-            std::string bottom_to_top;
-            std::string top_to_bottom;
-        };
-
+    namespace maps {
         static Border get_border_template(BorderStyle borderStyle) {
             static std::map<BorderStyle, Border> templates{
                 {BorderStyle::empty, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
@@ -60,7 +43,23 @@ namespace tabular {
                                     }}};
             return templates[borderStyle];
         }
-    }; // namespace style
+
+        static ResetStyle get_style_reset(Style style) {
+            static std::map<Style, ResetStyle> reset{
+                {Style::bold, ResetStyle::bold},
+                {Style::dim, ResetStyle::dim},
+                {Style::italic, ResetStyle::italic},
+                {Style::underline, ResetStyle::underline},
+                {Style::double_underline, ResetStyle::double_underline},
+                {Style::blink, ResetStyle::blink},
+                {Style::fast_blink, ResetStyle::fast_blink},
+                {Style::reverse, ResetStyle::reverse},
+                {Style::concealed, ResetStyle::concealed},
+                {Style::crossed, ResetStyle::crossed}};
+
+            return reset[style];
+        }
+    }; // namespace maps
 } // namespace tabular
 
-#endif // TABULAR_STYLE_HPP
+#endif // TABULAR_MAPS_HPP
