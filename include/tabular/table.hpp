@@ -32,7 +32,6 @@
 #include <vector>
 
 // those include all headers
-#include <tabular/range.hpp>
 #include <tabular/utils.hpp>
 
 namespace tabular {
@@ -232,7 +231,6 @@ namespace tabular {
             }
 
             /* -----------------BORDER PARTS--------------------- */
-
             Config& corner(char corner) {
                 table.border_templates.corner = corner;
                 return *this;
@@ -350,13 +348,7 @@ namespace tabular {
             return result;
         }
 
-        void print_row(std::ostream& stream, Row& row, int width_reference) {
-            if (width_reference != 0) {
-                // tableSplits = (row.columns.size() + 1)
-                unsigned int usable_width = width_reference - (row.columns.size() + 1);
-                utils::format_row(usable_width, row);
-            }
-
+        void print_row(std::ostream& stream, Row& row) {
             std::string vertical = border_templates.vertical;
 
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
@@ -459,8 +451,6 @@ namespace tabular {
                 Column column = reference.columns[j];
                 unsigned col_width = column.get().width();
 
-                // tracker++;
-
                 for (unsigned int k = 0; k < col_width; k++) {
                     tracker++;
 
@@ -485,14 +475,40 @@ namespace tabular {
             stream << right_corner;
         }
 
-        unsigned int find_max_rows_width() {
-            unsigned int result = 0;
-            for (Row row : rows) {
-                unsigned int row_width = row.get_full_row_width();
-                if (row_width > result) result = row_width;
-            }
+        inline void adjust_widths(unsigned int table_width) {
+            if (table_width <= 0)
+                return;
 
-            return result;
+            for (Row& row : this->rows) {
+                size_t columns_num = row.columns.size();
+                if (columns_num == 0)
+                    continue;
+
+                unsigned int table_usable_width = table_width - (columns_num + 1);
+
+                for (Column& column : row.columns) {
+                    if (column.get().width() != 0) {
+                        table_usable_width -= column.get().width();
+                        columns_num--;
+                    }
+                }
+
+                int indiv_column_width = table_usable_width / columns_num;
+                int rest = table_usable_width % columns_num;
+
+                for (Column& column : row.columns) {
+                    unsigned int width = column.get().width();
+
+                    if (width == 0) {
+                        width = indiv_column_width + (rest > 0? 1 : 0);
+                        if (rest > 0) rest--;
+                        column.set().width(width);
+                    }
+
+                    /* no need because it is the work of format_row() :) */
+                    // column.set().splitted_content(utils::format_column_lines(column, width));
+                }
+            }
         }
 
     public:
@@ -516,23 +532,20 @@ namespace tabular {
         }
 
         /* Regularity means it has the same number of columns in each row */
-        bool is_regular(Range range) {
-            size_t reference = rows[range.from].columns.size();
+        bool is_regular() {
+            size_t reference = rows[0].columns.size();
+            size_t rows_num = rows.size();
 
-            for (int i = range.from + 1; i <= range.to; i++)
+            for (int i = 0; i < rows_num; i++)
                 if (rows[i].columns.size() != reference)
                     return false;
 
             return true;
         }
 
-        bool is_regular() {
-            return is_regular(Range(0, rows.size() - 1));
-        }
-
         // * return 2 for empty rows and 3 for terminal space problems
         int print(std::ostream& stream) {
-            if (rows.size() == 0)
+            if (rows.empty())
                 return 2;
 
             // chose width to use
@@ -548,12 +561,15 @@ namespace tabular {
                     usable_width = width;
             }
 
-            size_t cols_num;
-            size_t row_usable_width;
-            // edit rows to match the width
+            // check if the table has consistent number of columns across all rows
+            bool regular = is_regular();
+
+            // adjust the width of all columns once
+            adjust_widths(usable_width);
+
             for (Row& row : rows) {
-                cols_num = row.columns.size();
-                row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
+                size_t cols_num = row.columns.size();
+                size_t row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
 
                 if (row_usable_width <= cols_num)
                     return 3;
@@ -561,12 +577,8 @@ namespace tabular {
                 utils::format_row(row_usable_width, row);
             }
 
-            // check if the table has consistent number of columns across all rows
-            bool regular = is_regular();
-
-            if (border_style == BorderStyle::ANSI)
-                if (!utils::check_terminal() && !force_ansi)
-                    border_style = BorderStyle::standard;
+            if (border_style == BorderStyle::ANSI && !utils::check_terminal() && !force_ansi)
+                border_style = BorderStyle::standard;
 
             Border templates = border_templates;
             border_templates = maps::get_border_template(border_style);
@@ -585,14 +597,6 @@ namespace tabular {
             if (!templates.bottom_to_top.empty()) border_templates.bottom_to_top = templates.bottom_to_top;
 
             /* ------ printing the table ------- */
-
-            // 0 to check in print_row
-            unsigned int row_width_reference = regular ? 0 : find_max_rows_width();
-
-            if (!regular)
-                for (auto it = rows.begin(); it != rows.end(); ++it)
-                    utils::format_row(row_width_reference - (it->columns.size() + 1), *it);
-
             bool is_first = true, is_last = false;
             if (rows.size() == 1)
                 is_last = true;
@@ -604,7 +608,7 @@ namespace tabular {
             for (it = rows.begin(); it != rows.end(); ++it) {
                 Row& row = *it;
 
-                print_row(stream, row, row_width_reference);
+                print_row(stream, row);
 
                 if ((it + 1) == rows.end())
                     is_last = true;

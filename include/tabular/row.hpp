@@ -21,6 +21,7 @@
 namespace tabular {
     class Row {
         Alignment alignment;
+        unsigned int width;
 
         class Config {
             Row& row;
@@ -101,17 +102,6 @@ namespace tabular {
             : columns(columns), alignment(Alignment::left) {}
 
         Config config() { return Config(*this); }
-
-        int get_columns_number() { return columns.size(); }
-
-        unsigned int get_full_row_width() {
-            unsigned int width = columns.size() + 1;
-
-            for (Column column : columns)
-                width += column.get().width();
-
-            return width;
-        }
 
         Column& operator[](int index) {
             if (index >= this->columns.size() || index < 0)

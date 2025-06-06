@@ -527,13 +527,6 @@ namespace tabular {
         std::string top_to_bottom;
     };
 
-    typedef struct Range {
-        int from;
-        int to;
-
-        Range(int from, int to) : from(from), to(to) {}
-    } Range;
-
     typedef struct RGB {
         uint8_t r, g, b;
 
@@ -768,6 +761,7 @@ namespace tabular {
 
     class Row {
         Alignment alignment;
+        unsigned int width;
 
         class Config {
             Row& row;
@@ -848,17 +842,6 @@ namespace tabular {
             : columns(columns), alignment(Alignment::left) {}
 
         Config config() { return Config(*this); }
-
-        int get_columns_number() { return columns.size(); }
-
-        unsigned int get_full_row_width() {
-            unsigned int width = columns.size() + 1;
-
-            for (Column column : columns)
-                width += column.get().width();
-
-            return width;
-        }
 
         Column& operator[](int index) {
             if (index >= this->columns.size() || index < 0)
@@ -968,48 +951,39 @@ namespace tabular {
         }
         // clang-format on
 
-        inline void add_spaces(std::string& in, int spaces_num) {
-            for (int i = 0; i < spaces_num; i++)
-                in.append(" ");
-        }
-
-        // split by words AND save '\n' as a word too
-        inline std::list<std::string> split_text(std::string str) {
+        // split by words AND save both '\n' and ' ' as words too
+        inline std::list<std::string> split_text(const std::string& str) {
             std::list<std::string> result;
 
-            size_t str_size = str.size();
-            size_t prev_start = 0;
-            for (size_t i = 0; i < str_size; i++) {
-                if (str.at(i) == '\n') {
-                    if (i > prev_start)
-                        result.push_back(str.substr(prev_start, i - prev_start));
+            size_t start = 0;
+            const size_t len = str.size();
 
-                    result.push_back("\n");
-                    prev_start = i + 1;
-                } else if (str.at(i) == ' ') {
-                    if (i > prev_start)
-                        result.push_back(str.substr(prev_start, i - prev_start));
+            for (size_t i = 0; i < len; ++i) {
+                char ch = str[i];
 
-                    result.push_back(" ");
-                    prev_start = i + 1;
+                if (ch == ' ' || ch == '\n') {
+                    if (i > start)
+                        result.emplace_back(str.begin() + start, str.begin() + i);
+
+                    result.emplace_back(1, ch); // Push " " or "\n"
+                    start = i + 1;
                 }
             }
 
-            // Handles the last word if it exists
-            if (prev_start < str_size)
-                result.push_back(str.substr(prev_start));
+            if (start < len)
+                result.emplace_back(str.begin() + start, str.end());
 
             return result;
         }
 
-        // note: add_spaces(line, 1); for space side
-        inline void append_and_clear(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
+        // finalize line and push it
+        inline void commit_line(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
             std::string line;
             Alignment align = column.get().alignment();
 
             // auto horizontal padding of 1
             if (line.empty())
-                add_spaces(line, 1);
+                line.append(" ");
 
             int start;
             if (align == Alignment::center)
@@ -1019,7 +993,7 @@ namespace tabular {
             else
                 start = 0;
 
-            add_spaces(line, start);
+            line.append(start, ' ');
 
             std::string global_styles = column.get().global_styles();
             if (!global_styles.empty())
@@ -1031,23 +1005,21 @@ namespace tabular {
                 line.append(RESET);
 
             // auto horizontal padding
-            add_spaces(line, 1);
+            line.append(" ");
 
             result.push_back(line);
 
             sub.clear();
         }
 
-        inline std::vector<std::string> prepare_col_content(Column& column, int max_width) {
-            std::string content = column.content;
+        inline std::vector<std::string> format_column_lines(Column& column) {
+            const std::string& content = column.content;
+
+            if (content.empty())
+                return std::vector<std::string>();
+
             unsigned int top_padding = column.get().top_padding();
             unsigned int bottom_padding = column.get().bottom_padding();
-
-            // which width to use
-            if (column.get().width() != 0) max_width = column.get().width();
-
-            if (content.empty() || max_width == 0)
-                return std::vector<std::string>();
 
             // split the content into words to easily manipulate it
             auto words = split_text(content);
@@ -1056,13 +1028,12 @@ namespace tabular {
             std::vector<std::string> result;
 
             // TOP padding
-            for (unsigned int i = 0; i < top_padding; i++)
-                result.push_back(std::string());
+            result.insert(result.end(), top_padding, std::string());
 
             // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
-            const int usable_width = (max_width - 2);
+            const int usable_width = (column.get().width() - 2);
 
-            // don't go back more than 30% when the last word is too long
+            // don't go back more than 30%, when the last word is too long
             const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT);
 
             std::string sub;
@@ -1071,25 +1042,23 @@ namespace tabular {
 
                 // add existing content if we reach new line
                 if (word == "\n") {
-                    append_and_clear(result, sub, usable_width, column);
+                    commit_line(result, sub, usable_width, column);
                     continue;
                 }
 
                 // we need split
                 if ((sub.size() + word.size()) > usable_width) {
-                    int diff = usable_width - sub.size();
-                    if (diff > limit) {
-                        std::string part = word.substr(0, diff - 1);
-                        part += '-';
+                    int remaining_space = usable_width - sub.size();
+                    if (remaining_space > limit) {
+                        std::string part = word.substr(0, remaining_space - 1) + '-';
 
                         sub += part;
-                        append_and_clear(result, sub, usable_width, column);
+                        commit_line(result, sub, usable_width, column);
 
-                        std::string remaining = word.substr(diff - 1);
-                        words.insert(std::next(it), remaining);
+                        std::string remainder = word.substr(remaining_space - 1);
+                        words.insert(std::next(it), remainder);
                     } else {
-                        sub.pop_back(); // pop the space added previously which is a word itself
-                        append_and_clear(result, sub, usable_width, column);
+                        commit_line(result, sub, usable_width, column);
                         --it;
                     }
                 } else
@@ -1098,60 +1067,25 @@ namespace tabular {
 
             // any remaining words
             if (!sub.empty())
-                append_and_clear(result, sub, usable_width, column);
+                commit_line(result, sub, usable_width, column);
 
             // BOTTOM padding
-            for (unsigned int i = 0; i < bottom_padding; i++)
-                result.push_back(std::string());
+            result.insert(result.end(), bottom_padding, std::string());
 
             return result;
         }
 
         inline void format_row(unsigned int width, Row& row) {
-            if (row.columns.size() == 0)
-                return;
-
-            int cols_num = row.columns.size();
-            if (width <= 0 || cols_num <= 0)
-                return;
-
-            // for other columns width calculation we should decrease the specific ones
-            for (Column& column : row.columns) {
-                if (column.get().width() != 0) {
-                    width -= column.get().width();
-                    cols_num--;
-                }
-            }
-
-            int individual_col_width = 0;
-            int rest = 0;
-            if (cols_num > 0) {
-                individual_col_width = width / cols_num;
-                rest = width % cols_num;
-            }
-
-            for (Column& col : row.columns) {
-                if (col.get().width() != 0)
-                    col.set().splitted_content(prepare_col_content(col, col.get().width()));
-
-                else if (rest > 0) {
-                    col.set().splitted_content(prepare_col_content(col, individual_col_width + 1));
-
-                    col.set().width(individual_col_width + 1);
-                    rest--;
-                } else {
-                    col.set().splitted_content(prepare_col_content(col, individual_col_width));
-
-                    col.set().width(individual_col_width);
-                }
-            }
+            for (Column& column : row.columns)
+                column.set().splitted_content(
+                    format_column_lines(column));
         }
 
-        //   return the size of the tallest splittedContent vector
-        inline size_t find_max_splitted_content_size(Row row) {
+        // return the size of the tallest splittedContent vector
+        inline size_t find_max_splitted_content_size(const Row& row) {
             size_t result = 0;
-            for (Column col : row.columns) {
-                size_t splitted_content_size = col.get().splitted_content().size();
+            for (Column column : row.columns) {
+                size_t splitted_content_size = column.get().splitted_content().size();
                 if (splitted_content_size > result)
                     result = splitted_content_size;
             }
@@ -1159,6 +1093,7 @@ namespace tabular {
             return result;
         }
 
+        // multi byte string width
         inline size_t mbswidth(std::string str) {
             wchar_t* wstr = utf8stws(str.c_str());
             return ah_wcswidth(wstr, wcslen(wstr));
@@ -1361,7 +1296,6 @@ namespace tabular {
             }
 
             /* -----------------BORDER PARTS--------------------- */
-
             Config& corner(char corner) {
                 table.border_templates.corner = corner;
                 return *this;
@@ -1479,13 +1413,7 @@ namespace tabular {
             return result;
         }
 
-        void print_row(std::ostream& stream, Row& row, int width_reference) {
-            if (width_reference != 0) {
-                // tableSplits = (row.columns.size() + 1)
-                unsigned int usable_width = width_reference - (row.columns.size() + 1);
-                utils::format_row(usable_width, row);
-            }
-
+        void print_row(std::ostream& stream, Row& row) {
             std::string vertical = border_templates.vertical;
 
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
@@ -1588,8 +1516,6 @@ namespace tabular {
                 Column column = reference.columns[j];
                 unsigned col_width = column.get().width();
 
-                // tracker++;
-
                 for (unsigned int k = 0; k < col_width; k++) {
                     tracker++;
 
@@ -1614,14 +1540,40 @@ namespace tabular {
             stream << right_corner;
         }
 
-        unsigned int find_max_rows_width() {
-            unsigned int result = 0;
-            for (Row row : rows) {
-                unsigned int row_width = row.get_full_row_width();
-                if (row_width > result) result = row_width;
-            }
+        inline void adjust_widths(unsigned int table_width) {
+            if (table_width <= 0)
+                return;
 
-            return result;
+            for (Row& row : this->rows) {
+                size_t columns_num = row.columns.size();
+                if (columns_num == 0)
+                    continue;
+
+                unsigned int table_usable_width = table_width - (columns_num + 1);
+
+                for (Column& column : row.columns) {
+                    if (column.get().width() != 0) {
+                        table_usable_width -= column.get().width();
+                        columns_num--;
+                    }
+                }
+
+                int indiv_column_width = table_usable_width / columns_num;
+                int rest = table_usable_width % columns_num;
+
+                for (Column& column : row.columns) {
+                    unsigned int width = column.get().width();
+
+                    if (width == 0) {
+                        width = indiv_column_width + (rest > 0? 1 : 0);
+                        if (rest > 0) rest--;
+                        column.set().width(width);
+                    }
+
+                    /* no need because it is the work of format_row() :) */
+                    // column.set().splitted_content(utils::format_column_lines(column, width));
+                }
+            }
         }
 
     public:
@@ -1645,23 +1597,20 @@ namespace tabular {
         }
 
         /* Regularity means it has the same number of columns in each row */
-        bool is_regular(Range range) {
-            size_t reference = rows[range.from].columns.size();
+        bool is_regular() {
+            size_t reference = rows[0].columns.size();
+            size_t rows_num = rows.size();
 
-            for (int i = range.from + 1; i <= range.to; i++)
+            for (int i = 0; i < rows_num; i++)
                 if (rows[i].columns.size() != reference)
                     return false;
 
             return true;
         }
 
-        bool is_regular() {
-            return is_regular(Range(0, rows.size() - 1));
-        }
-
         // * return 2 for empty rows and 3 for terminal space problems
         int print(std::ostream& stream) {
-            if (rows.size() == 0)
+            if (rows.empty())
                 return 2;
 
             // chose width to use
@@ -1677,12 +1626,15 @@ namespace tabular {
                     usable_width = width;
             }
 
-            size_t cols_num;
-            size_t row_usable_width;
-            // edit rows to match the width
+            // check if the table has consistent number of columns across all rows
+            bool regular = is_regular();
+
+            // adjust the width of all columns once
+            adjust_widths(usable_width);
+
             for (Row& row : rows) {
-                cols_num = row.columns.size();
-                row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
+                size_t cols_num = row.columns.size();
+                size_t row_usable_width = usable_width - (cols_num + 1); // ... - tableSplits
 
                 if (row_usable_width <= cols_num)
                     return 3;
@@ -1690,12 +1642,8 @@ namespace tabular {
                 utils::format_row(row_usable_width, row);
             }
 
-            // check if the table has consistent number of columns across all rows
-            bool regular = is_regular();
-
-            if (border_style == BorderStyle::ANSI)
-                if (!utils::check_terminal() && !force_ansi)
-                    border_style = BorderStyle::standard;
+            if (border_style == BorderStyle::ANSI && !utils::check_terminal() && !force_ansi)
+                border_style = BorderStyle::standard;
 
             Border templates = border_templates;
             border_templates = maps::get_border_template(border_style);
@@ -1714,14 +1662,6 @@ namespace tabular {
             if (!templates.bottom_to_top.empty()) border_templates.bottom_to_top = templates.bottom_to_top;
 
             /* ------ printing the table ------- */
-
-            // 0 to check in print_row
-            unsigned int row_width_reference = regular ? 0 : find_max_rows_width();
-
-            if (!regular)
-                for (auto it = rows.begin(); it != rows.end(); ++it)
-                    utils::format_row(row_width_reference - (it->columns.size() + 1), *it);
-
             bool is_first = true, is_last = false;
             if (rows.size() == 1)
                 is_last = true;
@@ -1733,7 +1673,7 @@ namespace tabular {
             for (it = rows.begin(); it != rows.end(); ++it) {
                 Row& row = *it;
 
-                print_row(stream, row, row_width_reference);
+                print_row(stream, row);
 
                 if ((it + 1) == rows.end())
                     is_last = true;
