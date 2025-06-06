@@ -27,8 +27,9 @@
 
 namespace tabular {
     class Column {
-        // styles applied to the whole content OR a specific sub string
+        // styles applied to the whole content
         std::string global_styles;
+
         std::vector<std::string> splitted_content;
         std::list<std::string> words;
         Alignment alignment;
@@ -36,6 +37,7 @@ namespace tabular {
         unsigned int top_padding;
         unsigned int bottom_padding;
         unsigned int special_characters;
+        bool is_multi_byte;
 
         class Config {
             Column& column;
@@ -158,6 +160,12 @@ namespace tabular {
 
                 return *this;
             }
+
+            Config& multi_byte_chars(bool is_multi_byte) {
+                column.is_multi_byte = is_multi_byte;
+
+                return *this;
+            }
         };
 
         class Getters {
@@ -181,6 +189,8 @@ namespace tabular {
             std::list<std::string> words() { return column.words; }
 
             std::string global_styles() { return column.global_styles; }
+
+            bool is_multi_byte() { return column.is_multi_byte; }
         };
 
         class Setters {
@@ -209,11 +219,31 @@ namespace tabular {
             }
         };
 
+        inline bool isstrascii(std::string str) {
+            size_t len = str.length();
+            for (size_t i = 0; i < len; i++)
+                if (static_cast<unsigned char>(str[i]) > 127) return false;
+
+            return true;
+        }
+
     public:
         std::string content;
 
-        Column(std::string content)
-            : content(content), alignment(Alignment::left), width(0), top_padding(0), bottom_padding(0), special_characters(0) {};
+        // automatic check for multi byte characters
+        Column(std::string content) {
+            this->content = content;
+            alignment = Alignment::left;
+            width = 0;
+            top_padding = 0;
+            bottom_padding = 0;
+            special_characters = 0;
+
+            if (!isstrascii(content))
+                is_multi_byte = true;
+            else
+                is_multi_byte = false;
+        }
 
         Config config() { return Config(*this); }
 

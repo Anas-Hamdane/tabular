@@ -52,7 +52,11 @@ TEST(width_table_test, output_eq_expected) {
 
     table.set().forced_width(50, true);
  
-    table.config().columns_width(4, 0, Range(1, 5));
+    // doesn't work because the first row will be 4 width too:
+    // table.config().columns_width(4, 0);
+    
+    for (int i = 1; i < 6; i++)
+        table[i][0].config().width(4); 
 
     std::ostringstream out;
     out << table;

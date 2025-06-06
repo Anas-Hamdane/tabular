@@ -23,11 +23,12 @@
       -  [x] padding control
       -  [x] width control
       -  [x] range columns setters (functions)
+      -  [x] support for multi byte characters (automatic and manual)
       -  [ ] sub string styling support [VEEEEEEEEEEEEERY HAAAAAAAAAAARD]
 */
 
-#include <ostream>
 #include <algorithm>
+#include <ostream>
 #include <vector>
 
 // those include all headers
@@ -45,45 +46,19 @@ namespace tabular {
         class Config {
             Table& table;
 
-            bool validate_params(int column_index, const Range& range) const {
-                if (column_index < 0 || range.from < 0 || range.to < 0)
-                    return false;
-
-                return true;
-            }
-
-            Range normalize_range(Range range) {
-                Range result = range;
-                size_t rowsSize = table.rows.size();
-
-                if (result.to >= rowsSize)
-                    result.to = rowsSize - 1;
-
-                return result;
-            }
-
         public:
             Config(Table& table) : table(table) {}
 
             /* -----------------ALIGNMENT--------------------- */
-
-            Config& alignment(Alignment align, int column_index, Range range) {
-                if (!validate_params(column_index, range))
+            Config& alignment(Alignment align, int column) {
+                if (column < 0)
                     return *this;
 
-                range = normalize_range(range);
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().alignment(align);
 
-                for (int i = range.from; i <= range.to; i++) {
-                    Row& row = table.rows[i];
-                    row.columns[column_index].config().alignment(align);
-                }
-
-                return *this; // done (true)
-            }
-
-            Config& alignment(Alignment align, int column_index) {
-                return alignment(align, column_index,
-                                 Range(0, table.rows.size() - 1));
+                return *this;
             }
 
             Config& alignment(Alignment align) {
@@ -94,26 +69,15 @@ namespace tabular {
             }
 
             /* -----------------PADDING--------------------- */
-
-            Config& padding(int pad, int column_index, Range range) {
-                if (pad < 0)
-                    return *this; // Invalid padding
-
-                if (!validate_params(column_index, range))
+            Config& padding(int pad, int column) {
+                if (pad < 0 || column < 0)
                     return *this;
 
-                range = normalize_range(range);
-
-                for (int i = range.from; i <= range.to; i++) {
-                    Row& row = table.rows[i];
-                    row.columns[column_index].config().padding(pad);
-                }
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().padding(pad);
 
                 return *this;
-            }
-
-            Config& padding(int pad, int column_index) {
-                return padding(pad, column_index, Range(0, table.rows.size() - 1));
             }
 
             Config& padding(int pad) {
@@ -127,26 +91,15 @@ namespace tabular {
             }
 
             /* -----------------TOP_PADDING--------------------- */
-
-            Config& top_padding(int pad, int column_index, Range range) {
-                if (pad < 0)
-                    return *this; // Invalid padding
-
-                if (!validate_params(column_index, range))
+            Config& top_padding(int pad, int column) {
+                if (pad < 0 || column < 0)
                     return *this;
 
-                range = normalize_range(range);
-
-                for (int i = range.from; i <= range.to; i++) {
-                    Row& row = table.rows[i];
-                    row.columns[column_index].config().top_padding(pad);
-                }
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().top_padding(pad);
 
                 return *this;
-            }
-
-            Config& top_padding(int pad, int column_index) {
-                return top_padding(pad, column_index, Range(0, table.rows.size() - 1));
             }
 
             Config& top_padding(int pad) {
@@ -160,26 +113,15 @@ namespace tabular {
             }
 
             /* -----------------BOTTOM_PADDING--------------------- */
-
-            Config& bottom_padding(int pad, int column_index, Range range) {
-                if (pad < 0)
-                    return *this; // Invalid padding
-
-                if (!validate_params(column_index, range))
+            Config& bottom_padding(int pad, int column) {
+                if (pad < 0 || column < 0)
                     return *this;
 
-                range = normalize_range(range);
-
-                for (int i = range.from; i <= range.to; i++) {
-                    Row& row = table.rows[i];
-                    row.columns[column_index].config().bottom_padding(pad);
-                }
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().bottom_padding(pad);
 
                 return *this;
-            }
-
-            Config& bottom_padding(int pad, int column_index) {
-                return bottom_padding(pad, column_index, Range(0, table.rows.size() - 1));
             }
 
             Config& bottom_padding(int pad) {
@@ -193,7 +135,6 @@ namespace tabular {
             }
 
             /* -----------------WIDTH--------------------- */
-
             Config& table_width(int width) {
                 if (width <= 0)
                     return *this; // Invalid width
@@ -203,49 +144,27 @@ namespace tabular {
                 return *this;
             }
 
-            Config& columns_width(int width, int column_index, Range range) {
-                if (width < 0)
-                    return *this; // Invalid width
-
-                if (!validate_params(column_index, range))
+            Config& columns_width(int width, int column) {
+                if (width < 0 || column < 0)
                     return *this;
 
-                range = normalize_range(range);
-
-                // Check regularity
-                if (!table.is_regular(range))
-                    return *this;
-
-                for (int i = range.from; i <= range.to; i++) {
-                    Row& row = table.rows[i];
-                    row.columns[column_index].config().width(width);
-                }
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().width(width);
 
                 return *this;
-            }
-
-            Config& columns_width(int width, int column_index) {
-                return columns_width(width, column_index, Range(0, table.rows.size() - 1));
             }
 
             /* -------------------Colors------------------------- */
-
-            Config& color(Color color, int column_index, Range range) {
-                if (!validate_params(column_index, range))
+            Config& color(Color col, int column) {
+                if (column < 0)
                     return *this;
 
-                range = normalize_range(range);
-
-                for (int i = range.from; i <= range.to; i++) {
-                    Row& row = table.rows[i];
-                    row[column_index].config().color(color);
-                }
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().color(col);
 
                 return *this;
-            }
-
-            Config& color(Color col, int column_index) {
-                return color(col, column_index, Range(0, table.rows.size() - 1));
             }
 
             Config& color(Color color) {
@@ -256,28 +175,58 @@ namespace tabular {
             }
 
             /* ---------------Background Colors--------------------- */
-
-            Config& background_color(BackgroundColor back_color, int column_index, Range range) {
-                if (!validate_params(column_index, range))
+            Config& background_color(BackgroundColor back_color, int column) {
+                if (column < 0)
                     return *this;
 
-                range = normalize_range(range);
-
-                for (int i = range.from; i <= range.to; i++) {
-                    Row& row = table.rows[i];
-                    row[column_index].config().background_color(back_color);
-                }
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().background_color(back_color);
 
                 return *this;
-            }
-
-            Config& background_color(BackgroundColor back_color, int column_index) {
-                return background_color(back_color, column_index, Range(0, table.rows.size() - 1));
             }
 
             Config& background_color(BackgroundColor back_color) {
                 for (Row& row : table.rows)
                     row.config().background_color(back_color);
+
+                return *this;
+            }
+
+            /* -------------------RGB------------------------- */
+            Config& rgb(RGB rgb, int column) {
+                if (column < 0)
+                    return *this;
+
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().rgb(rgb);
+
+                return *this;
+            }
+
+            Config& rgb(RGB rgb) {
+                for (Row& row : table.rows)
+                    row.config().rgb(rgb);
+
+                return *this;
+            }
+
+            /* ---------------Background RGB--------------------- */
+            Config& background_rgb(RGB back_rgb, int column) {
+                if (column < 0)
+                    return *this;
+
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().background_rgb(back_rgb);
+
+                return *this;
+            }
+
+            Config& background_rgb(RGB back_rgb) {
+                for (Row& row : table.rows)
+                    row.config().background_rgb(back_rgb);
 
                 return *this;
             }
@@ -412,9 +361,11 @@ namespace tabular {
 
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
+                // side border
                 stream << '\n'
                        << vertical;
 
+                // printing the n element of splitted_content for each column
                 for (Column column : row.columns) {
                     int rest = column.get().width();
                     int splitted_content_size = column.get().splitted_content().size();
@@ -427,13 +378,21 @@ namespace tabular {
                         int special_characters = column.get().special_characters();
                         std::string global_styles = column.get().global_styles();
 
-                        // for each splitted_content element has a one/more global_styles it has one RESET at the end
+                        // for each splitted_content element has a one or more global_styles, it has one RESET at the end
                         if (!global_styles.empty()) {
                             std::string reset = RESET;
                             special_characters += reset.size();
                             special_characters += global_styles.size();
                         }
-                        rest -= current_line.size() - special_characters; // to balance the line
+
+                        size_t curr_line_size;
+
+                        if (column.get().is_multi_byte())
+                            curr_line_size = utils::mbswidth(current_line);
+                        else
+                            curr_line_size = current_line.size();
+
+                        rest -= curr_line_size - special_characters; // to balance the line
                     }
 
                     for (int k = 0; k < rest; k++)

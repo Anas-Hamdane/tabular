@@ -9,7 +9,7 @@
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
 
-    * EXAMPLE of aligning table content
+    * EXAMPLE of using multi byte characters in a table
 */
 
 #include <tabular/table.hpp>
@@ -21,16 +21,10 @@ int main() {
     using namespace tabular;
 
     Table table;
-    table.add_row({"Countries Capitals"});
-    table.add_row({"Canada", "Ottawa"});
-    table.add_row({"Peru", "Lima"});
-    table.add_row({"United States", "Washington"});
-    table.add_row({"Brazil", "Brasilia"});
-
-    table.config().alignment(Alignment::left, 0);
-    table.config().alignment(Alignment::right, 1);
-
-    table[0].config().alignment(Alignment::center);
+    table.add_row({"English", "Hello"});
+    table.add_row({"Korean", "안녕하세요"});
+    table.add_row({"Japanese", "こんにちは"});
+    table.add_row({"Russian", "Привет"});
 
     // for testing because "ninja" change the output stream of the program
     table.set().forced_width(60, true);

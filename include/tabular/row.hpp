@@ -71,6 +71,27 @@ namespace tabular {
 
                 return *this;
             }
+
+            Config& rgb(RGB rgb) {
+                for (Column& col : row.columns)
+                    col.config().rgb(rgb);
+
+                return *this;
+            }
+
+            Config& background_rgb(RGB background_rgb) {
+                for (Column& col : row.columns)
+                    col.config().background_rgb(background_rgb);
+
+                return *this;
+            }
+
+            Config& multi_byte_chars(bool is_multi_byte) {
+                for (Column& col : row.columns)
+                    col.config().multi_byte_chars(is_multi_byte);
+
+                return *this;
+            }
         };
 
     public:

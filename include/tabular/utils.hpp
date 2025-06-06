@@ -13,6 +13,8 @@
 
 #include <climits>
 #include <tabular/row.hpp>
+#include <utf8stows/utf8stws.hpp>
+#include <wcwidth/wcwidth.hpp>
 
 #ifndef TABULAR_UTILITIES_HPP
 #define TABULAR_UTILITIES_HPP
@@ -270,6 +272,10 @@ namespace tabular {
             return result;
         }
 
+        inline size_t mbswidth(std::string str) {
+            wchar_t* wstr = utf8stws(str.c_str());
+            return ah_wcswidth(wstr, wcslen(wstr));
+        }
     } // namespace utils
 } // namespace tabular
 
