@@ -81,8 +81,12 @@ inline wchar_t *utf8stws(const char *input) {
     uint32_t cp;
     int consumed;
 
-    if (!utf8_decode(&input[i], &cp, &consumed))
-      break;
+    // invalid utf8 sequence
+    if (!utf8_decode(&input[i], &cp, &consumed)) {
+        output[out_index++] = L'?';
+        i++; // skip one byte
+        continue;
+    }
 
     int written = 0;
     if (USE_UTF16)
