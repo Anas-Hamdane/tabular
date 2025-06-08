@@ -27,8 +27,15 @@
 
 namespace tabular {
     class Column {
-        // styles applied to the whole content
-        std::string global_styles;
+        // styles applied to the column content
+        std::string text_styles;
+
+        // column content coloring
+        std::string content_color;
+        std::string content_background_color;
+
+        // column coloring
+        std::string column_background_color;
 
         std::vector<std::string> splitted_content;
         std::list<std::string> words;
@@ -36,7 +43,6 @@ namespace tabular {
         unsigned int width;
         unsigned int top_padding;
         unsigned int bottom_padding;
-        unsigned int special_characters;
         bool is_multi_byte;
 
         class Config {
@@ -93,7 +99,7 @@ namespace tabular {
                 // style statement
                 std::string style_stt = CSI + std::to_string(static_cast<int>(style)) + "m";
 
-                column.global_styles += style_stt;
+                column.text_styles += style_stt;
 
                 // later add special_characters of RESET in utils in the last element of splitted_content
                 return *this;
@@ -104,65 +110,81 @@ namespace tabular {
                 if (styles.empty()) return *this;
 
                 // Apply all styles at the beginning
-                std::string styles_stt;
-                for (const auto& style : styles) {
-                    styles_stt += CSI + std::to_string(static_cast<int>(style)) + "m";
-                }
-
-                column.global_styles += styles_stt;
+                for (const auto& style : styles)
+                    column.text_styles += CSI + std::to_string(static_cast<int>(style)) + "m";
 
                 return *this;
             }
 
             // add Background Color to the whole column
-            Config& background_color(BackgroundColor color) {
+            Config& content_background_color(BackgroundColor color) {
+                if (!column.content_background_color.empty())
+                    column.content_background_color.clear();
 
-                // Background Color statement
-                std::string back_color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
-
-                column.global_styles += back_color_stt;
+                column.content_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
 
                 return *this;
             }
 
             // add Color to the whole column
             Config& color(Color color) {
+                if (!column.content_color.empty())
+                    column.content_color.clear();
 
-                // Color statement
-                std::string color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
-
-                column.global_styles += color_stt;
+                column.content_color = CSI + std::to_string(static_cast<int>(color)) + "m";
 
                 return *this;
             }
 
             // add RGB to the whole column
             Config& rgb(RGB rgb) {
+                if (!column.content_color.empty())
+                    column.content_color.clear();
 
-                // RGB statement
-                std::string rgb_stt = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                      std::to_string(rgb.g) + ";" +
-                                      std::to_string(rgb.b) + "m";
+                column.content_color = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                       std::to_string(rgb.g) + ";" +
+                                       std::to_string(rgb.b) + "m";
 
-                column.global_styles += rgb_stt;
                 return *this;
             }
 
             // add background RGB to the whole column
-            Config& background_rgb(RGB rgb) {
+            Config& content_background_rgb(RGB rgb) {
+                if (!column.content_background_color.empty())
+                    column.content_background_color.clear();
 
-                // RGB statement
-                std::string back_rgb_stt = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                           std::to_string(rgb.g) + ";" +
-                                           std::to_string(rgb.b) + "m";
-
-                column.global_styles += back_rgb_stt;
+                column.content_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                       std::to_string(rgb.g) + ";" +
+                                       std::to_string(rgb.b) + "m";
 
                 return *this;
             }
 
+            // multi byte characters support
+            // (locale-independent but only utf8 encoding is supported)
             Config& multi_byte_chars(bool is_multi_byte) {
                 column.is_multi_byte = is_multi_byte;
+
+                return *this;
+            }
+
+            // column background coloring
+            Config& column_background_color(BackgroundColor color) {
+                if (!column.column_background_color.empty())
+                    column.column_background_color.clear();
+
+                column.column_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Config& column_background_rgb(RGB rgb) {
+                if (!column.column_background_color.empty())
+                    column.column_background_color.clear();
+
+                column.column_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                      std::to_string(rgb.g) + ";" +
+                                      std::to_string(rgb.b) + "m";
 
                 return *this;
             }
@@ -182,13 +204,17 @@ namespace tabular {
 
             unsigned int bottom_padding() { return column.bottom_padding; }
 
-            unsigned int special_characters() { return column.special_characters; }
-
             std::vector<std::string> splitted_content() { return column.splitted_content; }
 
             std::list<std::string> words() { return column.words; }
 
-            std::string global_styles() { return column.global_styles; }
+            std::string text_styles() { return column.text_styles; }
+
+            std::string content_color() { return column.content_color; }
+
+            std::string content_background_color() { return column.content_background_color; }
+
+            std::string column_background_color() { return column.column_background_color; }
 
             bool is_multi_byte() { return column.is_multi_byte; }
         };
@@ -219,14 +245,6 @@ namespace tabular {
             }
         };
 
-        inline bool isstrascii(std::string str) {
-            size_t len = str.length();
-            for (size_t i = 0; i < len; i++)
-                if (static_cast<unsigned char>(str[i]) > 127) return false;
-
-            return true;
-        }
-
     public:
         std::string content;
 
@@ -237,12 +255,10 @@ namespace tabular {
             width = 0;
             top_padding = 0;
             bottom_padding = 0;
-            special_characters = 0;
 
-            if (!isstrascii(content))
-                is_multi_byte = true;
-            else
-                is_multi_byte = false;
+            // auto detection(with ascii check) has been removed
+            // for better performance
+            is_multi_byte = false;
         }
 
         Config config() { return Config(*this); }

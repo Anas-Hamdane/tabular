@@ -24,6 +24,8 @@
       -  [x] width control
       -  [x] range columns setters (functions)
       -  [x] support for multi byte characters (automatic and manual)
+      -  [x] full column background color support
+      -  [ ] border styling (colors, rgb)
       -  [ ] sub string styling support [VEEEEEEEEEEEEERY HAAAAAAAAAAARD]
 */
 
@@ -326,8 +328,15 @@ namespace tabular {
     } RGB;
 
     class Column {
-        // styles applied to the whole content
-        std::string global_styles;
+        // styles applied to the column content
+        std::string text_styles;
+
+        // column content coloring
+        std::string content_color;
+        std::string content_background_color;
+
+        // column coloring
+        std::string column_background_color;
 
         std::vector<std::string> splitted_content;
         std::list<std::string> words;
@@ -335,7 +344,6 @@ namespace tabular {
         unsigned int width;
         unsigned int top_padding;
         unsigned int bottom_padding;
-        unsigned int special_characters;
         bool is_multi_byte;
 
         class Config {
@@ -392,7 +400,7 @@ namespace tabular {
                 // style statement
                 std::string style_stt = CSI + std::to_string(static_cast<int>(style)) + "m";
 
-                column.global_styles += style_stt;
+                column.text_styles += style_stt;
 
                 // later add special_characters of RESET in utils in the last element of splitted_content
                 return *this;
@@ -403,65 +411,81 @@ namespace tabular {
                 if (styles.empty()) return *this;
 
                 // Apply all styles at the beginning
-                std::string styles_stt;
-                for (const auto& style : styles) {
-                    styles_stt += CSI + std::to_string(static_cast<int>(style)) + "m";
-                }
-
-                column.global_styles += styles_stt;
+                for (const auto& style : styles)
+                    column.text_styles += CSI + std::to_string(static_cast<int>(style)) + "m";
 
                 return *this;
             }
 
             // add Background Color to the whole column
-            Config& background_color(BackgroundColor color) {
+            Config& content_background_color(BackgroundColor color) {
+                if (!column.content_background_color.empty())
+                    column.content_background_color.clear();
 
-                // Background Color statement
-                std::string back_color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
-
-                column.global_styles += back_color_stt;
+                column.content_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
 
                 return *this;
             }
 
             // add Color to the whole column
             Config& color(Color color) {
+                if (!column.content_color.empty())
+                    column.content_color.clear();
 
-                // Color statement
-                std::string color_stt = CSI + std::to_string(static_cast<int>(color)) + "m";
-
-                column.global_styles += color_stt;
+                column.content_color = CSI + std::to_string(static_cast<int>(color)) + "m";
 
                 return *this;
             }
 
             // add RGB to the whole column
             Config& rgb(RGB rgb) {
+                if (!column.content_color.empty())
+                    column.content_color.clear();
 
-                // RGB statement
-                std::string rgb_stt = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                      std::to_string(rgb.g) + ";" +
-                                      std::to_string(rgb.b) + "m";
+                column.content_color = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                       std::to_string(rgb.g) + ";" +
+                                       std::to_string(rgb.b) + "m";
 
-                column.global_styles += rgb_stt;
                 return *this;
             }
 
             // add background RGB to the whole column
-            Config& background_rgb(RGB rgb) {
+            Config& content_background_rgb(RGB rgb) {
+                if (!column.content_background_color.empty())
+                    column.content_background_color.clear();
 
-                // RGB statement
-                std::string back_rgb_stt = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                           std::to_string(rgb.g) + ";" +
-                                           std::to_string(rgb.b) + "m";
-
-                column.global_styles += back_rgb_stt;
+                column.content_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                       std::to_string(rgb.g) + ";" +
+                                       std::to_string(rgb.b) + "m";
 
                 return *this;
             }
 
+            // multi byte characters support
+            // (locale-independent but only utf8 encoding is supported)
             Config& multi_byte_chars(bool is_multi_byte) {
                 column.is_multi_byte = is_multi_byte;
+
+                return *this;
+            }
+
+            // column background coloring
+            Config& column_background_color(BackgroundColor color) {
+                if (!column.column_background_color.empty())
+                    column.column_background_color.clear();
+
+                column.column_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Config& column_background_rgb(RGB rgb) {
+                if (!column.column_background_color.empty())
+                    column.column_background_color.clear();
+
+                column.column_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                      std::to_string(rgb.g) + ";" +
+                                      std::to_string(rgb.b) + "m";
 
                 return *this;
             }
@@ -481,13 +505,17 @@ namespace tabular {
 
             unsigned int bottom_padding() { return column.bottom_padding; }
 
-            unsigned int special_characters() { return column.special_characters; }
-
             std::vector<std::string> splitted_content() { return column.splitted_content; }
 
             std::list<std::string> words() { return column.words; }
 
-            std::string global_styles() { return column.global_styles; }
+            std::string text_styles() { return column.text_styles; }
+
+            std::string content_color() { return column.content_color; }
+
+            std::string content_background_color() { return column.content_background_color; }
+
+            std::string column_background_color() { return column.column_background_color; }
 
             bool is_multi_byte() { return column.is_multi_byte; }
         };
@@ -518,14 +546,6 @@ namespace tabular {
             }
         };
 
-        inline bool isstrascii(std::string str) {
-            size_t len = str.length();
-            for (size_t i = 0; i < len; i++)
-                if (static_cast<unsigned char>(str[i]) > 127) return false;
-
-            return true;
-        }
-
     public:
         std::string content;
 
@@ -536,12 +556,10 @@ namespace tabular {
             width = 0;
             top_padding = 0;
             bottom_padding = 0;
-            special_characters = 0;
 
-            if (!isstrascii(content))
-                is_multi_byte = true;
-            else
-                is_multi_byte = false;
+            // auto detection(with ascii check) has been removed
+            // for better performance
+            is_multi_byte = false;
         }
 
         Config config() { return Config(*this); }
@@ -552,7 +570,6 @@ namespace tabular {
     };
 
     class Row {
-        Alignment alignment;
         unsigned int width;
 
         class Config {
@@ -562,66 +579,78 @@ namespace tabular {
             Config(Row& row) : row(row) {}
 
             Config& alignment(Alignment alignment) {
-                row.alignment = alignment;
-
-                for (Column& col : row.columns)
-                    col.config().alignment(alignment);
+                for (Column& column : row.columns)
+                    column.config().alignment(alignment);
 
                 return *this;
             }
 
             Config& padding(int padding) {
-                for (Column& col : row.columns)
-                    col.config().padding(padding);
+                for (Column& column : row.columns)
+                    column.config().padding(padding);
 
                 return *this;
             }
 
             Config& top_padding(int padding) {
-                for (Column& col : row.columns)
-                    col.config().top_padding(padding);
+                for (Column& column : row.columns)
+                    column.config().top_padding(padding);
 
                 return *this;
             }
 
             Config& bottom_padding(int padding) {
-                for (Column& col : row.columns)
-                    col.config().bottom_padding(padding);
+                for (Column& column : row.columns)
+                    column.config().bottom_padding(padding);
 
                 return *this;
             }
 
             Config& color(Color color) {
-                for (Column& col : row.columns)
-                    col.config().color(color);
+                for (Column& column : row.columns)
+                    column.config().color(color);
 
                 return *this;
             }
 
-            Config& background_color(BackgroundColor back_color) {
-                for (Column& col : row.columns)
-                    col.config().background_color(back_color);
+            Config& content_background_color(BackgroundColor back_color) {
+                for (Column& column : row.columns)
+                    column.config().content_background_color(back_color);
 
                 return *this;
             }
 
             Config& rgb(RGB rgb) {
-                for (Column& col : row.columns)
-                    col.config().rgb(rgb);
+                for (Column& column : row.columns)
+                    column.config().rgb(rgb);
 
                 return *this;
             }
 
-            Config& background_rgb(RGB background_rgb) {
-                for (Column& col : row.columns)
-                    col.config().background_rgb(background_rgb);
+            Config& content_background_rgb(RGB background_rgb) {
+                for (Column& column : row.columns)
+                    column.config().content_background_rgb(background_rgb);
 
                 return *this;
             }
 
             Config& multi_byte_chars(bool is_multi_byte) {
-                for (Column& col : row.columns)
-                    col.config().multi_byte_chars(is_multi_byte);
+                for (Column& column : row.columns)
+                    column.config().multi_byte_chars(is_multi_byte);
+
+                return *this;
+            }
+
+            Config& column_background_color(BackgroundColor back_color) {
+                for (Column& column : row.columns)
+                    column.config().column_background_color(back_color);
+
+                return *this;
+            }
+
+            Config& column_background_rgb(RGB background_rgb) {
+                for (Column& column : row.columns)
+                    column.config().column_background_rgb(background_rgb);
 
                 return *this;
             }
@@ -631,7 +660,7 @@ namespace tabular {
         std::vector<Column> columns;
 
         Row(std::vector<Column> columns)
-            : columns(columns), alignment(Alignment::left) {}
+            : columns(columns) {}
 
         Config config() { return Config(*this); }
 
@@ -787,13 +816,19 @@ namespace tabular {
 
             line.append(start, ' ');
 
-            std::string global_styles = column.get().global_styles();
-            if (!global_styles.empty())
-                line.append(global_styles);
+            std::string styles;
+
+            // styling
+            styles += column.get().text_styles();
+            styles += column.get().content_color();
+            styles += column.get().content_background_color();
+
+            if (!styles.empty())
+                line.append(styles);
 
             line.append(sub);
 
-            if (!global_styles.empty())
+            if (!styles.empty())
                 line.append(RESET);
 
             // auto horizontal padding
@@ -895,7 +930,7 @@ namespace tabular {
     class Table {
         BorderStyle border_style;
         Border border_templates;
-        unsigned int width; // for width we check if it is bigger than the terminal width so no problem
+        unsigned int width;
         bool forced_width;
         bool force_ansi;
 
@@ -1011,7 +1046,7 @@ namespace tabular {
                 return *this;
             }
 
-            /* -------------------Colors------------------------- */
+            /* -------------------COLORS------------------------- */
             Config& color(Color col, int column) {
                 if (column < 0)
                     return *this;
@@ -1030,21 +1065,21 @@ namespace tabular {
                 return *this;
             }
 
-            /* ---------------Background Colors--------------------- */
-            Config& background_color(BackgroundColor back_color, int column) {
+            /* ---------------BACKGROUND COLORS--------------------- */
+            Config& content_background_color(BackgroundColor back_color, int column) {
                 if (column < 0)
                     return *this;
 
                 for (Row& row : table.rows)
                     if (column < row.columns.size())
-                        row[column].config().background_color(back_color);
+                        row[column].config().content_background_color(back_color);
 
                 return *this;
             }
 
-            Config& background_color(BackgroundColor back_color) {
+            Config& content_background_color(BackgroundColor back_color) {
                 for (Row& row : table.rows)
-                    row.config().background_color(back_color);
+                    row.config().column_background_color(back_color);
 
                 return *this;
             }
@@ -1068,21 +1103,21 @@ namespace tabular {
                 return *this;
             }
 
-            /* ---------------Background RGB--------------------- */
-            Config& background_rgb(RGB back_rgb, int column) {
+            /* ---------------BACKGROUND RGB--------------------- */
+            Config& content_background_rgb(RGB back_rgb, int column) {
                 if (column < 0)
                     return *this;
 
                 for (Row& row : table.rows)
                     if (column < row.columns.size())
-                        row[column].config().background_rgb(back_rgb);
+                        row[column].config().content_background_rgb(back_rgb);
 
                 return *this;
             }
 
-            Config& background_rgb(RGB back_rgb) {
+            Config& content_background_rgb(RGB back_rgb) {
                 for (Row& row : table.rows)
-                    row.config().background_rgb(back_rgb);
+                    row.config().column_background_rgb(back_rgb);
 
                 return *this;
             }
@@ -1216,22 +1251,28 @@ namespace tabular {
 
                 // printing the n element of splitted_content for each column
                 for (Column column : row.columns) {
+                    std::string reset = RESET;
+
                     int rest = column.get().width();
                     int splitted_content_size = column.get().splitted_content().size();
                     std::string current_line;
+
+                    int special_characters = 0;
+
+                    // column background
+                    std::string column_background_color = column.get().column_background_color();
+                    stream << column_background_color;
 
                     if (i < splitted_content_size) {
                         current_line = column.get().splitted_content().at(i);
                         stream << current_line;
 
-                        int special_characters = column.get().special_characters();
-                        std::string global_styles = column.get().global_styles();
+                        std::string styles = column.get().text_styles() + column.get().content_color() + column.get().content_background_color();
 
                         // for each splitted_content element has a one or more global_styles, it has one RESET at the end
-                        if (!global_styles.empty()) {
-                            std::string reset = RESET;
+                        if (!styles.empty()) {
                             special_characters += reset.size();
-                            special_characters += global_styles.size();
+                            special_characters += styles.size();
                         }
 
                         size_t curr_line_size;
@@ -1241,11 +1282,17 @@ namespace tabular {
                         else
                             curr_line_size = current_line.size();
 
+                        // special_characters will not be displayed so they are not counted
                         rest -= curr_line_size - special_characters; // to balance the line
                     }
 
+                        stream << column_background_color;
+
                     for (int k = 0; k < rest; k++)
                         stream << ' ';
+
+                    if (!column_background_color.empty())
+                        stream << reset;
 
                     stream << vertical;
                 }

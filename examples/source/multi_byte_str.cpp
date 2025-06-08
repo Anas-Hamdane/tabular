@@ -26,6 +26,12 @@ int main() {
     table.add_row({"Japanese", "こんにちは"});
     table.add_row({"Russian", "Привет"});
 
+    // !IMPORTANT
+    table[0][1].config().multi_byte_chars(true);
+    table[1][1].config().multi_byte_chars(true);
+    table[2][1].config().multi_byte_chars(true);
+    table[3][1].config().multi_byte_chars(true);
+
     // for testing because "ninja" change the output stream of the program
     table.set().forced_width(60, true);
 

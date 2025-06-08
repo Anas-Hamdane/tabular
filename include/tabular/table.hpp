@@ -24,6 +24,8 @@
       -  [x] width control
       -  [x] range columns setters (functions)
       -  [x] support for multi byte characters (automatic and manual)
+      -  [x] full column background color support
+      -  [ ] border styling (colors, rgb)
       -  [ ] sub string styling support [VEEEEEEEEEEEEERY HAAAAAAAAAAARD]
 */
 
@@ -38,7 +40,7 @@ namespace tabular {
     class Table {
         BorderStyle border_style;
         Border border_templates;
-        unsigned int width; // for width we check if it is bigger than the terminal width so no problem
+        unsigned int width;
         bool forced_width;
         bool force_ansi;
 
@@ -154,7 +156,7 @@ namespace tabular {
                 return *this;
             }
 
-            /* -------------------Colors------------------------- */
+            /* -------------------COLORS------------------------- */
             Config& color(Color col, int column) {
                 if (column < 0)
                     return *this;
@@ -173,21 +175,21 @@ namespace tabular {
                 return *this;
             }
 
-            /* ---------------Background Colors--------------------- */
-            Config& background_color(BackgroundColor back_color, int column) {
+            /* ---------------BACKGROUND COLORS--------------------- */
+            Config& content_background_color(BackgroundColor back_color, int column) {
                 if (column < 0)
                     return *this;
 
                 for (Row& row : table.rows)
                     if (column < row.columns.size())
-                        row[column].config().background_color(back_color);
+                        row[column].config().content_background_color(back_color);
 
                 return *this;
             }
 
-            Config& background_color(BackgroundColor back_color) {
+            Config& content_background_color(BackgroundColor back_color) {
                 for (Row& row : table.rows)
-                    row.config().background_color(back_color);
+                    row.config().column_background_color(back_color);
 
                 return *this;
             }
@@ -211,21 +213,21 @@ namespace tabular {
                 return *this;
             }
 
-            /* ---------------Background RGB--------------------- */
-            Config& background_rgb(RGB back_rgb, int column) {
+            /* ---------------BACKGROUND RGB--------------------- */
+            Config& content_background_rgb(RGB back_rgb, int column) {
                 if (column < 0)
                     return *this;
 
                 for (Row& row : table.rows)
                     if (column < row.columns.size())
-                        row[column].config().background_rgb(back_rgb);
+                        row[column].config().content_background_rgb(back_rgb);
 
                 return *this;
             }
 
-            Config& background_rgb(RGB back_rgb) {
+            Config& content_background_rgb(RGB back_rgb) {
                 for (Row& row : table.rows)
-                    row.config().background_rgb(back_rgb);
+                    row.config().column_background_rgb(back_rgb);
 
                 return *this;
             }
@@ -359,22 +361,28 @@ namespace tabular {
 
                 // printing the n element of splitted_content for each column
                 for (Column column : row.columns) {
+                    std::string reset = RESET;
+
                     int rest = column.get().width();
                     int splitted_content_size = column.get().splitted_content().size();
                     std::string current_line;
+
+                    int special_characters = 0;
+
+                    // column background
+                    std::string column_background_color = column.get().column_background_color();
+                    stream << column_background_color;
 
                     if (i < splitted_content_size) {
                         current_line = column.get().splitted_content().at(i);
                         stream << current_line;
 
-                        int special_characters = column.get().special_characters();
-                        std::string global_styles = column.get().global_styles();
+                        std::string styles = column.get().text_styles() + column.get().content_color() + column.get().content_background_color();
 
                         // for each splitted_content element has a one or more global_styles, it has one RESET at the end
-                        if (!global_styles.empty()) {
-                            std::string reset = RESET;
+                        if (!styles.empty()) {
                             special_characters += reset.size();
-                            special_characters += global_styles.size();
+                            special_characters += styles.size();
                         }
 
                         size_t curr_line_size;
@@ -384,11 +392,17 @@ namespace tabular {
                         else
                             curr_line_size = current_line.size();
 
+                        // special_characters will not be displayed so they are not counted
                         rest -= curr_line_size - special_characters; // to balance the line
                     }
 
+                        stream << column_background_color;
+
                     for (int k = 0; k < rest; k++)
                         stream << ' ';
+
+                    if (!column_background_color.empty())
+                        stream << reset;
 
                     stream << vertical;
                 }
@@ -500,7 +514,7 @@ namespace tabular {
                     unsigned int width = column.get().width();
 
                     if (width == 0) {
-                        width = indiv_column_width + (rest > 0? 1 : 0);
+                        width = indiv_column_width + (rest > 0 ? 1 : 0);
                         if (rest > 0) rest--;
                         column.set().width(width);
                     }

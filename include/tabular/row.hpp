@@ -20,7 +20,6 @@
 
 namespace tabular {
     class Row {
-        Alignment alignment;
         unsigned int width;
 
         class Config {
@@ -30,66 +29,78 @@ namespace tabular {
             Config(Row& row) : row(row) {}
 
             Config& alignment(Alignment alignment) {
-                row.alignment = alignment;
-
-                for (Column& col : row.columns)
-                    col.config().alignment(alignment);
+                for (Column& column : row.columns)
+                    column.config().alignment(alignment);
 
                 return *this;
             }
 
             Config& padding(int padding) {
-                for (Column& col : row.columns)
-                    col.config().padding(padding);
+                for (Column& column : row.columns)
+                    column.config().padding(padding);
 
                 return *this;
             }
 
             Config& top_padding(int padding) {
-                for (Column& col : row.columns)
-                    col.config().top_padding(padding);
+                for (Column& column : row.columns)
+                    column.config().top_padding(padding);
 
                 return *this;
             }
 
             Config& bottom_padding(int padding) {
-                for (Column& col : row.columns)
-                    col.config().bottom_padding(padding);
+                for (Column& column : row.columns)
+                    column.config().bottom_padding(padding);
 
                 return *this;
             }
 
             Config& color(Color color) {
-                for (Column& col : row.columns)
-                    col.config().color(color);
+                for (Column& column : row.columns)
+                    column.config().color(color);
 
                 return *this;
             }
 
-            Config& background_color(BackgroundColor back_color) {
-                for (Column& col : row.columns)
-                    col.config().background_color(back_color);
+            Config& content_background_color(BackgroundColor back_color) {
+                for (Column& column : row.columns)
+                    column.config().content_background_color(back_color);
 
                 return *this;
             }
 
             Config& rgb(RGB rgb) {
-                for (Column& col : row.columns)
-                    col.config().rgb(rgb);
+                for (Column& column : row.columns)
+                    column.config().rgb(rgb);
 
                 return *this;
             }
 
-            Config& background_rgb(RGB background_rgb) {
-                for (Column& col : row.columns)
-                    col.config().background_rgb(background_rgb);
+            Config& content_background_rgb(RGB background_rgb) {
+                for (Column& column : row.columns)
+                    column.config().content_background_rgb(background_rgb);
 
                 return *this;
             }
 
             Config& multi_byte_chars(bool is_multi_byte) {
-                for (Column& col : row.columns)
-                    col.config().multi_byte_chars(is_multi_byte);
+                for (Column& column : row.columns)
+                    column.config().multi_byte_chars(is_multi_byte);
+
+                return *this;
+            }
+
+            Config& column_background_color(BackgroundColor back_color) {
+                for (Column& column : row.columns)
+                    column.config().column_background_color(back_color);
+
+                return *this;
+            }
+
+            Config& column_background_rgb(RGB background_rgb) {
+                for (Column& column : row.columns)
+                    column.config().column_background_rgb(background_rgb);
 
                 return *this;
             }
@@ -99,7 +110,7 @@ namespace tabular {
         std::vector<Column> columns;
 
         Row(std::vector<Column> columns)
-            : columns(columns), alignment(Alignment::left) {}
+            : columns(columns) {}
 
         Config config() { return Config(*this); }
 

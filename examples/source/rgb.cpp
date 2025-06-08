@@ -9,7 +9,7 @@
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
 
-    * EXAMPLE of using background and foreground rgb colors in a table
+    * EXAMPLE of using background and foreground rgb colors of the content of the column in a table
 */
 
 #include <tabular/table.hpp>
@@ -42,14 +42,14 @@ int main() {
     table[6][0].config().rgb(RGB(0, 255, 255));
     table[7][0].config().rgb(RGB(255, 255, 255));
 
-    table[0][1].config().background_rgb(RGB(0, 0, 0));
-    table[1][1].config().background_rgb(RGB(255, 0, 0));
-    table[2][1].config().background_rgb(RGB(0, 255, 0));
-    table[3][1].config().background_rgb(RGB(255, 255, 0));
-    table[4][1].config().background_rgb(RGB(0, 0, 255));
-    table[5][1].config().background_rgb(RGB(255, 0, 255));
-    table[6][1].config().background_rgb(RGB(0, 255, 255));
-    table[7][1].config().background_rgb(RGB(255, 255, 255));
+    table[0][1].config().content_background_rgb(RGB(0, 0, 0));
+    table[1][1].config().content_background_rgb(RGB(255, 0, 0));
+    table[2][1].config().content_background_rgb(RGB(0, 255, 0));
+    table[3][1].config().content_background_rgb(RGB(255, 255, 0));
+    table[4][1].config().content_background_rgb(RGB(0, 0, 255));
+    table[5][1].config().content_background_rgb(RGB(255, 0, 255));
+    table[6][1].config().content_background_rgb(RGB(0, 255, 255));
+    table[7][1].config().content_background_rgb(RGB(255, 255, 255));
 
     // for testing because "ninja" change the output stream of the program
     table.set().forced_width(60, true);

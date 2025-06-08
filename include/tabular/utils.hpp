@@ -125,13 +125,19 @@ namespace tabular {
 
             line.append(start, ' ');
 
-            std::string global_styles = column.get().global_styles();
-            if (!global_styles.empty())
-                line.append(global_styles);
+            std::string styles;
+
+            // styling
+            styles += column.get().text_styles();
+            styles += column.get().content_color();
+            styles += column.get().content_background_color();
+
+            if (!styles.empty())
+                line.append(styles);
 
             line.append(sub);
 
-            if (!global_styles.empty())
+            if (!styles.empty())
                 line.append(RESET);
 
             // auto horizontal padding

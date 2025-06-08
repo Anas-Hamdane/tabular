@@ -9,7 +9,7 @@
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
 
-    * EXAMPLE of using background and foreground colors in a table
+    * EXAMPLE of using background and foreground colors of the content of a column in a table
 */
 
 #include <tabular/table.hpp>
@@ -42,14 +42,14 @@ int main() {
     table[6][0].config().color(Color::cyan);
     table[7][0].config().color(Color::white);
 
-    table[0][1].config().background_color(BackgroundColor::black);
-    table[1][1].config().background_color(BackgroundColor::red);
-    table[2][1].config().background_color(BackgroundColor::green);
-    table[3][1].config().background_color(BackgroundColor::yellow);
-    table[4][1].config().background_color(BackgroundColor::blue);
-    table[5][1].config().background_color(BackgroundColor::magenta);
-    table[6][1].config().background_color(BackgroundColor::cyan);
-    table[7][1].config().background_color(BackgroundColor::white);
+    table[0][1].config().content_background_color(BackgroundColor::black);
+    table[1][1].config().content_background_color(BackgroundColor::red);
+    table[2][1].config().content_background_color(BackgroundColor::green);
+    table[3][1].config().content_background_color(BackgroundColor::yellow);
+    table[4][1].config().content_background_color(BackgroundColor::blue);
+    table[5][1].config().content_background_color(BackgroundColor::magenta);
+    table[6][1].config().content_background_color(BackgroundColor::cyan);
+    table[7][1].config().content_background_color(BackgroundColor::white);
 
     // for testing because "ninja" change the output stream of the program
     table.set().forced_width(60, true);
