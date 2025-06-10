@@ -13,7 +13,7 @@
 
 #include <climits>
 #include <tabular/row.hpp>
-#include <utf8stows/utf8stws.hpp>
+#include <utf8conv/utf8conv.hpp>
 #include <wcwidth/wcwidth.hpp>
 
 #ifndef TABULAR_UTILITIES_HPP
@@ -80,6 +80,18 @@ namespace tabular {
         }
         // clang-format on
 
+        // multi byte string width
+        inline size_t mbswidth(std::string str) {
+            std::wstring wstr = conv::utf8stws(str.c_str());
+            size_t width = display_width::wcswidth(wstr.c_str(), wstr.length());
+
+            return width;
+        }
+
+        inline size_t display_width(std::string str, bool is_multi_byte) {
+            return is_multi_byte ? mbswidth(str) : str.length();
+        }
+
         // split by words AND save both '\n' and ' ' as words too
         // works at least for UTF-8 encoding strings
         inline std::list<std::string> split_text(const std::string& str) {
@@ -107,7 +119,7 @@ namespace tabular {
         }
 
         // finalize line and push it
-        inline void commit_line(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
+        inline void commit_line(std::vector<std::string>& result, std::string& sub, size_t* sub_size, int usable_width, Column column) {
             std::string line;
             Alignment align = column.get().alignment();
 
@@ -117,9 +129,9 @@ namespace tabular {
 
             int start;
             if (align == Alignment::center)
-                start = (usable_width - sub.size()) / 2;
+                start = (usable_width - (*sub_size)) / 2;
             else if (align == Alignment::right)
-                start = (usable_width - sub.size());
+                start = (usable_width - (*sub_size));
             else
                 start = 0;
 
@@ -147,10 +159,12 @@ namespace tabular {
             result.push_back(line);
 
             sub.clear();
+            *sub_size = 0;
         }
 
         inline std::vector<std::string> format_column_lines(Column& column) {
             const std::string& content = column.content;
+            const bool is_multi_byte = column.get().is_multi_byte();
 
             if (content.empty())
                 return std::vector<std::string>();
@@ -174,40 +188,63 @@ namespace tabular {
             const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT);
 
             std::string sub;
+            size_t sub_size = 0;
             for (auto it = words.begin(); it != words.end(); ++it) {
                 std::string& word = *it;
 
                 // add existing content if we reach new line
                 if (word == "\n") {
-                    commit_line(result, sub, usable_width, column);
+                    commit_line(result, sub, &sub_size, usable_width, column);
                     continue;
                 }
 
                 // we need split
-                if ((sub.size() + word.size()) > usable_width) {
-                    int remaining_space = usable_width - sub.size();
+                size_t word_size = display_width(word, is_multi_byte);
+                if ((sub_size + word_size) > usable_width) {
+                    int remaining_space = usable_width - sub_size;
+
+                    // force split
                     if (remaining_space > limit) {
-                        std::string part = word.substr(0, remaining_space - 1) + '-';
+                        std::string first_part;
+                        std::string remainder;
+                        if (is_multi_byte) {
+                            std::wstring wword = conv::utf8stws(word);
+                            std::wstring wpart = wword.substr(0, remaining_space - 1) + L'-';
+                            std::wstring wremainder = wword.substr(remaining_space - 1);
 
-                        sub += part;
-                        commit_line(result, sub, usable_width, column);
+                            first_part = conv::utf8wsts(wpart);
+                            remainder = conv::utf8wsts(wremainder);
+                        } else {
+                            first_part = word.substr(0, remaining_space - 1) + '-';
+                            remainder = word.substr(remaining_space - 1);
+                        }
 
-                        std::string remainder = word.substr(remaining_space - 1);
+                        sub += first_part;
+                        sub_size += display_width(first_part, is_multi_byte);
+
+                        commit_line(result, sub, &sub_size, usable_width, column);
+
                         words.insert(std::next(it), remainder);
-                    } else {
-                        if (!sub.empty() && sub.back() == ' ')
-                            sub.pop_back(); // pop the last space if exist
-
-                        commit_line(result, sub, usable_width, column);
-                        --it;
                     }
-                } else
+                    // commit line and append the word on the next line
+                    else {
+                        if (!sub.empty() && sub.back() == ' ') {
+                            sub.pop_back(); // pop the last space if exist
+                            sub_size--;
+                        }
+
+                        commit_line(result, sub, &sub_size, usable_width, column);
+                        --it; // to append the word on the next iteration
+                    }
+                } else {
                     sub += word; // add a normall less than line word
+                    sub_size += word_size;
+                }
             }
 
             // any remaining words
             if (!sub.empty())
-                commit_line(result, sub, usable_width, column);
+                commit_line(result, sub, &sub_size, usable_width, column);
 
             // BOTTOM padding
             result.insert(result.end(), bottom_padding, std::string());
@@ -233,16 +270,6 @@ namespace tabular {
             return result;
         }
 
-        // multi byte string width
-        inline int mbswidth(std::string str) {
-            size_t len = 0;
-
-            wchar_t* wstr = utf8stws(str.c_str(), &len);
-            int width = ah_wcswidth(wstr, len);
-
-            free(wstr);
-            return width;
-        }
     } // namespace utils
 } // namespace tabular
 

@@ -34,8 +34,8 @@
 #include <vector>
 
 // this include all headers
-#include <tabular/utils.hpp>
 #include <tabular/border.hpp>
+#include <tabular/utils.hpp>
 
 namespace tabular {
     class Table {
@@ -324,12 +324,7 @@ namespace tabular {
                             special_characters += styles.size();
                         }
 
-                        int curr_line_size;
-
-                        if (column.get().is_multi_byte())
-                            curr_line_size = utils::mbswidth(current_line);
-                        else
-                            curr_line_size = current_line.size();
+                        int curr_line_size = utils::display_width(current_line, column.get().is_multi_byte());
 
                         // special_characters will not be displayed so they are not counted
                         rest -= (curr_line_size - special_characters); // to balance the line

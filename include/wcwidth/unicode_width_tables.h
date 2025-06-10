@@ -9,6 +9,8 @@
 #ifndef UNICODE_WCWIDTH_TABLES_H
 #define UNICODE_WCWIDTH_TABLES_H
 
+#include <wchar.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -67,6 +69,8 @@ static const struct interval wide[] = {
     {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D}, {0x2F800, 0x2FA1D}, 
     {0x30000, 0x3134A}, {0x31350, 0x323AF}
 };
+
+constexpr size_t wide_size = sizeof(wide) / sizeof(interval);
 
 #ifdef __cplusplus
 }

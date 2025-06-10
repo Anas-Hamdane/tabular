@@ -46,7 +46,7 @@ int main() {
     table[0][0].config().text_style(Style::bold);
 
     // for testing because "ninja" change the output stream of the program
-    table.set().forced_width(60, true);
+    table.set().forced_width(70, true);
 
     std::cout << table << std::endl;
     return 0;

@@ -49,8 +49,10 @@
 #endif
 
 #if defined(OS_WINDOWS)
+#define USE_UTF16 true
 #include <windows.h>
 #elif defined(OS_LINUX_BASED) || defined(OS_MACOS)
+#define USE_UTF16 false
 #include <sys/ioctl.h>
 #include <unistd.h>
 #else
@@ -68,380 +70,351 @@
 #define CSI "\x1b["
 #define RESET "\x1b[0m"
 
-/* ----------------------The following code copied from utf8stows.hpp -----------------------*/
-/* Detect wchar_t encoding (UTF-16/UTF-32) using platform macros */
-#if defined(_WIN32) || defined(_WIN64)
-#define USE_UTF16 1
-#else
-#define USE_UTF16 0
-#endif
+namespace conv {
+    /* Lookup table for UTF-8 sequence lengths */
+    static const unsigned char utf8_sequence_length[256] = {
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-/* Decode UTF-8 to code point */
-inline int utf8_decode(const char* s, uint32_t* codepoint, int* consumed) {
-    unsigned char c = s[0];
-    if (c < 0x80) {
-        *codepoint = c;
-        *consumed = 1;
-    } else if ((c >> 5) == 0x6) {
-        *codepoint = ((c & 0x1F) << 6) | (s[1] & 0x3F);
-        *consumed = 2;
-    } else if ((c >> 4) == 0xE) {
-        *codepoint = ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
-        *consumed = 3;
-    } else if ((c >> 3) == 0x1E) {
-        *codepoint = ((c & 0x07) << 18) | ((s[1] & 0x3F) << 12) |
-                     ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
-        *consumed = 4;
-    } else {
-        return 0;
+    /* Decode UTF-8 to code point */
+    inline bool
+    utf8_decode(const char* s, uint32_t& codepoint, int& consumed) {
+        const unsigned char* u = reinterpret_cast<const unsigned char*>(s);
+        unsigned char c = u[0];
+        consumed = utf8_sequence_length[c];
+        if (consumed == 0) return false;
+
+        switch (consumed) {
+            case 1:
+                codepoint = c;
+                return true;
+            case 2:
+                if ((u[1] & 0xC0) != 0x80) return false;
+                codepoint = ((c & 0x1F) << 6) | (u[1] & 0x3F);
+                return codepoint >= 0x80;
+            case 3:
+                if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) return false;
+                codepoint = ((c & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
+                return codepoint >= 0x800 && (codepoint < 0xD800 || codepoint > 0xDFFF);
+            case 4:
+                if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80 || (u[3] & 0xC0) != 0x80) return false;
+                codepoint = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) |
+                            ((u[2] & 0x3F) << 6) | (u[3] & 0x3F);
+                return codepoint >= 0x10000 && codepoint <= 0x10FFFF;
+        }
+        return false;
     }
-    return 1;
-}
 
-/* Encode code point to UTF-16 */
-inline int utf16_encode(uint32_t codepoint, wchar_t* output) {
-    if (codepoint <= 0xFFFF && (codepoint < 0xD800 || codepoint > 0xDFFF)) {
-        output[0] = (wchar_t)codepoint;
-        return 1;
-    } else if (codepoint <= 0x10FFFF) {
-        codepoint -= 0x10000;
-        output[0] = (wchar_t)(0xD800 + (codepoint >> 10));
-        output[1] = (wchar_t)(0xDC00 + (codepoint & 0x3FF));
-        return 2;
-    }
-    return 0;
-}
+    /* Decode UTF-16 surrogate pair to code point */
+    inline bool utf16_decode(const wchar_t* s, size_t len, uint32_t& codepoint, int& consumed) {
+        if (len == 0) return false;
 
-/* Encode code point to UTF-32 */
-inline int utf32_encode(uint32_t codepoint, wchar_t* output) {
-    if (codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF))
-        return 0;
-    output[0] = (wchar_t)codepoint;
-    return 1;
-}
+        wchar_t c1 = s[0];
 
-#include <string.h>
-
-/* Convert UTF-8 to wchar_t string */
-inline wchar_t* utf8stws(const char* input) {
-    size_t len = strlen(input);
-    wchar_t* output =
-        (wchar_t*)malloc((len * 2 + 1) * sizeof(wchar_t)); // Enough space
-    size_t out_index = 0;
-    size_t i = 0;
-
-    while (i < len) {
-        uint32_t cp;
-        int consumed;
-
-        // invalid utf8 sequence
-        if (!utf8_decode(&input[i], &cp, &consumed)) {
-            output[out_index++] = L'?';
-            i++; // skip one byte
-            continue;
+        // Basic Multilingual Plane (BMP)
+        if (c1 < 0xD800 || c1 > 0xDFFF) {
+            codepoint = static_cast<uint32_t>(c1);
+            consumed = 1;
+            return true;
         }
 
-        int written = 0;
-        if (USE_UTF16)
-            written = utf16_encode(cp, &output[out_index]);
-        else
-            written = utf32_encode(cp, &output[out_index]);
+        // High surrogate
+        if (c1 >= 0xD800 && c1 <= 0xDBFF) {
+            if (len < 2) return false;
+            wchar_t c2 = s[1];
 
-        out_index += written;
-        i += consumed;
+            // Low surrogate
+            if (c2 >= 0xDC00 && c2 <= 0xDFFF) {
+                codepoint = 0x10000 + ((c1 & 0x3FF) << 10) + (c2 & 0x3FF);
+                consumed = 2;
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    output[out_index] = L'\0'; // null-terminate
-    return output;
-}
+    /* Decode UTF-32 to code point */
+    inline bool utf32_decode(const wchar_t* s, size_t len, uint32_t& codepoint, int& consumed) {
+        if (len == 0) return false;
 
-/* ----------------------The following code copied from wcwidth.hpp -----------------------*/
-/* COPIED FROM data/unicode_width_table.h */
-struct interval {
-    int first;
-    int last;
-};
+        codepoint = static_cast<uint32_t>(s[0]);
+        consumed = 1;
 
-// clang-format off
-static const struct interval combining[] = {
-    {0x0000, 0x001F}, {0x007F, 0x009F}, {0x0300, 0x036F}, 
-    {0x0483, 0x0489}, {0x0591, 0x05BD}, {0x05BF, 0x05BF}, 
-    {0x05C1, 0x05C2}, {0x05C4, 0x05C5}, {0x05C7, 0x05C7}, 
-    {0x0600, 0x0605}, {0x0610, 0x061A}, {0x061C, 0x061C}, 
-    {0x064B, 0x065F}, {0x0670, 0x0670}, {0x06D6, 0x06DD}, 
-    {0x06DF, 0x06E4}, {0x06E7, 0x06E8}, {0x06EA, 0x06ED}, 
-    {0x070F, 0x070F}, {0x0711, 0x0711}, {0x0730, 0x074A}, 
-    {0x07A6, 0x07B0}, {0x07EB, 0x07F3}, {0x07FD, 0x07FD}, 
-    {0x0816, 0x0819}, {0x081B, 0x0823}, {0x0825, 0x0827}, 
-    {0x0829, 0x082D}, {0x0859, 0x085B}, {0x0890, 0x0891}, 
-    {0x0897, 0x089F}, {0x08CA, 0x0903}, {0x093A, 0x093C}, 
-    {0x093E, 0x094F}, {0x0951, 0x0957}, {0x0962, 0x0963}, 
-    {0x0981, 0x0983}, {0x09BC, 0x09BC}, {0x09BE, 0x09C4}, 
-    {0x09C7, 0x09C8}, {0x09CB, 0x09CD}, {0x09D7, 0x09D7}, 
-    {0x09E2, 0x09E3}, {0x09FE, 0x09FE}, {0x0A01, 0x0A03}, 
-    {0x0A3C, 0x0A3C}, {0x0A3E, 0x0A42}, {0x0A47, 0x0A48}, 
-    {0x0A4B, 0x0A4D}, {0x0A51, 0x0A51}, {0x0A70, 0x0A71}, 
-    {0x0A75, 0x0A75}, {0x0A81, 0x0A83}, {0x0ABC, 0x0ABC}, 
-    {0x0ABE, 0x0AC5}, {0x0AC7, 0x0AC9}, {0x0ACB, 0x0ACD}, 
-    {0x0AE2, 0x0AE3}, {0x0AFA, 0x0AFF}, {0x0B01, 0x0B03}, 
-    {0x0B3C, 0x0B3C}, {0x0B3E, 0x0B44}, {0x0B47, 0x0B48}, 
-    {0x0B4B, 0x0B4D}, {0x0B55, 0x0B57}, {0x0B62, 0x0B63}, 
-    {0x0B82, 0x0B82}, {0x0BBE, 0x0BC2}, {0x0BC6, 0x0BC8}, 
-    {0x0BCA, 0x0BCD}, {0x0BD7, 0x0BD7}, {0x0C00, 0x0C04}, 
-    {0x0C3C, 0x0C3C}, {0x0C3E, 0x0C44}, {0x0C46, 0x0C48}, 
-    {0x0C4A, 0x0C4D}, {0x0C55, 0x0C56}, {0x0C62, 0x0C63}, 
-    {0x0C81, 0x0C83}, {0x0CBC, 0x0CBC}, {0x0CBE, 0x0CC4}, 
-    {0x0CC6, 0x0CC8}, {0x0CCA, 0x0CCD}, {0x0CD5, 0x0CD6}, 
-    {0x0CE2, 0x0CE3}, {0x0CF3, 0x0CF3}, {0x0D00, 0x0D03}, 
-    {0x0D3B, 0x0D3C}, {0x0D3E, 0x0D44}, {0x0D46, 0x0D48}, 
-    {0x0D4A, 0x0D4D}, {0x0D57, 0x0D57}, {0x0D62, 0x0D63}, 
-    {0x0D81, 0x0D83}, {0x0DCA, 0x0DCA}, {0x0DCF, 0x0DD4}, 
-    {0x0DD6, 0x0DD6}, {0x0DD8, 0x0DDF}, {0x0DF2, 0x0DF3}, 
-    {0x0E31, 0x0E31}, {0x0E34, 0x0E3A}, {0x0E47, 0x0E4E}, 
-    {0x0EB1, 0x0EB1}, {0x0EB4, 0x0EBC}, {0x0EC8, 0x0ECE}, 
-    {0x0F18, 0x0F19}, {0x0F35, 0x0F35}, {0x0F37, 0x0F37}, 
-    {0x0F39, 0x0F39}, {0x0F3E, 0x0F3F}, {0x0F71, 0x0F84}, 
-    {0x0F86, 0x0F87}, {0x0F8D, 0x0F97}, {0x0F99, 0x0FBC}, 
-    {0x0FC6, 0x0FC6}, {0x102B, 0x103E}, {0x1056, 0x1059}, 
-    {0x105E, 0x1060}, {0x1062, 0x1064}, {0x1067, 0x106D}, 
-    {0x1071, 0x1074}, {0x1082, 0x108D}, {0x108F, 0x108F}, 
-    {0x109A, 0x109D}, {0x135D, 0x135F}, {0x1712, 0x1715}, 
-    {0x1732, 0x1734}, {0x1752, 0x1753}, {0x1772, 0x1773}, 
-    {0x17B4, 0x17D3}, {0x17DD, 0x17DD}, {0x180B, 0x180F}, 
-    {0x1885, 0x1886}, {0x18A9, 0x18A9}, {0x1920, 0x192B}, 
-    {0x1930, 0x193B}, {0x1A17, 0x1A1B}, {0x1A55, 0x1A5E}, 
-    {0x1A60, 0x1A7C}, {0x1A7F, 0x1A7F}, {0x1AB0, 0x1ACE}, 
-    {0x1B00, 0x1B04}, {0x1B34, 0x1B44}, {0x1B6B, 0x1B73}, 
-    {0x1B80, 0x1B82}, {0x1BA1, 0x1BAD}, {0x1BE6, 0x1BF3}, 
-    {0x1C24, 0x1C37}, {0x1CD0, 0x1CD2}, {0x1CD4, 0x1CE8}, 
-    {0x1CED, 0x1CED}, {0x1CF4, 0x1CF4}, {0x1CF7, 0x1CF9}, 
-    {0x1DC0, 0x1DFF}, {0x200B, 0x200F}, {0x2028, 0x202E}, 
-    {0x2060, 0x2064}, {0x2066, 0x206F}, {0x20D0, 0x20F0}, 
-    {0x2CEF, 0x2CF1}, {0x2D7F, 0x2D7F}, {0x2DE0, 0x2DFF}, 
-    {0x302A, 0x302D}, {0x3099, 0x309A}, {0xA66F, 0xA672}, 
-    {0xA674, 0xA67D}, {0xA69E, 0xA69F}, {0xA6F0, 0xA6F1}, 
-    {0xA802, 0xA802}, {0xA806, 0xA806}, {0xA80B, 0xA80B}, 
-    {0xA823, 0xA827}, {0xA82C, 0xA82C}, {0xA880, 0xA881}, 
-    {0xA8B4, 0xA8C5}, {0xA8E0, 0xA8F1}, {0xA8FF, 0xA8FF}, 
-    {0xA926, 0xA92D}, {0xA947, 0xA953}, {0xA980, 0xA983}, 
-    {0xA9B3, 0xA9C0}, {0xA9E5, 0xA9E5}, {0xAA29, 0xAA36}, 
-    {0xAA43, 0xAA43}, {0xAA4C, 0xAA4D}, {0xAA7B, 0xAA7D}, 
-    {0xAAB0, 0xAAB0}, {0xAAB2, 0xAAB4}, {0xAAB7, 0xAAB8}, 
-    {0xAABE, 0xAABF}, {0xAAC1, 0xAAC1}, {0xAAEB, 0xAAEF}, 
-    {0xAAF5, 0xAAF6}, {0xABE3, 0xABEA}, {0xABEC, 0xABED}, 
-    {0xD800, 0xDFFF}, {0xFB1E, 0xFB1E}, {0xFE00, 0xFE0F}, 
-    {0xFE20, 0xFE2F}, {0xFEFF, 0xFEFF}, {0xFFF9, 0xFFFB}, 
-    {0x101FD, 0x101FD}, {0x102E0, 0x102E0}, {0x10376, 0x1037A}, 
-    {0x10A01, 0x10A03}, {0x10A05, 0x10A06}, {0x10A0C, 0x10A0F}, 
-    {0x10A38, 0x10A3A}, {0x10A3F, 0x10A3F}, {0x10AE5, 0x10AE6}, 
-    {0x10D24, 0x10D27}, {0x10D69, 0x10D6D}, {0x10EAB, 0x10EAC}, 
-    {0x10EFC, 0x10EFF}, {0x10F46, 0x10F50}, {0x10F82, 0x10F85}, 
-    {0x11000, 0x11002}, {0x11038, 0x11046}, {0x11070, 0x11070}, 
-    {0x11073, 0x11074}, {0x1107F, 0x11082}, {0x110B0, 0x110BA}, 
-    {0x110BD, 0x110BD}, {0x110C2, 0x110C2}, {0x110CD, 0x110CD}, 
-    {0x11100, 0x11102}, {0x11127, 0x11134}, {0x11145, 0x11146}, 
-    {0x11173, 0x11173}, {0x11180, 0x11182}, {0x111B3, 0x111C0}, 
-    {0x111C9, 0x111CC}, {0x111CE, 0x111CF}, {0x1122C, 0x11237}, 
-    {0x1123E, 0x1123E}, {0x11241, 0x11241}, {0x112DF, 0x112EA}, 
-    {0x11300, 0x11303}, {0x1133B, 0x1133C}, {0x1133E, 0x11344}, 
-    {0x11347, 0x11348}, {0x1134B, 0x1134D}, {0x11357, 0x11357}, 
-    {0x11362, 0x11363}, {0x11366, 0x1136C}, {0x11370, 0x11374}, 
-    {0x113B8, 0x113C0}, {0x113C2, 0x113C2}, {0x113C5, 0x113C5}, 
-    {0x113C7, 0x113CA}, {0x113CC, 0x113D0}, {0x113D2, 0x113D2}, 
-    {0x113E1, 0x113E2}, {0x11435, 0x11446}, {0x1145E, 0x1145E}, 
-    {0x114B0, 0x114C3}, {0x115AF, 0x115B5}, {0x115B8, 0x115C0}, 
-    {0x115DC, 0x115DD}, {0x11630, 0x11640}, {0x116AB, 0x116B7}, 
-    {0x1171D, 0x1172B}, {0x1182C, 0x1183A}, {0x11930, 0x11935}, 
-    {0x11937, 0x11938}, {0x1193B, 0x1193E}, {0x11940, 0x11940}, 
-    {0x11942, 0x11943}, {0x119D1, 0x119D7}, {0x119DA, 0x119E0}, 
-    {0x119E4, 0x119E4}, {0x11A01, 0x11A0A}, {0x11A33, 0x11A39}, 
-    {0x11A3B, 0x11A3E}, {0x11A47, 0x11A47}, {0x11A51, 0x11A5B}, 
-    {0x11A8A, 0x11A99}, {0x11C2F, 0x11C36}, {0x11C38, 0x11C3F}, 
-    {0x11C92, 0x11CA7}, {0x11CA9, 0x11CB6}, {0x11D31, 0x11D36}, 
-    {0x11D3A, 0x11D3A}, {0x11D3C, 0x11D3D}, {0x11D3F, 0x11D45}, 
-    {0x11D47, 0x11D47}, {0x11D8A, 0x11D8E}, {0x11D90, 0x11D91}, 
-    {0x11D93, 0x11D97}, {0x11EF3, 0x11EF6}, {0x11F00, 0x11F01}, 
-    {0x11F03, 0x11F03}, {0x11F34, 0x11F3A}, {0x11F3E, 0x11F42}, 
-    {0x11F5A, 0x11F5A}, {0x13430, 0x13440}, {0x13447, 0x13455}, 
-    {0x1611E, 0x1612F}, {0x16AF0, 0x16AF4}, {0x16B30, 0x16B36}, 
-    {0x16F4F, 0x16F4F}, {0x16F51, 0x16F87}, {0x16F8F, 0x16F92}, 
-    {0x16FE4, 0x16FE4}, {0x1BC9D, 0x1BC9E}, {0x1BCA0, 0x1BCA3}, 
-    {0x1CF00, 0x1CF2D}, {0x1CF30, 0x1CF46}, {0x1D165, 0x1D169}, 
-    {0x1D16D, 0x1D182}, {0x1D185, 0x1D18B}, {0x1D1AA, 0x1D1AD}, 
-    {0x1D242, 0x1D244}, {0x1DA00, 0x1DA36}, {0x1DA3B, 0x1DA6C}, 
-    {0x1DA75, 0x1DA75}, {0x1DA84, 0x1DA84}, {0x1DA9B, 0x1DA9F}, 
-    {0x1DAA1, 0x1DAAF}, {0x1E000, 0x1E006}, {0x1E008, 0x1E018}, 
-    {0x1E01B, 0x1E021}, {0x1E023, 0x1E024}, {0x1E026, 0x1E02A}, 
-    {0x1E08F, 0x1E08F}, {0x1E130, 0x1E136}, {0x1E2AE, 0x1E2AE}, 
-    {0x1E2EC, 0x1E2EF}, {0x1E4EC, 0x1E4EF}, {0x1E5EE, 0x1E5EF}, 
-    {0x1E8D0, 0x1E8D6}, {0x1E944, 0x1E94A}, {0xE0001, 0xE0001}, 
-    {0xE0020, 0xE007F}, {0xE0100, 0xE01EF}
-};
-/* Wide characters (East Asian wide/fullwidth) */
-static const struct interval wide[] = {
-    {0x1100, 0x115F}, {0x231A, 0x231B}, {0x2329, 0x232A}, 
-    {0x23E9, 0x23EC}, {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, 
-    {0x25FD, 0x25FE}, {0x2614, 0x2615}, {0x2630, 0x2637}, 
-    {0x2648, 0x2653}, {0x267F, 0x267F}, {0x268A, 0x268F}, 
-    {0x2693, 0x2693}, {0x26A1, 0x26A1}, {0x26AA, 0x26AB}, 
-    {0x26BD, 0x26BE}, {0x26C4, 0x26C5}, {0x26CE, 0x26CE}, 
-    {0x26D4, 0x26D4}, {0x26EA, 0x26EA}, {0x26F2, 0x26F3}, 
-    {0x26F5, 0x26F5}, {0x26FA, 0x26FA}, {0x26FD, 0x26FD}, 
-    {0x2705, 0x2705}, {0x270A, 0x270B}, {0x2728, 0x2728}, 
-    {0x274C, 0x274C}, {0x274E, 0x274E}, {0x2753, 0x2755}, 
-    {0x2757, 0x2757}, {0x2795, 0x2797}, {0x27B0, 0x27B0}, 
-    {0x27BF, 0x27BF}, {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, 
-    {0x2B55, 0x2B55}, {0x2E80, 0x2E99}, {0x2E9B, 0x2EF3}, 
-    {0x2F00, 0x2FD5}, {0x2FF0, 0x3029}, {0x302E, 0x303E}, 
-    {0x3041, 0x3096}, {0x309B, 0x30FF}, {0x3105, 0x312F}, 
-    {0x3131, 0x318E}, {0x3190, 0x31E5}, {0x31EF, 0x321E}, 
-    {0x3220, 0x3247}, {0x3250, 0xA48C}, {0xA490, 0xA4C6}, 
-    {0xA960, 0xA97C}, {0xAC00, 0xD7A3}, {0xF900, 0xFA6D}, 
-    {0xFA70, 0xFAD9}, {0xFE10, 0xFE19}, {0xFE30, 0xFE52}, 
-    {0xFE54, 0xFE66}, {0xFE68, 0xFE6B}, {0xFF01, 0xFF60}, 
-    {0xFFE0, 0xFFE6}, {0x16FE0, 0x16FE3}, {0x16FF0, 0x16FF1}, 
-    {0x17000, 0x187F7}, {0x18800, 0x18CD5}, {0x18CFF, 0x18D08}, 
-    {0x1AFF0, 0x1AFF3}, {0x1AFF5, 0x1AFFB}, {0x1AFFD, 0x1AFFE}, 
-    {0x1B000, 0x1B122}, {0x1B132, 0x1B132}, {0x1B150, 0x1B152}, 
-    {0x1B155, 0x1B155}, {0x1B164, 0x1B167}, {0x1B170, 0x1B2FB}, 
-    {0x1D300, 0x1D356}, {0x1D360, 0x1D376}, {0x1F004, 0x1F004}, 
-    {0x1F0CF, 0x1F0CF}, {0x1F18E, 0x1F18E}, {0x1F191, 0x1F19A}, 
-    {0x1F200, 0x1F202}, {0x1F210, 0x1F23B}, {0x1F240, 0x1F248}, 
-    {0x1F250, 0x1F251}, {0x1F260, 0x1F265}, {0x1F300, 0x1F320}, 
-    {0x1F32D, 0x1F335}, {0x1F337, 0x1F37C}, {0x1F37E, 0x1F393}, 
-    {0x1F3A0, 0x1F3CA}, {0x1F3CF, 0x1F3D3}, {0x1F3E0, 0x1F3F0}, 
-    {0x1F3F4, 0x1F3F4}, {0x1F3F8, 0x1F43E}, {0x1F440, 0x1F440}, 
-    {0x1F442, 0x1F4FC}, {0x1F4FF, 0x1F53D}, {0x1F54B, 0x1F54E}, 
-    {0x1F550, 0x1F567}, {0x1F57A, 0x1F57A}, {0x1F595, 0x1F596}, 
-    {0x1F5A4, 0x1F5A4}, {0x1F5FB, 0x1F64F}, {0x1F680, 0x1F6C5}, 
-    {0x1F6CC, 0x1F6CC}, {0x1F6D0, 0x1F6D2}, {0x1F6D5, 0x1F6D7}, 
-    {0x1F6DC, 0x1F6DF}, {0x1F6EB, 0x1F6EC}, {0x1F6F4, 0x1F6FC}, 
-    {0x1F7E0, 0x1F7EB}, {0x1F7F0, 0x1F7F0}, {0x1F90C, 0x1F93A}, 
-    {0x1F93C, 0x1F945}, {0x1F947, 0x1F9FF}, {0x1FA70, 0x1FA7C}, 
-    {0x1FA80, 0x1FA89}, {0x1FA8F, 0x1FAC6}, {0x1FACE, 0x1FADC}, 
-    {0x1FADF, 0x1FAE9}, {0x1FAF0, 0x1FAF8}, {0x20000, 0x2A6DF}, 
-    {0x2A700, 0x2B739}, {0x2B740, 0x2B81D}, {0x2B820, 0x2CEA1}, 
-    {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D}, {0x2F800, 0x2FA1D}, 
-    {0x30000, 0x3134A}, {0x31350, 0x323AF}
-};
-/* Ambiguous width characters (context-dependent) */
-static const struct interval ambiguous[] = {
-    {0x00A1, 0x00A1}, {0x00A4, 0x00A4}, {0x00A7, 0x00A8}, 
-    {0x00AA, 0x00AA}, {0x00AD, 0x00AE}, {0x00B0, 0x00B4}, 
-    {0x00B6, 0x00BA}, {0x00BC, 0x00BF}, {0x00C6, 0x00C6}, 
-    {0x00D0, 0x00D0}, {0x00D7, 0x00D8}, {0x00DE, 0x00E1}, 
-    {0x00E6, 0x00E6}, {0x00E8, 0x00EA}, {0x00EC, 0x00ED}, 
-    {0x00F0, 0x00F0}, {0x00F2, 0x00F3}, {0x00F7, 0x00FA}, 
-    {0x00FC, 0x00FC}, {0x00FE, 0x00FE}, {0x0101, 0x0101}, 
-    {0x0111, 0x0111}, {0x0113, 0x0113}, {0x011B, 0x011B}, 
-    {0x0126, 0x0127}, {0x012B, 0x012B}, {0x0131, 0x0133}, 
-    {0x0138, 0x0138}, {0x013F, 0x0142}, {0x0144, 0x0144}, 
-    {0x0148, 0x014B}, {0x014D, 0x014D}, {0x0152, 0x0153}, 
-    {0x0166, 0x0167}, {0x016B, 0x016B}, {0x01CE, 0x01CE}, 
-    {0x01D0, 0x01D0}, {0x01D2, 0x01D2}, {0x01D4, 0x01D4}, 
-    {0x01D6, 0x01D6}, {0x01D8, 0x01D8}, {0x01DA, 0x01DA}, 
-    {0x01DC, 0x01DC}, {0x0251, 0x0251}, {0x0261, 0x0261}, 
-    {0x02C4, 0x02C4}, {0x02C7, 0x02C7}, {0x02C9, 0x02CB}, 
-    {0x02CD, 0x02CD}, {0x02D0, 0x02D0}, {0x02D8, 0x02DB}, 
-    {0x02DD, 0x02DD}, {0x02DF, 0x02DF}, {0x0391, 0x03A1}, 
-    {0x03A3, 0x03A9}, {0x03B1, 0x03C1}, {0x03C3, 0x03C9}, 
-    {0x0401, 0x0401}, {0x0410, 0x044F}, {0x0451, 0x0451}, 
-    {0x2010, 0x2010}, {0x2013, 0x2016}, {0x2018, 0x2019}, 
-    {0x201C, 0x201D}, {0x2020, 0x2022}, {0x2024, 0x2027}, 
-    {0x2030, 0x2030}, {0x2032, 0x2033}, {0x2035, 0x2035}, 
-    {0x203B, 0x203B}, {0x203E, 0x203E}, {0x2074, 0x2074}, 
-    {0x207F, 0x207F}, {0x2081, 0x2084}, {0x20AC, 0x20AC}, 
-    {0x2103, 0x2103}, {0x2105, 0x2105}, {0x2109, 0x2109}, 
-    {0x2113, 0x2113}, {0x2116, 0x2116}, {0x2121, 0x2122}, 
-    {0x2126, 0x2126}, {0x212B, 0x212B}, {0x2153, 0x2154}, 
-    {0x215B, 0x215E}, {0x2160, 0x216B}, {0x2170, 0x2179}, 
-    {0x2189, 0x2189}, {0x2190, 0x2199}, {0x21B8, 0x21B9}, 
-    {0x21D2, 0x21D2}, {0x21D4, 0x21D4}, {0x21E7, 0x21E7}, 
-    {0x2200, 0x2200}, {0x2202, 0x2203}, {0x2207, 0x2208}, 
-    {0x220B, 0x220B}, {0x220F, 0x220F}, {0x2211, 0x2211}, 
-    {0x2215, 0x2215}, {0x221A, 0x221A}, {0x221D, 0x2220}, 
-    {0x2223, 0x2223}, {0x2225, 0x2225}, {0x2227, 0x222C}, 
-    {0x222E, 0x222E}, {0x2234, 0x2237}, {0x223C, 0x223D}, 
-    {0x2248, 0x2248}, {0x224C, 0x224C}, {0x2252, 0x2252}, 
-    {0x2260, 0x2261}, {0x2264, 0x2267}, {0x226A, 0x226B}, 
-    {0x226E, 0x226F}, {0x2282, 0x2283}, {0x2286, 0x2287}, 
-    {0x2295, 0x2295}, {0x2299, 0x2299}, {0x22A5, 0x22A5}, 
-    {0x22BF, 0x22BF}, {0x2312, 0x2312}, {0x2460, 0x24E9}, 
-    {0x24EB, 0x254B}, {0x2550, 0x2573}, {0x2580, 0x258F}, 
-    {0x2592, 0x2595}, {0x25A0, 0x25A1}, {0x25A3, 0x25A9}, 
-    {0x25B2, 0x25B3}, {0x25B6, 0x25B7}, {0x25BC, 0x25BD}, 
-    {0x25C0, 0x25C1}, {0x25C6, 0x25C8}, {0x25CB, 0x25CB}, 
-    {0x25CE, 0x25D1}, {0x25E2, 0x25E5}, {0x25EF, 0x25EF}, 
-    {0x2605, 0x2606}, {0x2609, 0x2609}, {0x260E, 0x260F}, 
-    {0x261C, 0x261C}, {0x261E, 0x261E}, {0x2640, 0x2640}, 
-    {0x2642, 0x2642}, {0x2660, 0x2661}, {0x2663, 0x2665}, 
-    {0x2667, 0x266A}, {0x266C, 0x266D}, {0x266F, 0x266F}, 
-    {0x269E, 0x269F}, {0x26BF, 0x26BF}, {0x26C6, 0x26CD}, 
-    {0x26CF, 0x26D3}, {0x26D5, 0x26E1}, {0x26E3, 0x26E3}, 
-    {0x26E8, 0x26E9}, {0x26EB, 0x26F1}, {0x26F4, 0x26F4}, 
-    {0x26F6, 0x26F9}, {0x26FB, 0x26FC}, {0x26FE, 0x26FF}, 
-    {0x273D, 0x273D}, {0x2776, 0x277F}, {0x2B56, 0x2B59}, 
-    {0x3248, 0x324F}, {0xE000, 0xF8FF}, {0xFFFD, 0xFFFD}, 
-    {0x1F100, 0x1F10A}, {0x1F110, 0x1F12D}, {0x1F130, 0x1F169}, 
-    {0x1F170, 0x1F18D}, {0x1F18F, 0x1F190}, {0x1F19B, 0x1F1AC}, 
-    {0xF0000, 0xFFFFD}, {0x100000, 0x10FFFD}
-};
-// clang-format on
+        // Validate code point range and exclude surrogates
+        return codepoint <= 0x10FFFF && (codepoint < 0xD800 || codepoint > 0xDFFF);
+    }
 
-static int bisearch(wchar_t ucs, const struct interval* table, int max) {
-    int min = 0;
-    int mid;
-
-    if (ucs < table[0].first || ucs > table[max].last)
-        return 0;
-    while (max >= min) {
-        mid = (min + max) / 2;
-        if (ucs > table[mid].last)
-            min = mid + 1;
-        else if (ucs < table[mid].first)
-            max = mid - 1;
-        else
+    /* Encode code point to UTF-8 */
+    inline int utf8_encode(uint32_t codepoint, std::string& output) {
+        if (codepoint <= 0x7F) {
+            // 1-byte sequence: 0xxxxxxx
+            output.push_back(static_cast<char>(codepoint));
             return 1;
+        }
+        if (codepoint <= 0x7FF) {
+            // 2-byte sequence: 110xxxxx 10xxxxxx
+            output.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+            output.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+            return 2;
+        }
+        if (codepoint <= 0xFFFF) {
+            // 3-byte sequence: 1110xxxx 10xxxxxx 10xxxxxx
+            output.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+            output.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+            output.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+            return 3;
+        }
+        if (codepoint <= 0x10FFFF) {
+            // 4-byte sequence: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+            output.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+            output.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+            output.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+            output.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+            return 4;
+        }
+        return 0;
     }
 
-    return 0;
-}
-
-#include <cwchar>
-
-inline int ah_wcwidth(wchar_t ucs) {
-    if (ucs == 0)
+    /* Encode code point to UTF-16 */
+    inline int utf16_encode(uint32_t codepoint, std::wstring& output) {
+        if (codepoint < 0xD800 || (codepoint > 0xDFFF && codepoint <= 0xFFFF)) {
+            output.push_back(static_cast<wchar_t>(codepoint));
+            return 1;
+        }
+        if (codepoint <= 0x10FFFF) {
+            codepoint -= 0x10000;
+            output.push_back(static_cast<wchar_t>(0xD800 | (codepoint >> 10)));
+            output.push_back(static_cast<wchar_t>(0xDC00 | (codepoint & 0x3FF)));
+            return 2;
+        }
         return 0;
+    }
 
-    // control characters
-    if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0))
-        return -1;
-
-    // non-spacing/zero-width characters
-    if (bisearch(ucs, combining, sizeof(combining) / sizeof(struct interval) - 1))
+    /* Encode code point to UTF-32 */
+    inline int utf32_encode(uint32_t codepoint, std::wstring& output) {
+        if (codepoint <= 0x10FFFF && (codepoint < 0xD800 || codepoint > 0xDFFF)) {
+            output.push_back(static_cast<wchar_t>(codepoint));
+            return 1;
+        }
         return 0;
+    }
 
-    // wide/fullwidth characters
-    if (bisearch(ucs, wide, sizeof(wide) / sizeof(struct interval) - 1))
-        return 2;
+    /* Convert UTF-8 string to wstring */
+    inline std::wstring utf8stws(const std::string& input) {
+        if (input.empty()) {
+            return std::wstring();
+        }
 
-    return 1;
-}
+        std::wstring output;
+        // Reserve space to minimize reallocations
+        output.reserve(input.length());
 
-inline int ah_wcswidth(const wchar_t* pwcs, size_t n) {
-    if (!pwcs)
-        return 0;
+        const char* p = input.c_str();
+        const char* end = p + input.length();
 
-    int w, width = 0;
+        while (p < end) {
+            uint32_t cp;
+            int consumed;
 
-    for (; *pwcs && n-- > 0; pwcs++)
-        if ((w = ah_wcwidth(*pwcs)) < 0)
-            return -1;
-        else
-            width += w;
+            if (utf8_decode(p, cp, consumed)) {
+                int written = USE_UTF16 ? utf16_encode(cp, output) : utf32_encode(cp, output);
 
-    return width;
-}
+                if (written > 0) {
+                    p += consumed;
+                    continue;
+                }
+            }
+
+            // Add replacement character
+            output.push_back(L'?');
+            p++;
+        }
+
+        return output;
+    }
+
+    /* Convenience overload for C-style strings */
+    inline std::wstring utf8stws(const char* input) {
+        if (!input) {
+            return std::wstring();
+        }
+        return utf8stws(std::string(input));
+    }
+
+    /* Convert wstring to UTF-8 string */
+    inline std::string utf8wsts(const std::wstring& input) {
+        if (input.empty()) {
+            return std::string();
+        }
+
+        std::string output;
+        // Reserve space (worst case: 4 bytes per wide char)
+        output.reserve(input.length() * 4);
+
+        const wchar_t* p = input.c_str();
+        size_t remaining = input.length();
+
+        while (remaining > 0) {
+            uint32_t cp;
+            int consumed;
+
+            bool decoded = USE_UTF16 ? utf16_decode(p, remaining, cp, consumed) : utf32_decode(p, remaining, cp, consumed);
+
+            if (decoded) {
+                int written = utf8_encode(cp, output);
+
+                if (written > 0) {
+                    p += consumed;
+                    remaining -= consumed;
+                    continue;
+                }
+            }
+
+            // Add replacement character
+            output.push_back('?');
+            p++;
+            remaining--;
+        }
+
+        return output;
+    }
+
+    /* Convenience overload for C-style wide strings */
+    inline std::string utf8wsts(const wchar_t* input) {
+        if (!input) {
+            return std::string();
+        }
+        return utf8wsts(std::wstring(input));
+    }
+} // namespace conv
+
+namespace display_width {
+    struct interval {
+        int first;
+        int last;
+    };
+
+    // clang-format off
+    /* Wide characters (East Asian wide/fullwidth) */
+    static const struct interval wide[] = {
+        {0x1100, 0x115F}, {0x231A, 0x231B}, {0x2329, 0x232A}, 
+        {0x23E9, 0x23EC}, {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, 
+        {0x25FD, 0x25FE}, {0x2614, 0x2615}, {0x2630, 0x2637}, 
+        {0x2648, 0x2653}, {0x267F, 0x267F}, {0x268A, 0x268F}, 
+        {0x2693, 0x2693}, {0x26A1, 0x26A1}, {0x26AA, 0x26AB}, 
+        {0x26BD, 0x26BE}, {0x26C4, 0x26C5}, {0x26CE, 0x26CE}, 
+        {0x26D4, 0x26D4}, {0x26EA, 0x26EA}, {0x26F2, 0x26F3}, 
+        {0x26F5, 0x26F5}, {0x26FA, 0x26FA}, {0x26FD, 0x26FD}, 
+        {0x2705, 0x2705}, {0x270A, 0x270B}, {0x2728, 0x2728}, 
+        {0x274C, 0x274C}, {0x274E, 0x274E}, {0x2753, 0x2755}, 
+        {0x2757, 0x2757}, {0x2795, 0x2797}, {0x27B0, 0x27B0}, 
+        {0x27BF, 0x27BF}, {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, 
+        {0x2B55, 0x2B55}, {0x2E80, 0x2E99}, {0x2E9B, 0x2EF3}, 
+        {0x2F00, 0x2FD5}, {0x2FF0, 0x3029}, {0x302E, 0x303E}, 
+        {0x3041, 0x3096}, {0x309B, 0x30FF}, {0x3105, 0x312F}, 
+        {0x3131, 0x318E}, {0x3190, 0x31E5}, {0x31EF, 0x321E}, 
+        {0x3220, 0x3247}, {0x3250, 0xA48C}, {0xA490, 0xA4C6}, 
+        {0xA960, 0xA97C}, {0xAC00, 0xD7A3}, {0xF900, 0xFA6D}, 
+        {0xFA70, 0xFAD9}, {0xFE10, 0xFE19}, {0xFE30, 0xFE52}, 
+        {0xFE54, 0xFE66}, {0xFE68, 0xFE6B}, {0xFF01, 0xFF60}, 
+        {0xFFE0, 0xFFE6}, {0x16FE0, 0x16FE3}, {0x16FF0, 0x16FF1}, 
+        {0x17000, 0x187F7}, {0x18800, 0x18CD5}, {0x18CFF, 0x18D08}, 
+        {0x1AFF0, 0x1AFF3}, {0x1AFF5, 0x1AFFB}, {0x1AFFD, 0x1AFFE}, 
+        {0x1B000, 0x1B122}, {0x1B132, 0x1B132}, {0x1B150, 0x1B152}, 
+        {0x1B155, 0x1B155}, {0x1B164, 0x1B167}, {0x1B170, 0x1B2FB}, 
+        {0x1D300, 0x1D356}, {0x1D360, 0x1D376}, {0x1F004, 0x1F004}, 
+        {0x1F0CF, 0x1F0CF}, {0x1F18E, 0x1F18E}, {0x1F191, 0x1F19A}, 
+        {0x1F200, 0x1F202}, {0x1F210, 0x1F23B}, {0x1F240, 0x1F248}, 
+        {0x1F250, 0x1F251}, {0x1F260, 0x1F265}, {0x1F300, 0x1F320}, 
+        {0x1F32D, 0x1F335}, {0x1F337, 0x1F37C}, {0x1F37E, 0x1F393}, 
+        {0x1F3A0, 0x1F3CA}, {0x1F3CF, 0x1F3D3}, {0x1F3E0, 0x1F3F0}, 
+        {0x1F3F4, 0x1F3F4}, {0x1F3F8, 0x1F43E}, {0x1F440, 0x1F440}, 
+        {0x1F442, 0x1F4FC}, {0x1F4FF, 0x1F53D}, {0x1F54B, 0x1F54E}, 
+        {0x1F550, 0x1F567}, {0x1F57A, 0x1F57A}, {0x1F595, 0x1F596}, 
+        {0x1F5A4, 0x1F5A4}, {0x1F5FB, 0x1F64F}, {0x1F680, 0x1F6C5}, 
+        {0x1F6CC, 0x1F6CC}, {0x1F6D0, 0x1F6D2}, {0x1F6D5, 0x1F6D7}, 
+        {0x1F6DC, 0x1F6DF}, {0x1F6EB, 0x1F6EC}, {0x1F6F4, 0x1F6FC}, 
+        {0x1F7E0, 0x1F7EB}, {0x1F7F0, 0x1F7F0}, {0x1F90C, 0x1F93A}, 
+        {0x1F93C, 0x1F945}, {0x1F947, 0x1F9FF}, {0x1FA70, 0x1FA7C}, 
+        {0x1FA80, 0x1FA89}, {0x1FA8F, 0x1FAC6}, {0x1FACE, 0x1FADC}, 
+        {0x1FADF, 0x1FAE9}, {0x1FAF0, 0x1FAF8}, {0x20000, 0x2A6DF}, 
+        {0x2A700, 0x2B739}, {0x2B740, 0x2B81D}, {0x2B820, 0x2CEA1}, 
+        {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D}, {0x2F800, 0x2FA1D}, 
+        {0x30000, 0x3134A}, {0x31350, 0x323AF}
+    };
+    constexpr size_t wide_size = sizeof(wide) / sizeof(interval);
+    // clang-format on
+
+    static bool bisearch(wchar_t ucs, const struct interval* table, int max) {
+        int min = 0;
+        int mid;
+
+        if (ucs < table[0].first || ucs > table[max].last)
+            return false;
+
+        while (max >= min) {
+            mid = (min + max) / 2;
+            if (ucs > table[mid].last)
+                min = mid + 1;
+            else if (ucs < table[mid].first)
+                max = mid - 1;
+            else
+                return true;
+        }
+
+        return false;
+    }
+
+    inline int wcwidth(wchar_t ucs) {
+        if (ucs == 0)
+            return 0;
+
+        // edit: to match the width calculation for tabular
+        if (ucs == 0x1B)
+            return 1;
+
+        // edited to match tabular width calculation
+        // control characters
+        // if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0))
+        // return -1;
+
+        /* no need to check for combining characters since the user will give visible characters*/
+        // non-spacing/zero-width characters
+        // if (bisearch(ucs, combining, combining_size - 1))
+        //   return 0;
+
+        // wide/fullwidth characters
+        if (bisearch(ucs, wide, wide_size - 1))
+            return 2;
+
+        return 1;
+    }
+
+    // edited to ignore control characters
+    inline size_t wcswidth(const wchar_t* pwcs, size_t n) {
+        if (!pwcs)
+            return 0;
+
+        int w;
+        size_t width = 0;
+
+        for (; *pwcs && n-- > 0; pwcs++)
+            if ((w = wcwidth(*pwcs)) > 0)
+                width += static_cast<size_t>(w);
+
+        return width;
+    }
+} // namespace display_width
 
 namespace tabular {
     enum class Alignment {
@@ -521,7 +494,7 @@ namespace tabular {
         crossed = 29
     };
 
-    struct Border {
+    struct BorderGlyphs {
         std::string vertical;
         std::string horizontal;
 
@@ -532,10 +505,10 @@ namespace tabular {
 
         std::string intersection; // +
 
-        std::string left_to_right;
-        std::string right_to_left;
-        std::string bottom_to_top;
-        std::string top_to_bottom;
+        std::string left_connector;
+        std::string right_connector;
+        std::string bottom_connector;
+        std::string top_connector;
     };
 
     typedef struct RGB {
@@ -644,6 +617,18 @@ namespace tabular {
                 return *this;
             }
 
+            // add background RGB to the whole column
+            Config& content_background_color(RGB rgb) {
+                if (!column.content_background_color.empty())
+                    column.content_background_color.clear();
+
+                column.content_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                  std::to_string(rgb.g) + ";" +
+                                                  std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
             // add Color to the whole column
             Config& color(Color color) {
                 if (!column.content_color.empty())
@@ -655,33 +640,13 @@ namespace tabular {
             }
 
             // add RGB to the whole column
-            Config& rgb(RGB rgb) {
+            Config& color(RGB rgb) {
                 if (!column.content_color.empty())
                     column.content_color.clear();
 
                 column.content_color = CSI "38;2;" + std::to_string(rgb.r) + ";" +
                                        std::to_string(rgb.g) + ";" +
                                        std::to_string(rgb.b) + "m";
-
-                return *this;
-            }
-
-            // add background RGB to the whole column
-            Config& content_background_rgb(RGB rgb) {
-                if (!column.content_background_color.empty())
-                    column.content_background_color.clear();
-
-                column.content_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                  std::to_string(rgb.g) + ";" +
-                                                  std::to_string(rgb.b) + "m";
-
-                return *this;
-            }
-
-            // multi byte characters support
-            // (locale-independent but only utf8 encoding is supported)
-            Config& multi_byte_chars(bool is_multi_byte) {
-                column.is_multi_byte = is_multi_byte;
 
                 return *this;
             }
@@ -696,7 +661,7 @@ namespace tabular {
                 return *this;
             }
 
-            Config& column_background_rgb(RGB rgb) {
+            Config& column_background_color(RGB rgb) {
                 if (!column.column_background_color.empty())
                     column.column_background_color.clear();
 
@@ -761,6 +726,14 @@ namespace tabular {
 
                 return *this;
             }
+
+            // multi byte characters support
+            // (locale-independent but only utf8 encoding is supported)
+            Setters& multi_byte_characters(bool is_multi_byte) {
+                column.is_multi_byte = is_multi_byte;
+
+                return *this;
+            }
         };
 
     public:
@@ -773,6 +746,10 @@ namespace tabular {
             width = 0;
             top_padding = 0;
             bottom_padding = 0;
+
+            text_styles = "";
+            content_color = "";
+            content_background_color = "";
 
             // auto detection(with ascii check) has been removed
             // for better performance
@@ -830,6 +807,13 @@ namespace tabular {
                 return *this;
             }
 
+            Config& color(RGB rgb) {
+                for (Column& column : row.columns)
+                    column.config().color(rgb);
+
+                return *this;
+            }
+
             Config& content_background_color(BackgroundColor back_color) {
                 for (Column& column : row.columns)
                     column.config().content_background_color(back_color);
@@ -837,23 +821,9 @@ namespace tabular {
                 return *this;
             }
 
-            Config& rgb(RGB rgb) {
+            Config& content_background_color(RGB background_rgb) {
                 for (Column& column : row.columns)
-                    column.config().rgb(rgb);
-
-                return *this;
-            }
-
-            Config& content_background_rgb(RGB background_rgb) {
-                for (Column& column : row.columns)
-                    column.config().content_background_rgb(background_rgb);
-
-                return *this;
-            }
-
-            Config& multi_byte_chars(bool is_multi_byte) {
-                for (Column& column : row.columns)
-                    column.config().multi_byte_chars(is_multi_byte);
+                    column.config().content_background_color(background_rgb);
 
                 return *this;
             }
@@ -865,21 +835,38 @@ namespace tabular {
                 return *this;
             }
 
-            Config& column_background_rgb(RGB background_rgb) {
+            Config& column_background_color(RGB background_rgb) {
                 for (Column& column : row.columns)
-                    column.config().column_background_rgb(background_rgb);
+                    column.config().column_background_color(background_rgb);
+
+                return *this;
+            }
+        };
+
+        class Setters {
+            Row& row;
+
+        public:
+            Setters(Row& row) : row(row) {}
+
+            Setters& multi_byte_characters(bool is_multi_byte) {
+                for (Column& column : row.columns)
+                    column.set().multi_byte_characters(is_multi_byte);
 
                 return *this;
             }
         };
 
     public:
-        std::vector<Column> columns;
+        std::vector<Column>
+            columns;
 
         Row(std::vector<Column> columns)
             : columns(columns) {}
 
         Config config() { return Config(*this); }
+
+        Setters set() { return Setters(*this); }
 
         Column& operator[](int index) {
             if (index >= this->columns.size() || index < 0)
@@ -889,46 +876,7 @@ namespace tabular {
         }
     };
 
-    namespace maps {
-        static Border get_border_template(BorderStyle borderStyle) {
-            static std::map<BorderStyle, Border> templates{
-                {BorderStyle::empty, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
-                {BorderStyle::standard, {"|", "-", "+", "+", "+", "+", "+", "+", "+", "+", "+"}},
-                {BorderStyle::ANSI, {
-                                        TABLE_MODE "x" RESET_TABLE_MODE, // vertical
-                                        TABLE_MODE "q" RESET_TABLE_MODE, // horizontal
-                                        TABLE_MODE "j" RESET_TABLE_MODE, // bottom_right_corner
-                                        TABLE_MODE "k" RESET_TABLE_MODE, // top_right_corner
-                                        TABLE_MODE "l" RESET_TABLE_MODE, // top_left_corner
-                                        TABLE_MODE "m" RESET_TABLE_MODE, // bottom_left_corner
-                                        TABLE_MODE "n" RESET_TABLE_MODE, // middle_separator
-                                        TABLE_MODE "t" RESET_TABLE_MODE, // middle_left_to_right
-                                        TABLE_MODE "u" RESET_TABLE_MODE, // middle_right_to_left
-                                        TABLE_MODE "v" RESET_TABLE_MODE, // middle_bottom_to_top
-                                        TABLE_MODE "w" RESET_TABLE_MODE  // middle_top_to_bottom
-                                    }}};
-            return templates[borderStyle];
-        }
-
-        static ResetStyle get_style_reset(Style style) {
-            static std::map<Style, ResetStyle> reset{
-                {Style::bold, ResetStyle::bold},
-                {Style::dim, ResetStyle::dim},
-                {Style::italic, ResetStyle::italic},
-                {Style::underline, ResetStyle::underline},
-                {Style::double_underline, ResetStyle::double_underline},
-                {Style::blink, ResetStyle::blink},
-                {Style::fast_blink, ResetStyle::fast_blink},
-                {Style::reverse, ResetStyle::reverse},
-                {Style::concealed, ResetStyle::concealed},
-                {Style::crossed, ResetStyle::crossed}};
-
-            return reset[style];
-        }
-    }; // namespace maps
-
     namespace utils {
-
         // to align PPDirectives
         // clang-format off
         inline unsigned short get_terminal_width() {
@@ -988,7 +936,20 @@ namespace tabular {
         }
         // clang-format on
 
+        // multi byte string width
+        inline size_t mbswidth(std::string str) {
+            std::wstring wstr = conv::utf8stws(str.c_str());
+            size_t width = display_width::wcswidth(wstr.c_str(), wstr.length());
+
+            return width;
+        }
+
+        inline size_t display_width(std::string str, bool is_multi_byte) {
+            return is_multi_byte ? mbswidth(str) : str.length();
+        }
+
         // split by words AND save both '\n' and ' ' as words too
+        // works at least for UTF-8 encoding strings
         inline std::list<std::string> split_text(const std::string& str) {
             std::list<std::string> result;
 
@@ -1014,7 +975,7 @@ namespace tabular {
         }
 
         // finalize line and push it
-        inline void commit_line(std::vector<std::string>& result, std::string& sub, int usable_width, Column column) {
+        inline void commit_line(std::vector<std::string>& result, std::string& sub, size_t* sub_size, int usable_width, Column column) {
             std::string line;
             Alignment align = column.get().alignment();
 
@@ -1024,9 +985,9 @@ namespace tabular {
 
             int start;
             if (align == Alignment::center)
-                start = (usable_width - sub.size()) / 2;
+                start = (usable_width - (*sub_size)) / 2;
             else if (align == Alignment::right)
-                start = (usable_width - sub.size());
+                start = (usable_width - (*sub_size));
             else
                 start = 0;
 
@@ -1047,16 +1008,19 @@ namespace tabular {
             if (!styles.empty())
                 line.append(RESET);
 
+            /* no need */
             // auto horizontal padding
-            line.append(" ");
+            // line.append(" ");
 
             result.push_back(line);
 
             sub.clear();
+            *sub_size = 0;
         }
 
         inline std::vector<std::string> format_column_lines(Column& column) {
             const std::string& content = column.content;
+            const bool is_multi_byte = column.get().is_multi_byte();
 
             if (content.empty())
                 return std::vector<std::string>();
@@ -1080,37 +1044,63 @@ namespace tabular {
             const int limit = (usable_width * CONTENT_MANIPULATION_BACK_LIMIT);
 
             std::string sub;
+            size_t sub_size = 0;
             for (auto it = words.begin(); it != words.end(); ++it) {
                 std::string& word = *it;
 
                 // add existing content if we reach new line
                 if (word == "\n") {
-                    commit_line(result, sub, usable_width, column);
+                    commit_line(result, sub, &sub_size, usable_width, column);
                     continue;
                 }
 
                 // we need split
-                if ((sub.size() + word.size()) > usable_width) {
-                    int remaining_space = usable_width - sub.size();
+                size_t word_size = display_width(word, is_multi_byte);
+                if ((sub_size + word_size) > usable_width) {
+                    int remaining_space = usable_width - sub_size;
+
+                    // force split
                     if (remaining_space > limit) {
-                        std::string part = word.substr(0, remaining_space - 1) + '-';
+                        std::string first_part;
+                        std::string remainder;
+                        if (is_multi_byte) {
+                            std::wstring wword = conv::utf8stws(word);
+                            std::wstring wpart = wword.substr(0, remaining_space - 1) + L'-';
+                            std::wstring wremainder = wword.substr(remaining_space - 1);
 
-                        sub += part;
-                        commit_line(result, sub, usable_width, column);
+                            first_part = conv::utf8wsts(wpart);
+                            remainder = conv::utf8wsts(wremainder);
+                        } else {
+                            first_part = word.substr(0, remaining_space - 1) + '-';
+                            remainder = word.substr(remaining_space - 1);
+                        }
 
-                        std::string remainder = word.substr(remaining_space - 1);
+                        sub += first_part;
+                        sub_size += display_width(first_part, is_multi_byte);
+
+                        commit_line(result, sub, &sub_size, usable_width, column);
+
                         words.insert(std::next(it), remainder);
-                    } else {
-                        commit_line(result, sub, usable_width, column);
-                        --it;
                     }
-                } else
+                    // commit line and append the word on the next line
+                    else {
+                        if (!sub.empty() && sub.back() == ' ') {
+                            sub.pop_back(); // pop the last space if exist
+                            sub_size--;
+                        }
+
+                        commit_line(result, sub, &sub_size, usable_width, column);
+                        --it; // to append the word on the next iteration
+                    }
+                } else {
                     sub += word; // add a normall less than line word
+                    sub_size += word_size;
+                }
             }
 
             // any remaining words
             if (!sub.empty())
-                commit_line(result, sub, usable_width, column);
+                commit_line(result, sub, &sub_size, usable_width, column);
 
             // BOTTOM padding
             result.insert(result.end(), bottom_padding, std::string());
@@ -1136,16 +1126,826 @@ namespace tabular {
             return result;
         }
 
-        // multi byte string width
-        inline size_t mbswidth(std::string str) {
-            wchar_t* wstr = utf8stws(str.c_str());
-            return ah_wcswidth(wstr, wcslen(wstr));
-        }
     } // namespace utils
 
+    class Border {
+    private:
+        BorderGlyphs glyphs;
+
+        BorderStyle style;
+
+        BorderGlyphs colors;
+        BorderGlyphs background_colors;
+
+        bool is_multi_byte;
+
+        class Getters {
+            Border& border;
+
+        public:
+            Getters(Border& border) : border(border) {}
+
+            BorderStyle style() { return border.style; }
+
+            BorderGlyphs glyphs() {
+                static const std::map<BorderStyle, BorderGlyphs> styleTemplates{
+                    {BorderStyle::empty, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
+                    {BorderStyle::standard, {"|", "-", "+", "+", "+", "+", "+", "+", "+", "+", "+"}},
+                    {BorderStyle::ANSI, {
+                                            TABLE_MODE "x" RESET_TABLE_MODE, // vertical
+                                            TABLE_MODE "q" RESET_TABLE_MODE, // horizontal
+                                            TABLE_MODE "j" RESET_TABLE_MODE, // bottom_right_corner
+                                            TABLE_MODE "k" RESET_TABLE_MODE, // top_right_corner
+                                            TABLE_MODE "l" RESET_TABLE_MODE, // top_left_corner
+                                            TABLE_MODE "m" RESET_TABLE_MODE, // bottom_left_corner
+                                            TABLE_MODE "n" RESET_TABLE_MODE, // intersection
+                                            TABLE_MODE "t" RESET_TABLE_MODE, // left_connector
+                                            TABLE_MODE "u" RESET_TABLE_MODE, // right_connector
+                                            TABLE_MODE "v" RESET_TABLE_MODE, // bottom_connector
+                                            TABLE_MODE "w" RESET_TABLE_MODE  // top_connector
+                                        }}};
+
+                const BorderGlyphs& def = styleTemplates.at(border.style);
+                BorderGlyphs result;
+
+                auto pick = [](const std::string& val, const std::string& fallback) -> std::string {
+                    return val.empty() ? fallback : val;
+                };
+
+                auto wrap = [](const std::string& fg, const std::string& bg, const std::string& val) -> std::string {
+                    if (fg.empty() && bg.empty()) return val;
+                    return fg + bg + val + RESET;
+                };
+
+                result.vertical = wrap(border.colors.vertical,
+                                       border.background_colors.vertical,
+                                       pick(border.glyphs.vertical, def.vertical));
+
+                result.horizontal = wrap(border.colors.horizontal,
+                                         border.background_colors.horizontal,
+                                         pick(border.glyphs.horizontal, def.horizontal));
+
+                result.bottom_right_corner = wrap(border.colors.bottom_right_corner,
+                                                  border.background_colors.bottom_right_corner,
+                                                  pick(border.glyphs.bottom_right_corner, def.bottom_right_corner));
+
+                result.top_right_corner = wrap(border.colors.top_right_corner,
+                                               border.background_colors.top_right_corner,
+                                               pick(border.glyphs.top_right_corner, def.top_right_corner));
+
+                result.top_left_corner = wrap(border.colors.top_left_corner,
+                                              border.background_colors.top_left_corner,
+                                              pick(border.glyphs.top_left_corner, def.top_left_corner));
+
+                result.bottom_left_corner = wrap(border.colors.bottom_left_corner,
+                                                 border.background_colors.bottom_left_corner,
+                                                 pick(border.glyphs.bottom_left_corner, def.bottom_left_corner));
+
+                result.intersection = wrap(border.colors.intersection,
+                                           border.background_colors.intersection,
+                                           pick(border.glyphs.intersection, def.intersection));
+
+                result.left_connector = wrap(border.colors.left_connector,
+                                             border.background_colors.left_connector,
+                                             pick(border.glyphs.left_connector, def.left_connector));
+
+                result.right_connector = wrap(border.colors.right_connector,
+                                              border.background_colors.right_connector,
+                                              pick(border.glyphs.right_connector, def.right_connector));
+
+                result.bottom_connector = wrap(border.colors.bottom_connector,
+                                               border.background_colors.bottom_connector,
+                                               pick(border.glyphs.bottom_connector, def.bottom_connector));
+
+                result.top_connector = wrap(border.colors.top_connector,
+                                            border.background_colors.top_connector,
+                                            pick(border.glyphs.top_connector, def.top_connector));
+
+                return result;
+            }
+
+            std::string horizontal() const {
+                return border.glyphs.horizontal;
+            }
+
+            std::string vertical() const {
+                return border.glyphs.vertical;
+            }
+
+            std::string top_left_corner() const {
+                return border.glyphs.top_left_corner;
+            }
+
+            std::string top_right_corner() const {
+                return border.glyphs.top_right_corner;
+            }
+
+            std::string bottom_left_corner() const {
+                return border.glyphs.bottom_left_corner;
+            }
+
+            std::string bottom_right_corner() const {
+                return border.glyphs.bottom_right_corner;
+            }
+
+            std::string intersection() const {
+                return border.glyphs.intersection;
+            }
+
+            std::string left_connector() const {
+                return border.glyphs.left_connector;
+            }
+
+            std::string right_connector() const {
+                return border.glyphs.right_connector;
+            }
+
+            std::string top_connector() const {
+                return border.glyphs.top_connector;
+            }
+
+            std::string bottom_connector() const {
+                return border.glyphs.bottom_connector;
+            }
+        };
+
+        class Setters {
+            Border& border;
+
+        public:
+            Setters(Border& border) : border(border) {}
+
+            /*
+             * Note: It is the user's responsibility to ensure that each border glyph is a single
+             * terminal column wide. If a string with a visual width > 1 is provided, the table
+             * layout may break.
+             *
+             * Using str.length() is unreliable for multi-byte characters, and calling utils::mbswidth()
+             * on every assignment would introduce unnecessary performance overhead. Supporting accurate
+             * width checks would also require UTF-8 decoding and wide character handling, which is
+             * beyond the scope of this setter.
+             *
+             * Since this library is aimed at developers, it assumes users understand the implications
+             * of using multi-byte or wide characters in border definitions.
+             *
+             * — Anas Hamdane, 2025-06-09
+             */
+
+            Setters& style(BorderStyle style) {
+                border.style = style;
+                return *this;
+            }
+
+            Setters& horizontal(std::string horizontal) {
+                border.glyphs.horizontal = horizontal;
+                return *this;
+            }
+
+            Setters& vertical(std::string vertical) {
+                border.glyphs.vertical = vertical;
+                return *this;
+            }
+
+            Setters& corner(std::string corner) {
+                border.glyphs.bottom_right_corner = corner;
+                border.glyphs.top_right_corner = corner;
+
+                border.glyphs.bottom_left_corner = corner;
+                border.glyphs.top_left_corner = corner;
+                return *this;
+            }
+
+            Setters& top_left_corner(std::string corner) {
+                border.glyphs.top_left_corner = corner;
+                return *this;
+            }
+
+            Setters& top_right_corner(std::string corner) {
+                border.glyphs.top_right_corner = corner;
+                return *this;
+            }
+
+            Setters& bottom_left_corner(std::string corner) {
+                border.glyphs.bottom_left_corner = corner;
+                return *this;
+            }
+
+            Setters& bottom_right_corner(std::string corner) {
+                border.glyphs.bottom_right_corner = corner;
+                return *this;
+            }
+
+            Setters intersection(std::string intersection) {
+                border.glyphs.intersection = intersection;
+                return *this;
+            }
+
+            Setters& left_connector(std::string connector) {
+                border.glyphs.left_connector = connector;
+                return *this;
+            }
+
+            Setters& right_connector(std::string connector) {
+                border.glyphs.right_connector = connector;
+                return *this;
+            }
+
+            Setters& top_connector(std::string connector) {
+                border.glyphs.top_connector = connector;
+                return *this;
+            }
+
+            Setters& bottom_connector(std::string connector) {
+                border.glyphs.bottom_connector = connector;
+                return *this;
+            }
+        };
+
+        class Coloring {
+            Border& border;
+
+        public:
+            Coloring(Border& border) : border(border) {}
+
+            /* ------------------ full ------------------------ */
+            Coloring& full(Color color) {
+                horizontal(color);
+                vertical(color);
+
+                return *this;
+            }
+
+            Coloring& full(RGB rgb) {
+                horizontal(rgb);
+                vertical(rgb);
+
+                return *this;
+            }
+
+            /* ------------------ horizontal ------------------------ */
+            Coloring& horizontal(Color color) {
+                if (!border.colors.horizontal.empty())
+                    border.colors.horizontal.clear();
+
+                border.colors.horizontal = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                top_connector(color);
+                bottom_connector(color);
+
+                corners(color);
+
+                return *this;
+            }
+
+            Coloring& horizontal(RGB rgb) {
+                if (!border.colors.horizontal.empty())
+                    border.colors.horizontal.clear();
+
+                border.colors.horizontal = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                           std::to_string(rgb.g) + ";" +
+                                           std::to_string(rgb.b) + "m";
+
+                top_connector(rgb);
+                bottom_connector(rgb);
+
+                corners(rgb);
+
+                return *this;
+            }
+
+            Coloring& bottom_connector(Color color) {
+                if (!border.colors.bottom_connector.empty())
+                    border.colors.bottom_connector.clear();
+
+                border.colors.bottom_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& bottom_connector(RGB rgb) {
+                if (!border.colors.bottom_connector.empty())
+                    border.colors.bottom_connector.clear();
+
+                border.colors.bottom_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                                 std::to_string(rgb.g) + ";" +
+                                                 std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            Coloring& top_connector(Color color) {
+                if (!border.colors.top_connector.empty())
+                    border.colors.top_connector.clear();
+
+                border.colors.top_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& top_connector(RGB rgb) {
+                if (!border.colors.top_connector.empty())
+                    border.colors.top_connector.clear();
+
+                border.colors.top_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                              std::to_string(rgb.g) + ";" +
+                                              std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            /* ------------------ vertical ------------------------ */
+            Coloring& vertical(Color color) {
+                if (!border.colors.vertical.empty())
+                    border.colors.vertical.clear();
+
+                border.colors.vertical = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                left_connector(color);
+                right_connector(color);
+
+                corners(color);
+
+                return *this;
+            }
+
+            Coloring& vertical(RGB rgb) {
+                if (!border.colors.vertical.empty())
+                    border.colors.vertical.clear();
+
+                border.colors.vertical = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                         std::to_string(rgb.g) + ";" +
+                                         std::to_string(rgb.b) + "m";
+
+                left_connector(rgb);
+                right_connector(rgb);
+
+                corners(rgb);
+
+                return *this;
+            }
+
+            Coloring& left_connector(Color color) {
+                if (!border.colors.left_connector.empty())
+                    border.colors.left_connector.clear();
+
+                border.colors.left_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& left_connector(RGB rgb) {
+                if (!border.colors.left_connector.empty())
+                    border.colors.left_connector.clear();
+
+                border.colors.left_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                               std::to_string(rgb.g) + ";" +
+                                               std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            Coloring& right_connector(Color color) {
+                if (!border.colors.right_connector.empty())
+                    border.colors.right_connector.clear();
+
+                border.colors.right_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& right_connector(RGB rgb) {
+                if (!border.colors.right_connector.empty())
+                    border.colors.right_connector.clear();
+
+                border.colors.right_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                                std::to_string(rgb.g) + ";" +
+                                                std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            /* ------------------ corners ------------------------ */
+            Coloring& corners(Color color) {
+                top_left_corner(color);
+                top_right_corner(color);
+
+                bottom_left_corner(color);
+                bottom_right_corner(color);
+
+                return *this;
+            }
+
+            Coloring& corners(RGB rgb) {
+                top_left_corner(rgb);
+                top_right_corner(rgb);
+
+                bottom_left_corner(rgb);
+                bottom_right_corner(rgb);
+
+                return *this;
+            }
+
+            Coloring& top_left_corner(Color color) {
+                if (!border.colors.top_left_corner.empty())
+                    border.colors.top_left_corner.clear();
+
+                border.colors.top_left_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& top_left_corner(RGB rgb) {
+                if (!border.colors.top_left_corner.empty())
+                    border.colors.top_left_corner.clear();
+
+                border.colors.top_left_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                                std::to_string(rgb.g) + ";" +
+                                                std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            Coloring& top_right_corner(Color color) {
+                if (!border.colors.top_right_corner.empty())
+                    border.colors.top_right_corner.clear();
+
+                border.colors.top_right_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& top_right_corner(RGB rgb) {
+                if (!border.colors.top_right_corner.empty())
+                    border.colors.top_right_corner.clear();
+
+                border.colors.top_right_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                                 std::to_string(rgb.g) + ";" +
+                                                 std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            Coloring& bottom_left_corner(Color color) {
+                if (!border.colors.bottom_left_corner.empty())
+                    border.colors.bottom_left_corner.clear();
+
+                border.colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& bottom_left_corner(RGB rgb) {
+                if (!border.colors.bottom_left_corner.empty())
+                    border.colors.bottom_left_corner.clear();
+
+                border.colors.bottom_left_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                                   std::to_string(rgb.g) + ";" +
+                                                   std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            Coloring& bottom_right_corner(Color color) {
+                if (!border.colors.bottom_right_corner.empty())
+                    border.colors.bottom_right_corner.clear();
+
+                border.colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& bottom_right_corner(RGB rgb) {
+                if (!border.colors.bottom_right_corner.empty())
+                    border.colors.bottom_right_corner.clear();
+
+                border.colors.bottom_right_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                                    std::to_string(rgb.g) + ";" +
+                                                    std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            /* ------------------ intersection point ------------------------ */
+            Coloring& intersection(Color color) {
+                if (!border.colors.intersection.empty())
+                    border.colors.intersection.clear();
+
+                border.colors.intersection = CSI + std::to_string(static_cast<int>(color)) + "m";
+
+                return *this;
+            }
+
+            Coloring& intersection(RGB rgb) {
+                if (!border.colors.intersection.empty())
+                    border.colors.intersection.clear();
+
+                border.colors.intersection = CSI "38;2;" + std::to_string(rgb.r) + ";" +
+                                             std::to_string(rgb.g) + ";" +
+                                             std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+        };
+
+        class BackgroundColoring {
+            Border& border;
+
+        public:
+            BackgroundColoring(Border& border) : border(border) {}
+
+            /* ------------------ full ------------------------ */
+            BackgroundColoring& full(BackgroundColor background_color) {
+                horizontal(background_color);
+                vertical(background_color);
+
+                return *this;
+            }
+
+            BackgroundColoring& full(RGB rgb) {
+                horizontal(rgb);
+                vertical(rgb);
+
+                return *this;
+            }
+
+            /* ------------------ horizontal ------------------------ */
+            BackgroundColoring& horizontal(BackgroundColor background_color) {
+                if (!border.background_colors.horizontal.empty())
+                    border.background_colors.horizontal.clear();
+
+                border.background_colors.horizontal = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                top_connector(background_color);
+                bottom_connector(background_color);
+
+                corners(background_color);
+                return *this;
+            }
+
+            BackgroundColoring& horizontal(RGB rgb) {
+                if (!border.background_colors.horizontal.empty())
+                    border.background_colors.horizontal.clear();
+
+                border.background_colors.horizontal = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                      std::to_string(rgb.g) + ";" +
+                                                      std::to_string(rgb.b) + "m";
+
+                top_connector(rgb);
+                bottom_connector(rgb);
+
+                corners(rgb);
+
+                return *this;
+            }
+
+            BackgroundColoring& bottom_connector(BackgroundColor background_color) {
+                if (!border.background_colors.bottom_connector.empty())
+                    border.background_colors.bottom_connector.clear();
+
+                border.background_colors.bottom_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& bottom_connector(RGB rgb) {
+                if (!border.background_colors.bottom_connector.empty())
+                    border.background_colors.bottom_connector.clear();
+
+                border.background_colors.bottom_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                            std::to_string(rgb.g) + ";" +
+                                                            std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& top_connector(BackgroundColor background_color) {
+                if (!border.background_colors.top_connector.empty())
+                    border.background_colors.top_connector.clear();
+
+                border.background_colors.top_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& top_connector(RGB rgb) {
+                if (!border.background_colors.top_connector.empty())
+                    border.background_colors.top_connector.clear();
+
+                border.background_colors.top_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                         std::to_string(rgb.g) + ";" +
+                                                         std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            /* ------------------ vertical ------------------------ */
+            BackgroundColoring& vertical(BackgroundColor background_color) {
+                if (!border.background_colors.vertical.empty())
+                    border.background_colors.vertical.clear();
+
+                border.background_colors.vertical = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                left_connector(background_color);
+                left_connector(background_color);
+
+                corners(background_color);
+
+                return *this;
+            }
+
+            BackgroundColoring& vertical(RGB rgb) {
+                if (!border.background_colors.vertical.empty())
+                    border.background_colors.vertical.clear();
+
+                border.background_colors.vertical = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                    std::to_string(rgb.g) + ";" +
+                                                    std::to_string(rgb.b) + "m";
+
+                left_connector(rgb);
+                left_connector(rgb);
+
+                corners(rgb);
+
+                return *this;
+            }
+
+            BackgroundColoring& left_connector(BackgroundColor background_color) {
+                if (!border.background_colors.left_connector.empty())
+                    border.background_colors.left_connector.clear();
+
+                border.background_colors.left_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& left_connector(RGB rgb) {
+                if (!border.background_colors.left_connector.empty())
+                    border.background_colors.left_connector.clear();
+
+                border.background_colors.left_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                          std::to_string(rgb.g) + ";" +
+                                                          std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& right_connector(BackgroundColor background_color) {
+                if (!border.background_colors.right_connector.empty())
+                    border.background_colors.right_connector.clear();
+
+                border.background_colors.right_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& right_connector(RGB rgb) {
+                if (!border.background_colors.right_connector.empty())
+                    border.background_colors.right_connector.clear();
+
+                border.background_colors.right_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                           std::to_string(rgb.g) + ";" +
+                                                           std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            /* ------------------ corners ------------------------ */
+            BackgroundColoring& corners(BackgroundColor background_color) {
+                top_left_corner(background_color);
+                top_right_corner(background_color);
+
+                bottom_left_corner(background_color);
+                bottom_right_corner(background_color);
+
+                return *this;
+            }
+
+            BackgroundColoring& corners(RGB rgb) {
+                top_left_corner(rgb);
+                top_right_corner(rgb);
+
+                bottom_left_corner(rgb);
+                bottom_right_corner(rgb);
+
+                return *this;
+            }
+
+            BackgroundColoring& top_left_corner(BackgroundColor background_color) {
+                if (!border.background_colors.top_left_corner.empty())
+                    border.background_colors.top_left_corner.clear();
+
+                border.background_colors.top_left_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& top_left_corner(RGB rgb) {
+                if (!border.background_colors.top_left_corner.empty())
+                    border.background_colors.top_left_corner.clear();
+
+                border.background_colors.top_left_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                           std::to_string(rgb.g) + ";" +
+                                                           std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& top_right_corner(BackgroundColor background_color) {
+                if (!border.background_colors.top_right_corner.empty())
+                    border.background_colors.top_right_corner.clear();
+
+                border.background_colors.top_right_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& top_right_corner(RGB rgb) {
+                if (!border.background_colors.top_right_corner.empty())
+                    border.background_colors.top_right_corner.clear();
+
+                border.background_colors.top_right_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                            std::to_string(rgb.g) + ";" +
+                                                            std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& bottom_left_corner(BackgroundColor background_color) {
+                if (!border.background_colors.bottom_left_corner.empty())
+                    border.background_colors.bottom_left_corner.clear();
+
+                border.background_colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& bottom_left_corner(RGB rgb) {
+                if (!border.background_colors.bottom_left_corner.empty())
+                    border.background_colors.bottom_left_corner.clear();
+
+                border.background_colors.bottom_left_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                              std::to_string(rgb.g) + ";" +
+                                                              std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& bottom_right_corner(BackgroundColor background_color) {
+                if (!border.background_colors.bottom_right_corner.empty())
+                    border.background_colors.bottom_right_corner.clear();
+
+                border.background_colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& bottom_right_corner(RGB rgb) {
+                if (!border.background_colors.bottom_right_corner.empty())
+                    border.background_colors.bottom_right_corner.clear();
+
+                border.background_colors.bottom_right_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                               std::to_string(rgb.g) + ";" +
+                                                               std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
+            /* ------------------ intersection point ------------------------ */
+            BackgroundColoring& intersection(BackgroundColor background_color) {
+                if (!border.background_colors.intersection.empty())
+                    border.background_colors.intersection.clear();
+
+                border.background_colors.intersection = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+
+                return *this;
+            }
+
+            BackgroundColoring& intersection(RGB rgb) {
+                if (!border.background_colors.intersection.empty())
+                    border.background_colors.intersection.clear();
+
+                border.background_colors.intersection = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                        std::to_string(rgb.g) + ";" +
+                                                        std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+        };
+
+    public:
+        Border() : style(BorderStyle::standard) {}
+
+        Getters get() { return Getters(*this); }
+
+        Setters set() { return Setters(*this); }
+
+        Coloring color() { return Coloring(*this); }
+
+        BackgroundColoring background_color() { return BackgroundColoring(*this); }
+    };
+
     class Table {
-        BorderStyle border_style;
-        Border border_templates;
+        Border table_border;
         unsigned int width;
         bool forced_width;
         bool force_ansi;
@@ -1281,6 +2081,24 @@ namespace tabular {
                 return *this;
             }
 
+            Config& color(RGB rgb, int column) {
+                if (column < 0)
+                    return *this;
+
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().color(rgb);
+
+                return *this;
+            }
+
+            Config& color(RGB rgb) {
+                for (Row& row : table.rows)
+                    row.config().color(rgb);
+
+                return *this;
+            }
+
             /* ---------------BACKGROUND COLORS--------------------- */
             Config& content_background_color(BackgroundColor back_color, int column) {
                 if (column < 0)
@@ -1300,111 +2118,21 @@ namespace tabular {
                 return *this;
             }
 
-            /* -------------------RGB------------------------- */
-            Config& rgb(RGB rgb, int column) {
+            Config& content_background_color(RGB back_rgb, int column) {
                 if (column < 0)
                     return *this;
 
                 for (Row& row : table.rows)
                     if (column < row.columns.size())
-                        row[column].config().rgb(rgb);
+                        row[column].config().content_background_color(back_rgb);
 
                 return *this;
             }
 
-            Config& rgb(RGB rgb) {
+            Config& content_background_color(RGB back_rgb) {
                 for (Row& row : table.rows)
-                    row.config().rgb(rgb);
+                    row.config().column_background_color(back_rgb);
 
-                return *this;
-            }
-
-            /* ---------------BACKGROUND RGB--------------------- */
-            Config& content_background_rgb(RGB back_rgb, int column) {
-                if (column < 0)
-                    return *this;
-
-                for (Row& row : table.rows)
-                    if (column < row.columns.size())
-                        row[column].config().content_background_rgb(back_rgb);
-
-                return *this;
-            }
-
-            Config& content_background_rgb(RGB back_rgb) {
-                for (Row& row : table.rows)
-                    row.config().column_background_rgb(back_rgb);
-
-                return *this;
-            }
-
-            /* -----------------BORDER PARTS--------------------- */
-            Config& horizontal(char horizontal) {
-                table.border_templates.horizontal = horizontal;
-                return *this;
-            }
-
-            Config& vertical(char vertical) {
-                table.border_templates.vertical = vertical;
-                return *this;
-            }
-
-            Config& corner(char corner) {
-                table.border_templates.bottom_right_corner = corner;
-                table.border_templates.top_right_corner = corner;
-
-                table.border_templates.bottom_left_corner = corner;
-                table.border_templates.top_left_corner = corner;
-                return *this;
-            }
-
-            Config& bottom_right_corner(char corner) {
-                table.border_templates.bottom_right_corner = corner;
-                return *this;
-            }
-
-            Config& top_right_corner(char corner) {
-                table.border_templates.top_right_corner = corner;
-                return *this;
-            }
-
-            Config& top_left_corner(char corner) {
-                table.border_templates.top_left_corner = corner;
-                return *this;
-            }
-
-            Config& bottom_left_corner(char corner) {
-                table.border_templates.bottom_left_corner = corner;
-                return *this;
-            }
-
-            Config& middle_separator(char separator) {
-                table.border_templates.intersection = separator;
-                return *this;
-            }
-
-            Config& middle_left_to_right(char connector) {
-                table.border_templates.left_to_right = connector;
-                return *this;
-            }
-
-            Config& middle_right_to_left(char connector) {
-                table.border_templates.right_to_left = connector;
-                return *this;
-            }
-
-            Config& middle_bottom_to_top(char connector) {
-                table.border_templates.bottom_to_top = connector;
-                return *this;
-            }
-
-            Config& middle_top_to_bottom(char connector) {
-                table.border_templates.top_to_bottom = connector;
-                return *this;
-            }
-
-            Config& border(BorderStyle style) {
-                table.border_style = style;
                 return *this;
             }
         };
@@ -1438,11 +2166,19 @@ namespace tabular {
 
             // * for testing force using ansi (used when redirecting output to files)
             Setters& forced_ansi(bool forced) {
-                table.border_style = BorderStyle::ANSI;
+                table.table_border.set().style(BorderStyle::ANSI);
 
                 table.force_ansi = forced;
 
                 return *this;
+            }
+
+            Setters& multi_byte_characters(bool is_multi_byte) {
+                for (Row& row : table.rows)
+                    row.set().multi_byte_characters(is_multi_byte);
+
+                return *this;
+                ;
             }
         };
 
@@ -1460,8 +2196,8 @@ namespace tabular {
             return result;
         }
 
-        void print_row(std::ostream& stream, Row& row) {
-            std::string vertical = border_templates.vertical;
+        void print_row(std::ostream& stream, Row& row, BorderGlyphs glyphs) {
+            std::string vertical = glyphs.vertical;
 
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
@@ -1477,8 +2213,6 @@ namespace tabular {
                     int splitted_content_size = column.get().splitted_content().size();
                     std::string current_line;
 
-                    int special_characters = 0;
-
                     // column background
                     std::string column_background_color = column.get().column_background_color();
                     stream << column_background_color;
@@ -1488,6 +2222,7 @@ namespace tabular {
                         stream << current_line;
 
                         std::string styles = column.get().text_styles() + column.get().content_color() + column.get().content_background_color();
+                        int special_characters = 0;
 
                         // for each splitted_content element has a one or more global_styles, it has one RESET at the end
                         if (!styles.empty()) {
@@ -1495,15 +2230,10 @@ namespace tabular {
                             special_characters += styles.size();
                         }
 
-                        size_t curr_line_size;
-
-                        if (column.get().is_multi_byte())
-                            curr_line_size = utils::mbswidth(current_line);
-                        else
-                            curr_line_size = current_line.size();
+                        int curr_line_size = utils::display_width(current_line, column.get().is_multi_byte());
 
                         // special_characters will not be displayed so they are not counted
-                        rest -= curr_line_size - special_characters; // to balance the line
+                        rest -= (curr_line_size - special_characters); // to balance the line
                     }
 
                     stream << column_background_color;
@@ -1519,7 +2249,7 @@ namespace tabular {
             }
         }
 
-        void print_border(std::ostream& stream, std::vector<Row>::iterator& it, bool is_first, bool is_last, bool regular) {
+        void print_border(std::ostream& stream, std::vector<Row>::iterator& it, BorderGlyphs border_glyphs, bool is_first, bool is_last, bool regular) {
 
             Row reference = *it;
             std::vector<int> next_row_corners;
@@ -1532,7 +2262,7 @@ namespace tabular {
             if (!is_first)
                 stream << '\n';
 
-            std::string horizontal = border_templates.horizontal;
+            std::string horizontal = border_glyphs.horizontal;
 
             // (vertical separators)/corners
             std::string left_corner;
@@ -1544,26 +2274,26 @@ namespace tabular {
             std::string bottom_to_top;
 
             if (is_first) {
-                left_corner = border_templates.top_left_corner;
-                right_corner = border_templates.top_right_corner;
+                left_corner = border_glyphs.top_left_corner;
+                right_corner = border_glyphs.top_right_corner;
 
-                middle_separator = border_templates.top_to_bottom;
-                top_to_bottom = border_templates.top_to_bottom;
-                bottom_to_top = border_templates.top_to_bottom;
+                middle_separator = border_glyphs.top_connector;
+                top_to_bottom = border_glyphs.top_connector;
+                bottom_to_top = border_glyphs.top_connector;
             } else if (is_last) {
-                left_corner = border_templates.bottom_left_corner;
-                right_corner = border_templates.bottom_right_corner;
+                left_corner = border_glyphs.bottom_left_corner;
+                right_corner = border_glyphs.bottom_right_corner;
 
-                middle_separator = border_templates.bottom_to_top;
-                top_to_bottom = border_templates.bottom_to_top;
-                bottom_to_top = border_templates.bottom_to_top;
+                middle_separator = border_glyphs.bottom_connector;
+                top_to_bottom = border_glyphs.bottom_connector;
+                bottom_to_top = border_glyphs.bottom_connector;
             } else {
-                left_corner = border_templates.left_to_right;
-                right_corner = border_templates.right_to_left;
+                left_corner = border_glyphs.left_connector;
+                right_corner = border_glyphs.right_connector;
 
-                middle_separator = border_templates.intersection;
-                top_to_bottom = border_templates.top_to_bottom;
-                bottom_to_top = border_templates.bottom_to_top;
+                middle_separator = border_glyphs.intersection;
+                top_to_bottom = border_glyphs.top_connector;
+                bottom_to_top = border_glyphs.bottom_connector;
             }
 
             stream << left_corner;
@@ -1638,10 +2368,12 @@ namespace tabular {
     public:
         std::vector<Row> rows;
 
-        Table() : border_style(BorderStyle::standard), width(0), forced_width(false) {}
+        Table() : width(0), forced_width(false) {}
 
         // configure the table
         Config config() { return Config(*this); }
+
+        Border& border() { return table_border; }
 
         Setters set() { return Setters(*this); }
 
@@ -1701,23 +2433,10 @@ namespace tabular {
                 utils::format_row(row_usable_width, row);
             }
 
-            if (border_style == BorderStyle::ANSI && !utils::check_terminal() && !force_ansi)
-                border_style = BorderStyle::standard;
+            if (table_border.get().style() == BorderStyle::ANSI && !utils::check_terminal() && !force_ansi)
+                table_border.set().style(BorderStyle::standard);
 
-            Border templates = border_templates;
-            border_templates = maps::get_border_template(border_style);
-
-            if (!templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
-            if (!templates.vertical.empty()) border_templates.vertical = templates.vertical;
-            if (!templates.top_left_corner.empty()) border_templates.top_left_corner = templates.top_left_corner;
-            if (!templates.top_right_corner.empty()) border_templates.top_right_corner = templates.top_right_corner;
-            if (!templates.bottom_left_corner.empty()) border_templates.bottom_left_corner = templates.bottom_left_corner;
-            if (!templates.bottom_right_corner.empty()) border_templates.bottom_right_corner = templates.bottom_right_corner;
-            if (!templates.intersection.empty()) border_templates.intersection = templates.intersection;
-            if (!templates.left_to_right.empty()) border_templates.left_to_right = templates.left_to_right;
-            if (!templates.right_to_left.empty()) border_templates.right_to_left = templates.right_to_left;
-            if (!templates.top_to_bottom.empty()) border_templates.top_to_bottom = templates.top_to_bottom;
-            if (!templates.bottom_to_top.empty()) border_templates.bottom_to_top = templates.bottom_to_top;
+            BorderGlyphs glyphs = table_border.get().glyphs();
 
             /* ------ printing the table ------- */
             bool is_first = true, is_last = false;
@@ -1725,18 +2444,18 @@ namespace tabular {
                 is_last = true;
 
             auto it = rows.begin();
-            print_border(stream, it, is_first, is_last, regular);
+            print_border(stream, it, glyphs, is_first, is_last, regular);
 
             is_first = false;
             for (it = rows.begin(); it != rows.end(); ++it) {
                 Row& row = *it;
 
-                print_row(stream, row);
+                print_row(stream, row, glyphs);
 
                 if ((it + 1) == rows.end())
                     is_last = true;
 
-                print_border(stream, it, is_first, is_last, regular);
+                print_border(stream, it, glyphs, is_first, is_last, regular);
             }
 
             return 0;
