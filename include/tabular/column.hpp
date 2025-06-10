@@ -16,14 +16,13 @@
 
 #include <list>
 #include <vector>
+#include <string>
 
 #include <tabular/alignment.hpp>
 #include <tabular/colors.hpp>
 #include <tabular/definitions.hpp>
 #include <tabular/rgb.hpp>
 #include <tabular/styles.hpp>
-
-#include <tabular/maps.hpp>
 
 namespace tabular {
     class Column {
@@ -126,6 +125,18 @@ namespace tabular {
                 return *this;
             }
 
+            // add background RGB to the whole column
+            Config& content_background_color(RGB rgb) {
+                if (!column.content_background_color.empty())
+                    column.content_background_color.clear();
+
+                column.content_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
+                                                  std::to_string(rgb.g) + ";" +
+                                                  std::to_string(rgb.b) + "m";
+
+                return *this;
+            }
+
             // add Color to the whole column
             Config& color(Color color) {
                 if (!column.content_color.empty())
@@ -137,33 +148,13 @@ namespace tabular {
             }
 
             // add RGB to the whole column
-            Config& rgb(RGB rgb) {
+            Config& color(RGB rgb) {
                 if (!column.content_color.empty())
                     column.content_color.clear();
 
                 column.content_color = CSI "38;2;" + std::to_string(rgb.r) + ";" +
                                        std::to_string(rgb.g) + ";" +
                                        std::to_string(rgb.b) + "m";
-
-                return *this;
-            }
-
-            // add background RGB to the whole column
-            Config& content_background_rgb(RGB rgb) {
-                if (!column.content_background_color.empty())
-                    column.content_background_color.clear();
-
-                column.content_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                       std::to_string(rgb.g) + ";" +
-                                       std::to_string(rgb.b) + "m";
-
-                return *this;
-            }
-
-            // multi byte characters support
-            // (locale-independent but only utf8 encoding is supported)
-            Config& multi_byte_chars(bool is_multi_byte) {
-                column.is_multi_byte = is_multi_byte;
 
                 return *this;
             }
@@ -178,13 +169,13 @@ namespace tabular {
                 return *this;
             }
 
-            Config& column_background_rgb(RGB rgb) {
+            Config& column_background_color(RGB rgb) {
                 if (!column.column_background_color.empty())
                     column.column_background_color.clear();
 
                 column.column_background_color = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                      std::to_string(rgb.g) + ";" +
-                                      std::to_string(rgb.b) + "m";
+                                                 std::to_string(rgb.g) + ";" +
+                                                 std::to_string(rgb.b) + "m";
 
                 return *this;
             }
@@ -243,6 +234,14 @@ namespace tabular {
 
                 return *this;
             }
+
+            // multi byte characters support
+            // (locale-independent but only utf8 encoding is supported)
+            Setters& multi_byte_characters(bool is_multi_byte) {
+                column.is_multi_byte = is_multi_byte;
+
+                return *this;
+            }
         };
 
     public:
@@ -255,6 +254,10 @@ namespace tabular {
             width = 0;
             top_padding = 0;
             bottom_padding = 0;
+
+            text_styles = "";
+            content_color = "";
+            content_background_color = "";
 
             // auto detection(with ascii check) has been removed
             // for better performance

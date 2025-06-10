@@ -63,6 +63,13 @@ namespace tabular {
                 return *this;
             }
 
+            Config& color(RGB rgb) {
+                for (Column& column : row.columns)
+                    column.config().color(rgb);
+
+                return *this;
+            }
+
             Config& content_background_color(BackgroundColor back_color) {
                 for (Column& column : row.columns)
                     column.config().content_background_color(back_color);
@@ -70,23 +77,9 @@ namespace tabular {
                 return *this;
             }
 
-            Config& rgb(RGB rgb) {
+            Config& content_background_color(RGB background_rgb) {
                 for (Column& column : row.columns)
-                    column.config().rgb(rgb);
-
-                return *this;
-            }
-
-            Config& content_background_rgb(RGB background_rgb) {
-                for (Column& column : row.columns)
-                    column.config().content_background_rgb(background_rgb);
-
-                return *this;
-            }
-
-            Config& multi_byte_chars(bool is_multi_byte) {
-                for (Column& column : row.columns)
-                    column.config().multi_byte_chars(is_multi_byte);
+                    column.config().content_background_color(background_rgb);
 
                 return *this;
             }
@@ -98,21 +91,38 @@ namespace tabular {
                 return *this;
             }
 
-            Config& column_background_rgb(RGB background_rgb) {
+            Config& column_background_color(RGB background_rgb) {
                 for (Column& column : row.columns)
-                    column.config().column_background_rgb(background_rgb);
+                    column.config().column_background_color(background_rgb);
+
+                return *this;
+            }
+        };
+
+        class Setters {
+            Row& row;
+
+        public:
+            Setters(Row& row) : row(row) {}
+
+            Setters& multi_byte_characters(bool is_multi_byte) {
+                for (Column& column : row.columns)
+                    column.set().multi_byte_characters(is_multi_byte);
 
                 return *this;
             }
         };
 
     public:
-        std::vector<Column> columns;
+        std::vector<Column>
+            columns;
 
         Row(std::vector<Column> columns)
             : columns(columns) {}
 
         Config config() { return Config(*this); }
+
+        Setters set() { return Setters(*this); }
 
         Column& operator[](int index) {
             if (index >= this->columns.size() || index < 0)

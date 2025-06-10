@@ -23,7 +23,7 @@ int main() {
     Table table;
     table.add_row({"tabular"});
 
-    table.config().border(BorderStyle::ANSI);
+    table.border().set().style(BorderStyle::ANSI);
     table.config().alignment(Alignment::center);
 
     // for testing because "ninja" change the output stream of the program

@@ -31,7 +31,7 @@ int main() {
     table[0].config().padding(1);
     table.config().alignment(Alignment::center);
 
-    table.config().border(BorderStyle::ANSI);
+    table.border().set().style(BorderStyle::ANSI);
 
     // for testing because "ninja" change the output stream of the program
     table.set().forced_width(60, true);

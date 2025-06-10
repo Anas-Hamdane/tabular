@@ -57,7 +57,7 @@ int main() {
     table[11][0].config().text_style({Style::blink, Style::italic, Style::underline});
     table[12][0].config().text_style({Style::reverse, Style::italic, Style::underline});
     
-    table.config().border(BorderStyle::ANSI);
+    table.border().set().style(BorderStyle::ANSI);
 
     // for testing because "ninja" change the output stream of the program
     table.set().forced_width(60, true);

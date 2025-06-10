@@ -21,7 +21,6 @@
 
 namespace tabular {
     namespace utils {
-
         // to align PPDirectives
         // clang-format off
         inline unsigned short get_terminal_width() {
@@ -82,6 +81,7 @@ namespace tabular {
         // clang-format on
 
         // split by words AND save both '\n' and ' ' as words too
+        // works at least for UTF-8 encoding strings
         inline std::list<std::string> split_text(const std::string& str) {
             std::list<std::string> result;
 
@@ -140,8 +140,9 @@ namespace tabular {
             if (!styles.empty())
                 line.append(RESET);
 
+            /* no need */
             // auto horizontal padding
-            line.append(" ");
+            // line.append(" ");
 
             result.push_back(line);
 
@@ -194,6 +195,9 @@ namespace tabular {
                         std::string remainder = word.substr(remaining_space - 1);
                         words.insert(std::next(it), remainder);
                     } else {
+                        if (!sub.empty() && sub.back() == ' ')
+                            sub.pop_back(); // pop the last space if exist
+
                         commit_line(result, sub, usable_width, column);
                         --it;
                     }
@@ -230,9 +234,14 @@ namespace tabular {
         }
 
         // multi byte string width
-        inline size_t mbswidth(std::string str) {
-            wchar_t* wstr = utf8stws(str.c_str());
-            return ah_wcswidth(wstr, wcslen(wstr));
+        inline int mbswidth(std::string str) {
+            size_t len = 0;
+
+            wchar_t* wstr = utf8stws(str.c_str(), &len);
+            int width = ah_wcswidth(wstr, len);
+
+            free(wstr);
+            return width;
         }
     } // namespace utils
 } // namespace tabular

@@ -25,7 +25,7 @@
       -  [x] range columns setters (functions)
       -  [x] support for multi byte characters (automatic and manual)
       -  [x] full column background color support
-      -  [ ] border styling (colors, rgb)
+      -  [x] full border styling control
       -  [ ] sub string styling support [VEEEEEEEEEEEEERY HAAAAAAAAAAARD]
 */
 
@@ -33,13 +33,13 @@
 #include <ostream>
 #include <vector>
 
-// those include all headers
+// this include all headers
 #include <tabular/utils.hpp>
+#include <tabular/border.hpp>
 
 namespace tabular {
     class Table {
-        BorderStyle border_style;
-        Border border_templates;
+        Border table_border;
         unsigned int width;
         bool forced_width;
         bool force_ansi;
@@ -175,6 +175,24 @@ namespace tabular {
                 return *this;
             }
 
+            Config& color(RGB rgb, int column) {
+                if (column < 0)
+                    return *this;
+
+                for (Row& row : table.rows)
+                    if (column < row.columns.size())
+                        row[column].config().color(rgb);
+
+                return *this;
+            }
+
+            Config& color(RGB rgb) {
+                for (Row& row : table.rows)
+                    row.config().color(rgb);
+
+                return *this;
+            }
+
             /* ---------------BACKGROUND COLORS--------------------- */
             Config& content_background_color(BackgroundColor back_color, int column) {
                 if (column < 0)
@@ -194,107 +212,21 @@ namespace tabular {
                 return *this;
             }
 
-            /* -------------------RGB------------------------- */
-            Config& rgb(RGB rgb, int column) {
+            Config& content_background_color(RGB back_rgb, int column) {
                 if (column < 0)
                     return *this;
 
                 for (Row& row : table.rows)
                     if (column < row.columns.size())
-                        row[column].config().rgb(rgb);
+                        row[column].config().content_background_color(back_rgb);
 
                 return *this;
             }
 
-            Config& rgb(RGB rgb) {
+            Config& content_background_color(RGB back_rgb) {
                 for (Row& row : table.rows)
-                    row.config().rgb(rgb);
+                    row.config().column_background_color(back_rgb);
 
-                return *this;
-            }
-
-            /* ---------------BACKGROUND RGB--------------------- */
-            Config& content_background_rgb(RGB back_rgb, int column) {
-                if (column < 0)
-                    return *this;
-
-                for (Row& row : table.rows)
-                    if (column < row.columns.size())
-                        row[column].config().content_background_rgb(back_rgb);
-
-                return *this;
-            }
-
-            Config& content_background_rgb(RGB back_rgb) {
-                for (Row& row : table.rows)
-                    row.config().column_background_rgb(back_rgb);
-
-                return *this;
-            }
-
-            /* -----------------BORDER PARTS--------------------- */
-            Config& corner(char corner) {
-                table.border_templates.corner = corner;
-                return *this;
-            }
-
-            Config& horizontal(char horizontal) {
-                table.border_templates.horizontal = horizontal;
-                return *this;
-            }
-
-            Config& vertical(char vertical) {
-                table.border_templates.vertical = vertical;
-                return *this;
-            }
-
-            Config& bottom_right_corner(char corner) {
-                table.border_templates.bottom_right_corner = corner;
-                return *this;
-            }
-
-            Config& top_right_corner(char corner) {
-                table.border_templates.top_right_corner = corner;
-                return *this;
-            }
-
-            Config& top_left_corner(char corner) {
-                table.border_templates.top_left_corner = corner;
-                return *this;
-            }
-
-            Config& bottom_left_corner(char corner) {
-                table.border_templates.bottom_left_corner = corner;
-                return *this;
-            }
-
-            Config& middle_separator(char separator) {
-                table.border_templates.middle_separator = separator;
-                return *this;
-            }
-
-            Config& middle_left_to_right(char connector) {
-                table.border_templates.left_to_right = connector;
-                return *this;
-            }
-
-            Config& middle_right_to_left(char connector) {
-                table.border_templates.right_to_left = connector;
-                return *this;
-            }
-
-            Config& middle_bottom_to_top(char connector) {
-                table.border_templates.bottom_to_top = connector;
-                return *this;
-            }
-
-            Config& middle_top_to_bottom(char connector) {
-                table.border_templates.top_to_bottom = connector;
-                return *this;
-            }
-
-            Config& border(BorderStyle style) {
-                table.border_style = style;
                 return *this;
             }
         };
@@ -328,11 +260,19 @@ namespace tabular {
 
             // * for testing force using ansi (used when redirecting output to files)
             Setters& forced_ansi(bool forced) {
-                table.border_style = BorderStyle::ANSI;
+                table.table_border.set().style(BorderStyle::ANSI);
 
                 table.force_ansi = forced;
 
                 return *this;
+            }
+
+            Setters& multi_byte_characters(bool is_multi_byte) {
+                for (Row& row : table.rows)
+                    row.set().multi_byte_characters(is_multi_byte);
+
+                return *this;
+                ;
             }
         };
 
@@ -350,8 +290,8 @@ namespace tabular {
             return result;
         }
 
-        void print_row(std::ostream& stream, Row& row) {
-            std::string vertical = border_templates.vertical;
+        void print_row(std::ostream& stream, Row& row, BorderGlyphs glyphs) {
+            std::string vertical = glyphs.vertical;
 
             size_t max_splitted_content_size = utils::find_max_splitted_content_size(row); // tallest vector of splitted strings
             for (unsigned int i = 0; i < max_splitted_content_size; i++) {
@@ -367,8 +307,6 @@ namespace tabular {
                     int splitted_content_size = column.get().splitted_content().size();
                     std::string current_line;
 
-                    int special_characters = 0;
-
                     // column background
                     std::string column_background_color = column.get().column_background_color();
                     stream << column_background_color;
@@ -378,6 +316,7 @@ namespace tabular {
                         stream << current_line;
 
                         std::string styles = column.get().text_styles() + column.get().content_color() + column.get().content_background_color();
+                        int special_characters = 0;
 
                         // for each splitted_content element has a one or more global_styles, it has one RESET at the end
                         if (!styles.empty()) {
@@ -385,7 +324,7 @@ namespace tabular {
                             special_characters += styles.size();
                         }
 
-                        size_t curr_line_size;
+                        int curr_line_size;
 
                         if (column.get().is_multi_byte())
                             curr_line_size = utils::mbswidth(current_line);
@@ -393,10 +332,10 @@ namespace tabular {
                             curr_line_size = current_line.size();
 
                         // special_characters will not be displayed so they are not counted
-                        rest -= curr_line_size - special_characters; // to balance the line
+                        rest -= (curr_line_size - special_characters); // to balance the line
                     }
 
-                        stream << column_background_color;
+                    stream << column_background_color;
 
                     for (int k = 0; k < rest; k++)
                         stream << ' ';
@@ -409,7 +348,7 @@ namespace tabular {
             }
         }
 
-        void print_border(std::ostream& stream, std::vector<Row>::iterator& it, bool is_first, bool is_last, bool regular) {
+        void print_border(std::ostream& stream, std::vector<Row>::iterator& it, BorderGlyphs border_glyphs, bool is_first, bool is_last, bool regular) {
 
             Row reference = *it;
             std::vector<int> next_row_corners;
@@ -422,7 +361,7 @@ namespace tabular {
             if (!is_first)
                 stream << '\n';
 
-            std::string horizontal = border_templates.horizontal;
+            std::string horizontal = border_glyphs.horizontal;
 
             // (vertical separators)/corners
             std::string left_corner;
@@ -434,26 +373,26 @@ namespace tabular {
             std::string bottom_to_top;
 
             if (is_first) {
-                left_corner = border_templates.top_left_corner;
-                right_corner = border_templates.top_right_corner;
+                left_corner = border_glyphs.top_left_corner;
+                right_corner = border_glyphs.top_right_corner;
 
-                middle_separator = border_templates.top_to_bottom;
-                top_to_bottom = border_templates.top_to_bottom;
-                bottom_to_top = border_templates.top_to_bottom;
+                middle_separator = border_glyphs.top_connector;
+                top_to_bottom = border_glyphs.top_connector;
+                bottom_to_top = border_glyphs.top_connector;
             } else if (is_last) {
-                left_corner = border_templates.bottom_left_corner;
-                right_corner = border_templates.bottom_right_corner;
+                left_corner = border_glyphs.bottom_left_corner;
+                right_corner = border_glyphs.bottom_right_corner;
 
-                middle_separator = border_templates.bottom_to_top;
-                top_to_bottom = border_templates.bottom_to_top;
-                bottom_to_top = border_templates.bottom_to_top;
+                middle_separator = border_glyphs.bottom_connector;
+                top_to_bottom = border_glyphs.bottom_connector;
+                bottom_to_top = border_glyphs.bottom_connector;
             } else {
-                left_corner = border_templates.left_to_right;
-                right_corner = border_templates.right_to_left;
+                left_corner = border_glyphs.left_connector;
+                right_corner = border_glyphs.right_connector;
 
-                middle_separator = border_templates.middle_separator;
-                top_to_bottom = border_templates.top_to_bottom;
-                bottom_to_top = border_templates.bottom_to_top;
+                middle_separator = border_glyphs.intersection;
+                top_to_bottom = border_glyphs.top_connector;
+                bottom_to_top = border_glyphs.bottom_connector;
             }
 
             stream << left_corner;
@@ -528,10 +467,12 @@ namespace tabular {
     public:
         std::vector<Row> rows;
 
-        Table() : border_style(BorderStyle::standard), width(0), forced_width(false) {}
+        Table() : width(0), forced_width(false) {}
 
         // configure the table
         Config config() { return Config(*this); }
+
+        Border& border() { return table_border; }
 
         Setters set() { return Setters(*this); }
 
@@ -591,24 +532,10 @@ namespace tabular {
                 utils::format_row(row_usable_width, row);
             }
 
-            if (border_style == BorderStyle::ANSI && !utils::check_terminal() && !force_ansi)
-                border_style = BorderStyle::standard;
+            if (table_border.get().style() == BorderStyle::ANSI && !utils::check_terminal() && !force_ansi)
+                table_border.set().style(BorderStyle::standard);
 
-            Border templates = border_templates;
-            border_templates = maps::get_border_template(border_style);
-
-            if (!templates.corner.empty()) border_templates.corner = templates.corner;
-            if (!templates.horizontal.empty()) border_templates.horizontal = templates.horizontal;
-            if (!templates.vertical.empty()) border_templates.vertical = templates.vertical;
-            if (!templates.top_left_corner.empty()) border_templates.top_left_corner = templates.top_left_corner;
-            if (!templates.top_right_corner.empty()) border_templates.top_right_corner = templates.top_right_corner;
-            if (!templates.bottom_left_corner.empty()) border_templates.bottom_left_corner = templates.bottom_left_corner;
-            if (!templates.bottom_right_corner.empty()) border_templates.bottom_right_corner = templates.bottom_right_corner;
-            if (!templates.middle_separator.empty()) border_templates.middle_separator = templates.middle_separator;
-            if (!templates.left_to_right.empty()) border_templates.left_to_right = templates.left_to_right;
-            if (!templates.right_to_left.empty()) border_templates.right_to_left = templates.right_to_left;
-            if (!templates.top_to_bottom.empty()) border_templates.top_to_bottom = templates.top_to_bottom;
-            if (!templates.bottom_to_top.empty()) border_templates.bottom_to_top = templates.bottom_to_top;
+            BorderGlyphs glyphs = table_border.get().glyphs();
 
             /* ------ printing the table ------- */
             bool is_first = true, is_last = false;
@@ -616,18 +543,18 @@ namespace tabular {
                 is_last = true;
 
             auto it = rows.begin();
-            print_border(stream, it, is_first, is_last, regular);
+            print_border(stream, it, glyphs, is_first, is_last, regular);
 
             is_first = false;
             for (it = rows.begin(); it != rows.end(); ++it) {
                 Row& row = *it;
 
-                print_row(stream, row);
+                print_row(stream, row, glyphs);
 
                 if ((it + 1) == rows.end())
                     is_last = true;
 
-                print_border(stream, it, is_first, is_last, regular);
+                print_border(stream, it, glyphs, is_first, is_last, regular);
             }
 
             return 0;

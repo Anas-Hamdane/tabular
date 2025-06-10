@@ -31,7 +31,7 @@ int main() {
     table.add_row({"CYAN", "CYAN_BACK"});
     table.add_row({"WHITE", "WHITE_BACK"});
     
-    table.config().border(BorderStyle::ANSI);
+    table.border().set().style(BorderStyle::ANSI);
 
     table[0][0].config().color(Color::black);
     table[1][0].config().color(Color::red);

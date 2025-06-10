@@ -25,81 +25,122 @@
 #define USE_UTF16 0
 #endif
 
+/* Lookup table for UTF-8 sequence lengths */
+static const unsigned char utf8_sequence_length[256] = {
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 /* Decode UTF-8 to code point */
-inline int utf8_decode(const char *s, uint32_t *codepoint, int *consumed) {
-  unsigned char c = s[0];
-  if (c < 0x80) {
-    *codepoint = c;
-    *consumed = 1;
-  } else if ((c >> 5) == 0x6) {
-    *codepoint = ((c & 0x1F) << 6) | (s[1] & 0x3F);
-    *consumed = 2;
-  } else if ((c >> 4) == 0xE) {
-    *codepoint = ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
-    *consumed = 3;
-  } else if ((c >> 3) == 0x1E) {
-    *codepoint = ((c & 0x07) << 18) | ((s[1] & 0x3F) << 12) |
-                 ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
-    *consumed = 4;
-  } else {
+inline int utf8_decode(const char* s, uint32_t* codepoint, int* consumed) {
+    const unsigned char* u = (const unsigned char*)s;
+    unsigned char c = u[0];
+    *consumed = utf8_sequence_length[c];
+    if (*consumed == 0) return 0;
+
+    switch (*consumed) {
+        case 1:
+            *codepoint = c;
+            return 1;
+        case 2:
+            if ((u[1] & 0xC0) != 0x80) return 0;
+            *codepoint = ((c & 0x1F) << 6) | (u[1] & 0x3F);
+            return *codepoint >= 0x80;
+        case 3:
+            if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) return 0;
+            *codepoint = ((c & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
+            return *codepoint >= 0x800 && (*codepoint < 0xD800 || *codepoint > 0xDFFF);
+        case 4:
+            if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80 || (u[3] & 0xC0) != 0x80) return 0;
+            *codepoint = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) |
+                         ((u[2] & 0x3F) << 6) | (u[3] & 0x3F);
+            return *codepoint >= 0x10000 && *codepoint <= 0x10FFFF;
+    }
     return 0;
-  }
-  return 1;
 }
 
 /* Encode code point to UTF-16 */
-inline int utf16_encode(uint32_t codepoint, wchar_t *output) {
-  if (codepoint <= 0xFFFF && (codepoint < 0xD800 || codepoint > 0xDFFF)) {
-    output[0] = (wchar_t)codepoint;
-    return 1;
-  } else if (codepoint <= 0x10FFFF) {
-    codepoint -= 0x10000;
-    output[0] = (wchar_t)(0xD800 + (codepoint >> 10));
-    output[1] = (wchar_t)(0xDC00 + (codepoint & 0x3FF));
-    return 2;
-  }
-  return 0;
+inline int utf16_encode(uint32_t codepoint, wchar_t* output) {
+    if (codepoint < 0xD800 || (codepoint > 0xDFFF && codepoint <= 0xFFFF)) {
+        *output = (wchar_t)codepoint;
+        return 1;
+    }
+    if (codepoint <= 0x10FFFF) {
+        codepoint -= 0x10000;
+        output[0] = (wchar_t)(0xD800 | (codepoint >> 10));
+        output[1] = (wchar_t)(0xDC00 | (codepoint & 0x3FF));
+        return 2;
+    }
+    return 0;
 }
 
 /* Encode code point to UTF-32 */
-inline int utf32_encode(uint32_t codepoint, wchar_t *output) {
-  if (codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF))
+inline int utf32_encode(uint32_t codepoint, wchar_t* output) {
+    if (codepoint <= 0x10FFFF && (codepoint < 0xD800 || codepoint > 0xDFFF)) {
+        *output = (wchar_t)codepoint;
+        return 1;
+    }
     return 0;
-  output[0] = (wchar_t)codepoint;
-  return 1;
 }
 
 /* Convert UTF-8 to wchar_t string */
-inline wchar_t *utf8stws(const char *input) {
-  size_t len = strlen(input);
-  wchar_t *output =
-      (wchar_t *)malloc((len * 2 + 1) * sizeof(wchar_t)); // Enough space
-  size_t out_index = 0;
-  size_t i = 0;
-
-  while (i < len) {
-    uint32_t cp;
-    int consumed;
-
-    // invalid utf8 sequence
-    if (!utf8_decode(&input[i], &cp, &consumed)) {
-        output[out_index++] = L'?';
-        i++; // skip one byte
-        continue;
+inline wchar_t* utf8stws(const char* input, size_t* out_len) {
+    if (!input) {
+        if (out_len) *out_len = 0;
+        return nullptr;
     }
 
-    int written = 0;
-    if (USE_UTF16)
-      written = utf16_encode(cp, &output[out_index]);
-    else
-      written = utf32_encode(cp, &output[out_index]);
+    const size_t len = strlen(input);
+    if (len == 0) {
+        wchar_t* output = (wchar_t*)malloc(sizeof(wchar_t));
+        if (output) *output = L'\0';
+        if (out_len) *out_len = 0;
+        return output;
+    }
 
-    out_index += written;
-    i += consumed;
-  }
+    const size_t max_output = USE_UTF16 ? (len / 2 + 1) * 2 : len + 1;
+    wchar_t* output = (wchar_t*)malloc(max_output * sizeof(wchar_t));
+    if (!output) return nullptr;
 
-  output[out_index] = L'\0'; // null-terminate
-  return output;
+    size_t out_index = 0;
+    const char* p = input;
+    const char* end = input + len;
+
+    while (p < end) {
+        uint32_t cp;
+        int consumed;
+
+        if (utf8_decode(p, &cp, &consumed)) {
+            int written = USE_UTF16 ? utf16_encode(cp, &output[out_index]) : utf32_encode(cp, &output[out_index]);
+
+            if (written > 0) {
+                out_index += written;
+                p += consumed;
+                continue;
+            }
+        }
+        output[out_index++] = 0xFFFD; // replacement character
+        p++;
+    }
+
+    output[out_index] = L'\0';
+    wchar_t* final_output = (wchar_t*)realloc(output, (out_index + 1) * sizeof(wchar_t));
+    if (final_output) output = final_output;
+    if (out_len) *out_len = out_index;
+    return output;
 }
 
 #endif // !UTF8_STWS_HPP
