@@ -25,7 +25,7 @@
       -  [x] range columns setters (functions)
       -  [x] support for multi byte characters (automatic and manual)
       -  [x] full column background color support
-      -  [ ] border styling (colors, rgb)
+      -  [x] border styling (colors, rgb)
       -  [ ] sub string styling support [VEEEEEEEEEEEEERY HAAAAAAAAAAARD]
 */
 
