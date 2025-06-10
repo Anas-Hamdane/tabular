@@ -18,19 +18,19 @@
 #include <iostream>
 
 int main() {
-    using namespace tabular;
+  using namespace tabular;
 
-    Table table;
-    table.add_row({"Countries Capitals"});
-    table.add_row({"United States", "Washington"});
-    table.add_row({"Brazil", "Brasilia"});
-    table.add_row({"Countries Population"});
-    table.add_row({"United States", "340.1 million (2024)"});
-    table.add_row({"Brazil", "211.1 million (2023)"});
+  Table table;
+  table.add_row({"Countries Capitals"});
+  table.add_row({"United States", "Washington"});
+  table.add_row({"Brazil", "Brasilia"});
+  table.add_row({"Countries Population"});
+  table.add_row({"United States", "340.1 million (2024)"});
+  table.add_row({"Brazil", "211.1 million (2023)"});
 
-    // for testing because "ninja" change the output stream of the program
-    table.set().forced_width(60, true);
+  // for testing because "ninja" change the output stream of the program
+  table.set().forced_width(60, true);
 
-    std::cout << table << std::endl;
-    return 0;
+  std::cout << table << std::endl;
+  return 0;
 }

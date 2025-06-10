@@ -17,11 +17,11 @@
 #include <cstdint>
 
 namespace tabular {
-    typedef struct RGB {
-        uint8_t r, g, b;
+  typedef struct RGB {
+    uint8_t r, g, b;
 
-        RGB(uint8_t r, uint8_t g, uint8_t b) : r(r), g(g), b(b) {}
-    } RGB;
+    RGB(uint8_t r, uint8_t g, uint8_t b) : r(r), g(g), b(b) {}
+  } RGB;
 } // namespace tabular
 
 #endif // TABULAR_RGB_HPP

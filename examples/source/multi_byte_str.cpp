@@ -18,23 +18,23 @@
 #include <iostream>
 
 int main() {
-    using namespace tabular;
+  using namespace tabular;
 
-    Table table;
-    table.add_row({"English", "Hello"});
-    table.add_row({"Korean", "안녕하세요"});
-    table.add_row({"Japanese", "こんにちは"});
-    table.add_row({"Russian", "Привет"});
+  Table table;
+  table.add_row({"English", "Hello"});
+  table.add_row({"Korean", "안녕하세요"});
+  table.add_row({"Japanese", "こんにちは"});
+  table.add_row({"Russian", "Привет"});
 
-    // !IMPORTANT
-    table[0][1].set().multi_byte_characters(true);
-    table[1][1].set().multi_byte_characters(true);
-    table[2][1].set().multi_byte_characters(true);
-    table[3][1].set().multi_byte_characters(true);
+  // !IMPORTANT
+  table[0][1].set().multi_byte_characters(true);
+  table[1][1].set().multi_byte_characters(true);
+  table[2][1].set().multi_byte_characters(true);
+  table[3][1].set().multi_byte_characters(true);
 
-    // for testing because "ninja" change the output stream of the program
-    table.set().forced_width(60, true);
+  // for testing because "ninja" change the output stream of the program
+  table.set().forced_width(60, true);
 
-    std::cout << table << std::endl;
-    return 0;
+  std::cout << table << std::endl;
+  return 0;
 }

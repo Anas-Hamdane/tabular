@@ -18,15 +18,15 @@
 #include <iostream>
 
 int main() {
-    using namespace tabular;
+  using namespace tabular;
 
-    Table table;
-    
-    table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\nwith a '\\n' inside it"});
+  Table table;
 
-    // for testing because "ninja" change the output stream of the program
-    table.set().forced_width(60, true);
+  table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\nwith a '\\n' inside it"});
 
-    std::cout << table << std::endl;
-    return 0;
+  // for testing because "ninja" change the output stream of the program
+  table.set().forced_width(60, true);
+
+  std::cout << table << std::endl;
+  return 0;
 }

@@ -18,17 +18,17 @@
 #include <iostream>
 
 int main() {
-    using namespace tabular;
+  using namespace tabular;
 
-    Table table;
-    table.add_row({"tabular"});
+  Table table;
+  table.add_row({"tabular"});
 
-    table.border().set().style(BorderStyle::ANSI);
-    table.config().alignment(Alignment::center);
+  table.border().set().style(BorderStyle::ANSI);
+  table.config().alignment(Alignment::center);
 
-    // for testing because "ninja" change the output stream of the program
-    table.set().forced_width(11, true);
+  // for testing because "ninja" change the output stream of the program
+  table.set().forced_width(11, true);
 
-    std::cout << table << std::endl;
-    return 0;
+  std::cout << table << std::endl;
+  return 0;
 }

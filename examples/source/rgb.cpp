@@ -18,42 +18,42 @@
 #include <iostream>
 
 int main() {
-    using namespace tabular;
+  using namespace tabular;
 
-    Table table;
+  Table table;
 
-    table.add_row({"rgb(0,0,0)", "rgb(0,0,0) background"});
-    table.add_row({"rgb(255,0,0)", "rgb(255,0,0) background"});
-    table.add_row({"rgb(0,255,0)", "rgb(0,255,0) background"});
-    table.add_row({"rgb(255,255,0)", "rgb(255,255,0) background"});
-    table.add_row({"rgb(0,0,255)", "rgb(0,0,255) background"});
-    table.add_row({"rgb(255,0,255)", "rgb(255,0,255) background"});
-    table.add_row({"rgb(0,255,255)", "rgb(0,255,255) background"});
-    table.add_row({"rgb(255, 255, 255)", "rgb(255, 255, 255) background"});
-    
-    table.border().set().style(BorderStyle::ANSI);
+  table.add_row({"rgb(0,0,0)", "rgb(0,0,0) background"});
+  table.add_row({"rgb(255,0,0)", "rgb(255,0,0) background"});
+  table.add_row({"rgb(0,255,0)", "rgb(0,255,0) background"});
+  table.add_row({"rgb(255,255,0)", "rgb(255,255,0) background"});
+  table.add_row({"rgb(0,0,255)", "rgb(0,0,255) background"});
+  table.add_row({"rgb(255,0,255)", "rgb(255,0,255) background"});
+  table.add_row({"rgb(0,255,255)", "rgb(0,255,255) background"});
+  table.add_row({"rgb(255, 255, 255)", "rgb(255, 255, 255) background"});
 
-    table[0][0].config().color(RGB(0, 0, 0));
-    table[1][0].config().color(RGB(255, 0, 0));
-    table[2][0].config().color(RGB(0, 255, 0));
-    table[3][0].config().color(RGB(255, 255, 0));
-    table[4][0].config().color(RGB(0, 0, 255));
-    table[5][0].config().color(RGB(255, 0, 255));
-    table[6][0].config().color(RGB(0, 255, 255));
-    table[7][0].config().color(RGB(255, 255, 255));
+  table.border().set().style(BorderStyle::ANSI);
 
-    table[0][1].config().content_background_color(RGB(0, 0, 0));
-    table[1][1].config().content_background_color(RGB(255, 0, 0));
-    table[2][1].config().content_background_color(RGB(0, 255, 0));
-    table[3][1].config().content_background_color(RGB(255, 255, 0));
-    table[4][1].config().content_background_color(RGB(0, 0, 255));
-    table[5][1].config().content_background_color(RGB(255, 0, 255));
-    table[6][1].config().content_background_color(RGB(0, 255, 255));
-    table[7][1].config().content_background_color(RGB(255, 255, 255));
+  table[0][0].config().color(RGB(0, 0, 0));
+  table[1][0].config().color(RGB(255, 0, 0));
+  table[2][0].config().color(RGB(0, 255, 0));
+  table[3][0].config().color(RGB(255, 255, 0));
+  table[4][0].config().color(RGB(0, 0, 255));
+  table[5][0].config().color(RGB(255, 0, 255));
+  table[6][0].config().color(RGB(0, 255, 255));
+  table[7][0].config().color(RGB(255, 255, 255));
 
-    // for testing because "ninja" change the output stream of the program
-    table.set().forced_width(60, true);
+  table[0][1].config().content_background_color(RGB(0, 0, 0));
+  table[1][1].config().content_background_color(RGB(255, 0, 0));
+  table[2][1].config().content_background_color(RGB(0, 255, 0));
+  table[3][1].config().content_background_color(RGB(255, 255, 0));
+  table[4][1].config().content_background_color(RGB(0, 0, 255));
+  table[5][1].config().content_background_color(RGB(255, 0, 255));
+  table[6][1].config().content_background_color(RGB(0, 255, 255));
+  table[7][1].config().content_background_color(RGB(255, 255, 255));
 
-    std::cout << table << std::endl;
-    return 0;
+  // for testing because "ninja" change the output stream of the program
+  table.set().forced_width(60, true);
+
+  std::cout << table << std::endl;
+  return 0;
 }

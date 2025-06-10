@@ -15,35 +15,35 @@
 #define TABULAR_STYLES_HPP
 
 namespace tabular {
-    enum class Style {
-        bold = 1,
-        dim = 2,
-        italic = 3,
+  enum class Style {
+    bold = 1,
+    dim = 2,
+    italic = 3,
 
-        underline = 4,
-        double_underline = 21, // not popular
+    underline = 4,
+    double_underline = 21, // not popular
 
-        blink = 5, // rarely supported
-        fast_blink = 6, // rarely supported
-        reverse = 7,
-        concealed = 8,
-        crossed = 9,
-    };
+    blink = 5,      // rarely supported
+    fast_blink = 6, // rarely supported
+    reverse = 7,
+    concealed = 8,
+    crossed = 9,
+  };
 
-    enum class ResetStyle {
-        bold = 22,
-        dim = 22,
-        italic = 23,
+  enum class ResetStyle {
+    bold = 22,
+    dim = 22,
+    italic = 23,
 
-        underline = 24,
-        double_underline = 24,
+    underline = 24,
+    double_underline = 24,
 
-        blink = 25,
-        fast_blink = 25,
-        reverse = 27,
-        concealed = 28,
-        crossed = 29
-    };
+    blink = 25,
+    fast_blink = 25,
+    reverse = 27,
+    concealed = 28,
+    crossed = 29
+  };
 } // namespace tabular
 
 #endif // TABULAR_STYLES_HPP

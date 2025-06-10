@@ -15,11 +15,11 @@
 #define TABULAR_ALIGNMENT_HPP
 
 namespace tabular {
-    enum class Alignment {
-        left,
-        center,
-        right
-    };
+  enum class Alignment {
+    left,
+    center,
+    right
+  };
 }
 
 #endif // TABULAR_ALIGNMENT_HPP

@@ -18,22 +18,22 @@
 #include <iostream>
 
 int main() {
-    using namespace tabular;
+  using namespace tabular;
 
-    Table table;
-    table.add_row({"Company", "Market Cap"});
-    table.add_row({ "Microsoft", "$3.256 T"});
-    table.add_row({ "Apple", "$2.949 T"});
-    table.add_row({ "NVIDIA", "$2.863 T"});
-    table.add_row({ "Amazon", "$2.039 T"});
-    table.add_row({ "Google", "$1.880 T"});
+  Table table;
+  table.add_row({"Company", "Market Cap"});
+  table.add_row({"Microsoft", "$3.256 T"});
+  table.add_row({"Apple", "$2.949 T"});
+  table.add_row({"NVIDIA", "$2.863 T"});
+  table.add_row({"Amazon", "$2.039 T"});
+  table.add_row({"Google", "$1.880 T"});
 
-    table[0].config().alignment(Alignment::center);
-    table[0].config().padding(1);
-    
-    // for testing because "ninja" change the output stream of the program
-    table.set().forced_width(60, true);
-    
-    std::cout << table << std::endl;
-    return 0;
+  table[0].config().alignment(Alignment::center);
+  table[0].config().padding(1);
+
+  // for testing because "ninja" change the output stream of the program
+  table.set().forced_width(60, true);
+
+  std::cout << table << std::endl;
+  return 0;
 }
