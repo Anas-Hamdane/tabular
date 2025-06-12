@@ -54,6 +54,22 @@ namespace tabular {
         return *this;
       }
 
+      // add text style to the columns in this row
+      Config& text_style(Style style) {
+        for (Column& column : row.columns)
+          column.config().text_style(style);
+
+        return *this;
+      }
+
+      // add multiple text styles to the columns in this row
+      Config& text_style(const std::vector<Style>& styles) {
+        for (Column& column : row.columns)
+          column.config().text_style(styles);
+
+        return *this;
+      }
+
       Config& color(Color color) {
         for (Column& column : row.columns)
           column.config().color(color);
@@ -68,7 +84,7 @@ namespace tabular {
         return *this;
       }
 
-      Config& content_background_color(BackgroundColor back_color) {
+      Config& content_background_color(Color back_color) {
         for (Column& column : row.columns)
           column.config().content_background_color(back_color);
 
@@ -82,7 +98,7 @@ namespace tabular {
         return *this;
       }
 
-      Config& column_background_color(BackgroundColor back_color) {
+      Config& column_background_color(Color back_color) {
         for (Column& column : row.columns)
           column.config().column_background_color(back_color);
 

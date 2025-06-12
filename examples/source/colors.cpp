@@ -42,14 +42,14 @@ int main() {
   table[6][0].config().color(Color::cyan);
   table[7][0].config().color(Color::white);
 
-  table[0][1].config().content_background_color(BackgroundColor::black);
-  table[1][1].config().content_background_color(BackgroundColor::red);
-  table[2][1].config().content_background_color(BackgroundColor::green);
-  table[3][1].config().content_background_color(BackgroundColor::yellow);
-  table[4][1].config().content_background_color(BackgroundColor::blue);
-  table[5][1].config().content_background_color(BackgroundColor::magenta);
-  table[6][1].config().content_background_color(BackgroundColor::cyan);
-  table[7][1].config().content_background_color(BackgroundColor::white);
+  table[0][1].config().content_background_color(Color::black);
+  table[1][1].config().content_background_color(Color::red);
+  table[2][1].config().content_background_color(Color::green);
+  table[3][1].config().content_background_color(Color::yellow);
+  table[4][1].config().content_background_color(Color::blue);
+  table[5][1].config().content_background_color(Color::magenta);
+  table[6][1].config().content_background_color(Color::cyan);
+  table[7][1].config().content_background_color(Color::white);
 
   // for testing because "ninja" change the output stream of the program
   table.set().forced_width(60, true);

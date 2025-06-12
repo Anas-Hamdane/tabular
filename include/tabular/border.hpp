@@ -308,6 +308,7 @@ private:
 
         top_connector(color);
         bottom_connector(color);
+        intersection(color);
 
         corners(color);
 
@@ -324,6 +325,7 @@ private:
 
         top_connector(rgb);
         bottom_connector(rgb);
+        intersection(rgb);
 
         corners(rgb);
 
@@ -571,7 +573,7 @@ private:
       BackgroundColoring(Border& border) : border(border) {}
 
       /* ------------------ full ------------------------ */
-      BackgroundColoring& full(BackgroundColor background_color) {
+      BackgroundColoring& full(Color background_color) {
         horizontal(background_color);
         vertical(background_color);
 
@@ -586,11 +588,11 @@ private:
       }
 
       /* ------------------ horizontal ------------------------ */
-      BackgroundColoring& horizontal(BackgroundColor background_color) {
+      BackgroundColoring& horizontal(Color background_color) {
         if (!border.background_colors.horizontal.empty())
           border.background_colors.horizontal.clear();
 
-        border.background_colors.horizontal = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.horizontal = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         top_connector(background_color);
         bottom_connector(background_color);
@@ -615,11 +617,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& bottom_connector(BackgroundColor background_color) {
+      BackgroundColoring& bottom_connector(Color background_color) {
         if (!border.background_colors.bottom_connector.empty())
           border.background_colors.bottom_connector.clear();
 
-        border.background_colors.bottom_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.bottom_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -635,11 +637,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& top_connector(BackgroundColor background_color) {
+      BackgroundColoring& top_connector(Color background_color) {
         if (!border.background_colors.top_connector.empty())
           border.background_colors.top_connector.clear();
 
-        border.background_colors.top_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.top_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -656,11 +658,11 @@ private:
       }
 
       /* ------------------ vertical ------------------------ */
-      BackgroundColoring& vertical(BackgroundColor background_color) {
+      BackgroundColoring& vertical(Color background_color) {
         if (!border.background_colors.vertical.empty())
           border.background_colors.vertical.clear();
 
-        border.background_colors.vertical = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.vertical = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         left_connector(background_color);
         left_connector(background_color);
@@ -686,11 +688,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& left_connector(BackgroundColor background_color) {
+      BackgroundColoring& left_connector(Color background_color) {
         if (!border.background_colors.left_connector.empty())
           border.background_colors.left_connector.clear();
 
-        border.background_colors.left_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.left_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -706,11 +708,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& right_connector(BackgroundColor background_color) {
+      BackgroundColoring& right_connector(Color background_color) {
         if (!border.background_colors.right_connector.empty())
           border.background_colors.right_connector.clear();
 
-        border.background_colors.right_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.right_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -727,7 +729,7 @@ private:
       }
 
       /* ------------------ corners ------------------------ */
-      BackgroundColoring& corners(BackgroundColor background_color) {
+      BackgroundColoring& corners(Color background_color) {
         top_left_corner(background_color);
         top_right_corner(background_color);
 
@@ -747,11 +749,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& top_left_corner(BackgroundColor background_color) {
+      BackgroundColoring& top_left_corner(Color background_color) {
         if (!border.background_colors.top_left_corner.empty())
           border.background_colors.top_left_corner.clear();
 
-        border.background_colors.top_left_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.top_left_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -767,11 +769,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& top_right_corner(BackgroundColor background_color) {
+      BackgroundColoring& top_right_corner(Color background_color) {
         if (!border.background_colors.top_right_corner.empty())
           border.background_colors.top_right_corner.clear();
 
-        border.background_colors.top_right_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.top_right_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -787,11 +789,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& bottom_left_corner(BackgroundColor background_color) {
+      BackgroundColoring& bottom_left_corner(Color background_color) {
         if (!border.background_colors.bottom_left_corner.empty())
           border.background_colors.bottom_left_corner.clear();
 
-        border.background_colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -807,11 +809,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& bottom_right_corner(BackgroundColor background_color) {
+      BackgroundColoring& bottom_right_corner(Color background_color) {
         if (!border.background_colors.bottom_right_corner.empty())
           border.background_colors.bottom_right_corner.clear();
 
-        border.background_colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -828,11 +830,11 @@ private:
       }
 
       /* ------------------ intersection point ------------------------ */
-      BackgroundColoring& intersection(BackgroundColor background_color) {
+      BackgroundColoring& intersection(Color background_color) {
         if (!border.background_colors.intersection.empty())
           border.background_colors.intersection.clear();
 
-        border.background_colors.intersection = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.intersection = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }

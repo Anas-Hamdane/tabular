@@ -34,10 +34,10 @@ int main() {
 
   table.border().set().style(BorderStyle::ANSI);
 
-  table[0][0].config().column_background_color(BackgroundColor::black);
-  table[1][0].config().column_background_color(BackgroundColor::magenta);
-  table[2][0].config().column_background_color(BackgroundColor::cyan);
-  table[3][0].config().column_background_color(BackgroundColor::white);
+  table[0][0].config().column_background_color(Color::black);
+  table[1][0].config().column_background_color(Color::magenta);
+  table[2][0].config().column_background_color(Color::cyan);
+  table[3][0].config().column_background_color(Color::white);
 
   table[4][0].config().column_background_color(RGB(0, 0, 255));
   table[5][0].config().column_background_color(RGB(255, 0, 0));

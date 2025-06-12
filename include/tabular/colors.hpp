@@ -26,17 +26,6 @@ namespace tabular {
     white,
     normal = 39,
   };
-  enum class BackgroundColor {
-    black = 40,
-    red,
-    green,
-    yellow,
-    blue,
-    magenta,
-    cyan,
-    white,
-    normal = 49,
-  };
 } // namespace tabular
 
 #endif // !TABULAR_COLORS_HPP

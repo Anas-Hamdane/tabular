@@ -26,7 +26,6 @@
       -  [x] support for multi byte characters (automatic and manual)
       -  [x] full column background color support
       -  [x] border styling (colors, rgb)
-      -  [ ] sub string styling support [VEEEEEEEEEEEEERY HAAAAAAAAAAARD]
 */
 
 #include <algorithm>
@@ -59,7 +58,6 @@
 #error Unsupported platform
 #endif
 
-#define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
 
 // table ANSI printing
@@ -452,18 +450,6 @@ namespace tabular {
     normal = 39,
   };
 
-  enum class BackgroundColor {
-    black = 40,
-    red,
-    green,
-    yellow,
-    blue,
-    magenta,
-    cyan,
-    white,
-    normal = 49,
-  };
-
   enum class Style {
     bold = 1,
     dim = 2,
@@ -477,21 +463,6 @@ namespace tabular {
     reverse = 7,
     concealed = 8,
     crossed = 9,
-  };
-
-  enum class ResetStyle {
-    bold = 22,
-    dim = 22,
-    italic = 23,
-
-    underline = 24,
-    double_underline = 24,
-
-    blink = 25,
-    fast_blink = 25,
-    reverse = 27,
-    concealed = 28,
-    crossed = 29
   };
 
   struct BorderGlyphs {
@@ -608,11 +579,11 @@ namespace tabular {
       }
 
       // add Background Color to the whole column
-      Config& content_background_color(BackgroundColor color) {
+      Config& content_background_color(Color color) {
         if (!column.content_background_color.empty())
           column.content_background_color.clear();
 
-        column.content_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
+        column.content_background_color = CSI + std::to_string(static_cast<int>(color) + 10) + "m";
 
         return *this;
       }
@@ -652,11 +623,11 @@ namespace tabular {
       }
 
       // column background coloring
-      Config& column_background_color(BackgroundColor color) {
+      Config& column_background_color(Color color) {
         if (!column.column_background_color.empty())
           column.column_background_color.clear();
 
-        column.column_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
+        column.column_background_color = CSI + std::to_string(static_cast<int>(color) + 10) + "m";
 
         return *this;
       }
@@ -800,6 +771,22 @@ public:
         return *this;
       }
 
+      // add text style to the columns in this row
+      Config& text_style(Style style) {
+        for (Column& column : row.columns)
+          column.config().text_style(style);
+
+        return *this;
+      }
+
+      // add multiple text styles to the columns in this row
+      Config& text_style(const std::vector<Style>& styles) {
+        for (Column& column : row.columns)
+          column.config().text_style(styles);
+
+        return *this;
+      }
+
       Config& color(Color color) {
         for (Column& column : row.columns)
           column.config().color(color);
@@ -814,7 +801,7 @@ public:
         return *this;
       }
 
-      Config& content_background_color(BackgroundColor back_color) {
+      Config& content_background_color(Color back_color) {
         for (Column& column : row.columns)
           column.config().content_background_color(back_color);
 
@@ -828,7 +815,7 @@ public:
         return *this;
       }
 
-      Config& column_background_color(BackgroundColor back_color) {
+      Config& column_background_color(Color back_color) {
         for (Column& column : row.columns)
           column.config().column_background_color(back_color);
 
@@ -872,6 +859,58 @@ public:
       return this->columns.at(index);
     }
   };
+
+  namespace string_utils {
+    // multi byte string width
+    inline size_t mbswidth(std::string str) {
+      std::wstring wstr = conv::utf8stws(str.c_str());
+      size_t width = display_width::wcswidth(wstr.c_str(), wstr.length());
+
+      return width;
+    }
+
+    inline size_t display_width(std::string str, bool is_multi_byte) {
+      return is_multi_byte ? mbswidth(str) : str.length();
+    }
+
+    inline bool is_continuation_byte(unsigned char byte) {
+      return (byte & 0xC0) == 0x80; // 10xxxxxx
+    }
+
+    inline std::size_t safe_split_pos(const std::string& s, std::size_t pos) {
+      if (pos > s.size()) pos = s.size();
+      while (pos > 0 && is_continuation_byte(static_cast<unsigned char>(s[pos]))) {
+        --pos;
+      }
+      return pos;
+    }
+
+    // split by words AND save both '\n' and ' ' as words too
+    // works at least for UTF-8 encoding strings
+    inline std::list<std::string> split_text(const std::string& str) {
+      std::list<std::string> result;
+
+      size_t start = 0;
+      const size_t len = str.size();
+
+      for (size_t i = 0; i < len; ++i) {
+        char ch = str[i];
+
+        if (ch == ' ' || ch == '\n') {
+          if (i > start)
+            result.emplace_back(str.begin() + start, str.begin() + i);
+
+          result.emplace_back(1, ch); // Push " " or "\n"
+          start = i + 1;
+        }
+      }
+
+      if (start < len)
+        result.emplace_back(str.begin() + start, str.end());
+
+      return result;
+    }
+  } // namespace string_utils
 
   namespace utils {
     // to align PPDirectives
@@ -933,44 +972,6 @@ public:
         }
     // clang-format on
 
-    // multi byte string width
-    inline size_t mbswidth(std::string str) {
-      std::wstring wstr = conv::utf8stws(str.c_str());
-      size_t width = display_width::wcswidth(wstr.c_str(), wstr.length());
-
-      return width;
-    }
-
-    inline size_t display_width(std::string str, bool is_multi_byte) {
-      return is_multi_byte ? mbswidth(str) : str.length();
-    }
-
-    // split by words AND save both '\n' and ' ' as words too
-    // works at least for UTF-8 encoding strings
-    inline std::list<std::string> split_text(const std::string& str) {
-      std::list<std::string> result;
-
-      size_t start = 0;
-      const size_t len = str.size();
-
-      for (size_t i = 0; i < len; ++i) {
-        char ch = str[i];
-
-        if (ch == ' ' || ch == '\n') {
-          if (i > start)
-            result.emplace_back(str.begin() + start, str.begin() + i);
-
-          result.emplace_back(1, ch); // Push " " or "\n"
-          start = i + 1;
-        }
-      }
-
-      if (start < len)
-        result.emplace_back(str.begin() + start, str.end());
-
-      return result;
-    }
-
     // finalize line and push it
     inline void commit_line(std::vector<std::string>& result, std::string& sub, size_t* sub_size, int usable_width, Column column) {
       std::string line;
@@ -1026,7 +1027,7 @@ public:
       unsigned int bottom_padding = column.get().bottom_padding();
 
       // split the content into words to easily manipulate it
-      auto words = split_text(content);
+      auto words = string_utils::split_text(content);
 
       // the return result
       std::vector<std::string> result;
@@ -1052,7 +1053,7 @@ public:
         }
 
         // we need split
-        size_t word_size = display_width(word, is_multi_byte);
+        size_t word_size = string_utils::display_width(word, is_multi_byte);
         if ((sub_size + word_size) > usable_width) {
           int remaining_space = usable_width - sub_size;
 
@@ -1060,20 +1061,37 @@ public:
           if (remaining_space > limit) {
             std::string first_part;
             std::string remainder;
-            if (is_multi_byte) {
-              std::wstring wword = conv::utf8stws(word);
-              std::wstring wpart = wword.substr(0, remaining_space - 1) + L'-';
-              std::wstring wremainder = wword.substr(remaining_space - 1);
 
-              first_part = conv::utf8wsts(wpart);
-              remainder = conv::utf8wsts(wremainder);
+            size_t first_part_width = 0;
+            if (is_multi_byte) {
+              size_t total_display_width = string_utils::safe_split_pos(word, remaining_space - 1);
+
+              // wide word string to walk into `wchar_t`s
+              std::wstring wword = conv::utf8stws(word);
+
+              int cut_index = 0;
+              for (size_t i = 0; i < wword.length(); i++) {
+                size_t w = display_width::wcwidth(wword[i]);
+                if (w < 0) w = 0; // just in case u know
+
+                if (first_part_width + w > total_display_width)
+                  break;
+
+                first_part_width += w;
+                cut_index = i + 1;
+              }
+
+              first_part = conv::utf8wsts(wword.substr(0, cut_index)) + '-';
+              remainder = conv::utf8wsts(wword.substr(cut_index));
             } else {
               first_part = word.substr(0, remaining_space - 1) + '-';
               remainder = word.substr(remaining_space - 1);
+
+              first_part_width = string_utils::display_width(first_part, is_multi_byte);
             }
 
             sub += first_part;
-            sub_size += display_width(first_part, is_multi_byte);
+            sub_size += first_part_width;
 
             commit_line(result, sub, &sub_size, usable_width, column);
 
@@ -1388,6 +1406,7 @@ private:
 
         top_connector(color);
         bottom_connector(color);
+        intersection(color);
 
         corners(color);
 
@@ -1404,6 +1423,7 @@ private:
 
         top_connector(rgb);
         bottom_connector(rgb);
+        intersection(rgb);
 
         corners(rgb);
 
@@ -1651,7 +1671,7 @@ private:
       BackgroundColoring(Border& border) : border(border) {}
 
       /* ------------------ full ------------------------ */
-      BackgroundColoring& full(BackgroundColor background_color) {
+      BackgroundColoring& full(Color background_color) {
         horizontal(background_color);
         vertical(background_color);
 
@@ -1666,11 +1686,11 @@ private:
       }
 
       /* ------------------ horizontal ------------------------ */
-      BackgroundColoring& horizontal(BackgroundColor background_color) {
+      BackgroundColoring& horizontal(Color background_color) {
         if (!border.background_colors.horizontal.empty())
           border.background_colors.horizontal.clear();
 
-        border.background_colors.horizontal = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.horizontal = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         top_connector(background_color);
         bottom_connector(background_color);
@@ -1695,11 +1715,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& bottom_connector(BackgroundColor background_color) {
+      BackgroundColoring& bottom_connector(Color background_color) {
         if (!border.background_colors.bottom_connector.empty())
           border.background_colors.bottom_connector.clear();
 
-        border.background_colors.bottom_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.bottom_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1715,11 +1735,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& top_connector(BackgroundColor background_color) {
+      BackgroundColoring& top_connector(Color background_color) {
         if (!border.background_colors.top_connector.empty())
           border.background_colors.top_connector.clear();
 
-        border.background_colors.top_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.top_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1736,11 +1756,11 @@ private:
       }
 
       /* ------------------ vertical ------------------------ */
-      BackgroundColoring& vertical(BackgroundColor background_color) {
+      BackgroundColoring& vertical(Color background_color) {
         if (!border.background_colors.vertical.empty())
           border.background_colors.vertical.clear();
 
-        border.background_colors.vertical = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.vertical = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         left_connector(background_color);
         left_connector(background_color);
@@ -1766,11 +1786,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& left_connector(BackgroundColor background_color) {
+      BackgroundColoring& left_connector(Color background_color) {
         if (!border.background_colors.left_connector.empty())
           border.background_colors.left_connector.clear();
 
-        border.background_colors.left_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.left_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1786,11 +1806,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& right_connector(BackgroundColor background_color) {
+      BackgroundColoring& right_connector(Color background_color) {
         if (!border.background_colors.right_connector.empty())
           border.background_colors.right_connector.clear();
 
-        border.background_colors.right_connector = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.right_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1807,7 +1827,7 @@ private:
       }
 
       /* ------------------ corners ------------------------ */
-      BackgroundColoring& corners(BackgroundColor background_color) {
+      BackgroundColoring& corners(Color background_color) {
         top_left_corner(background_color);
         top_right_corner(background_color);
 
@@ -1827,11 +1847,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& top_left_corner(BackgroundColor background_color) {
+      BackgroundColoring& top_left_corner(Color background_color) {
         if (!border.background_colors.top_left_corner.empty())
           border.background_colors.top_left_corner.clear();
 
-        border.background_colors.top_left_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.top_left_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1847,11 +1867,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& top_right_corner(BackgroundColor background_color) {
+      BackgroundColoring& top_right_corner(Color background_color) {
         if (!border.background_colors.top_right_corner.empty())
           border.background_colors.top_right_corner.clear();
 
-        border.background_colors.top_right_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.top_right_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1867,11 +1887,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& bottom_left_corner(BackgroundColor background_color) {
+      BackgroundColoring& bottom_left_corner(Color background_color) {
         if (!border.background_colors.bottom_left_corner.empty())
           border.background_colors.bottom_left_corner.clear();
 
-        border.background_colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1887,11 +1907,11 @@ private:
         return *this;
       }
 
-      BackgroundColoring& bottom_right_corner(BackgroundColor background_color) {
+      BackgroundColoring& bottom_right_corner(Color background_color) {
         if (!border.background_colors.bottom_right_corner.empty())
           border.background_colors.bottom_right_corner.clear();
 
-        border.background_colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1908,11 +1928,11 @@ private:
       }
 
       /* ------------------ intersection point ------------------------ */
-      BackgroundColoring& intersection(BackgroundColor background_color) {
+      BackgroundColoring& intersection(Color background_color) {
         if (!border.background_colors.intersection.empty())
           border.background_colors.intersection.clear();
 
-        border.background_colors.intersection = CSI + std::to_string(static_cast<int>(background_color)) + "m";
+        border.background_colors.intersection = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
 
         return *this;
       }
@@ -1946,6 +1966,8 @@ public:
     unsigned int width;
     bool forced_width;
     bool force_ansi;
+
+    float width_percent;
 
     std::vector<Row> rows;
 
@@ -2022,7 +2044,7 @@ public:
       }
 
       /* ---------------BACKGROUND COLORS--------------------- */
-      Config& content_background_color(BackgroundColor back_color) {
+      Config& content_background_color(Color back_color) {
         for (Row& row : table.rows)
           row.config().content_background_color(back_color);
 
@@ -2036,7 +2058,7 @@ public:
         return *this;
       }
 
-      Config& column_background_color(BackgroundColor back_color) {
+      Config& column_background_color(Color back_color) {
         for (Row& row : table.rows)
           row.config().column_background_color(back_color);
 
@@ -2094,129 +2116,158 @@ public:
         return *this;
         ;
       }
+
+      Setters& width_percent(float percent) {
+        if (percent <= 1 && percent > 0)
+          table.width_percent = percent;
+          
+        return *this;
+      }
+    };
+
+    class Getters {
+      Table& table;
+
+      public:
+      Getters(Table& table) : table(table) {}
+
+      std::vector<Row> rows() { return table.rows; }
+
+      unsigned int width() { return table.width; }
     };
 
     class Columns {
       std::vector<Row>& rows;
       int index;
 
-  public:
-      Columns(std::vector<Row>& rows, int index) : rows(rows), index(index) {}
+      class Config {
+        std::vector<Row>& rows;
+        int index;
 
-      Columns& alignment(Alignment align) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().alignment(align);
+    public:
+        Config(std::vector<Row>& rows, int index) : rows(rows), index(index) {}
 
-        return *this;
-      }
+        Config& alignment(Alignment align) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().alignment(align);
 
-      Columns& width(int w) {
-        unsigned int safe_width = (w <= 0) ? 0 : static_cast<unsigned int>(w);
-
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().width(safe_width);
-
-        return *this;
-      }
-
-      Columns& padding(int padd) {
-        unsigned int safe_padding = (padd <= 0) ? 0 : static_cast<unsigned int>(padd);
-
-        for (Row& row : rows) {
-          if (index >= 0 && index < static_cast<int>(row.columns.size())) {
-            row.columns[index].config().top_padding(safe_padding);
-            row.columns[index].config().bottom_padding(safe_padding);
-          }
+          return *this;
         }
 
-        return *this;
+        Config& width(int w) {
+          unsigned int safe_width = (w <= 0) ? 0 : static_cast<unsigned int>(w);
+
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().width(safe_width);
+
+          return *this;
+        }
+
+        Config& padding(int padd) {
+          unsigned int safe_padding = (padd <= 0) ? 0 : static_cast<unsigned int>(padd);
+
+          for (Row& row : rows) {
+            if (index >= 0 && index < static_cast<int>(row.columns.size())) {
+              row.columns[index].config().top_padding(safe_padding);
+              row.columns[index].config().bottom_padding(safe_padding);
+            }
+          }
+
+          return *this;
+        }
+
+        Config& top_padding(int padd) {
+          unsigned int safe_padding = (padd <= 0) ? 0 : static_cast<unsigned int>(padd);
+
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().top_padding(safe_padding);
+
+          return *this;
+        }
+
+        Config& bottom_padding(int padd) {
+          unsigned int safe_padding = (padd <= 0) ? 0 : static_cast<unsigned int>(padd);
+
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().bottom_padding(safe_padding);
+
+          return *this;
+        }
+
+        Config& text_style(Style style) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().text_style(style);
+
+          return *this;
+        }
+
+        Config& text_style(const std::vector<Style>& styles) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().text_style(styles);
+
+          return *this;
+        }
+
+        Config& color(Color color) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().color(color);
+
+          return *this;
+        }
+
+        Config& color(RGB rgb) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().color(rgb);
+
+          return *this;
+        }
+
+        Config& content_background_color(Color color) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().content_background_color(color);
+
+          return *this;
+        }
+
+        Config& content_background_color(RGB rgb) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().content_background_color(rgb);
+
+          return *this;
+        }
+
+        Config& column_background_color(Color color) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().column_background_color(color);
+
+          return *this;
+        }
+
+        Config& column_background_color(RGB rgb) {
+          for (Row& row : rows)
+            if (index >= 0 && index < static_cast<int>(row.columns.size()))
+              row.columns[index].config().column_background_color(rgb);
+
+          return *this;
+        }
+      };
+
+  public:
+      Columns(std::vector<Row>& rows, int index) : rows(rows), index(index) {
       }
 
-      Columns& top_padding(int padd) {
-        unsigned int safe_padding = (padd <= 0) ? 0 : static_cast<unsigned int>(padd);
-
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().top_padding(safe_padding);
-
-        return *this;
-      }
-
-      Columns& bottom_padding(int padd) {
-        unsigned int safe_padding = (padd <= 0) ? 0 : static_cast<unsigned int>(padd);
-
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().bottom_padding(safe_padding);
-
-        return *this;
-      }
-
-      Columns& text_style(Style style) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().text_style(style);
-
-        return *this;
-      }
-
-      Columns& text_style(const std::vector<Style>& styles) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().text_style(styles);
-
-        return *this;
-      }
-
-      Columns& color(Color color) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().color(color);
-
-        return *this;
-      }
-
-      Columns& color(RGB rgb) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().color(rgb);
-
-        return *this;
-      }
-
-      Columns& content_background_color(BackgroundColor color) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().content_background_color(color);
-
-        return *this;
-      }
-
-      Columns& content_background_color(RGB rgb) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().content_background_color(rgb);
-
-        return *this;
-      }
-
-      Columns& column_background_color(BackgroundColor color) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().column_background_color(color);
-
-        return *this;
-      }
-
-      Columns& column_background_color(RGB rgb) {
-        for (Row& row : rows)
-          if (index >= 0 && index < static_cast<int>(row.columns.size()))
-            row.columns[index].config().column_background_color(rgb);
-
-        return *this;
-      }
+      Config config() { return Config(rows, index); }
     };
 
     std::vector<int> find_stops(Row row) {
@@ -2262,12 +2313,12 @@ public:
             int special_characters = 0;
 
             // for each splitted_content element has a one or more global_styles, it has one RESET at the end
-            if (!styles.empty()) {
+            if (!(styles.empty() || current_line.empty())) {
               special_characters += reset.size();
               special_characters += styles.size();
             }
 
-            int curr_line_size = utils::display_width(current_line, column.get().is_multi_byte());
+            int curr_line_size = string_utils::display_width(current_line, column.get().is_multi_byte());
 
             // special_characters will not be displayed so they are not counted
             rest -= (curr_line_size - special_characters); // to balance the line
@@ -2366,6 +2417,18 @@ public:
       stream << right_corner;
     }
 
+    /* Regularity means it has the same number of columns in each row */
+    bool is_regular() {
+      size_t reference = rows[0].columns.size();
+      size_t rows_num = rows.size();
+
+      for (int i = 0; i < rows_num; i++)
+        if (rows[i].columns.size() != reference)
+          return false;
+
+      return true;
+    }
+
     inline void adjust_widths(unsigned int table_width) {
       if (table_width <= 0)
         return;
@@ -2403,7 +2466,7 @@ public:
     }
 
 public:
-    Table() : width(0), forced_width(false) {}
+    Table() : width(0), forced_width(false), width_percent(0.5) {}
 
     // configure the table
     Config config() { return Config(*this); }
@@ -2411,6 +2474,8 @@ public:
     Border& border() { return table_border; }
 
     Setters set() { return Setters(*this); }
+
+    Getters get() { return Getters(*this); }
 
     Columns column(int index) {
       return Columns(rows, index);
@@ -2420,26 +2485,14 @@ public:
       return rows.at(index); // Throws std::out_of_range if index is invalid
     }
 
-    unsigned int get_width() { return width; }
-
-    void add_row(std::vector<std::string> contents) {
+    Table& add_row(std::vector<std::string> contents) {
       std::vector<Column> columns;
       for (std::string content : contents)
         columns.push_back(Column(content));
 
       rows.push_back(Row(columns));
-    }
 
-    /* Regularity means it has the same number of columns in each row */
-    bool is_regular() {
-      size_t reference = rows[0].columns.size();
-      size_t rows_num = rows.size();
-
-      for (int i = 0; i < rows_num; i++)
-        if (rows[i].columns.size() != reference)
-          return false;
-
-      return true;
+      return *this;
     }
 
     // * return 2 for empty rows and 3 for terminal space problems
@@ -2453,7 +2506,7 @@ public:
         usable_width = width;
       else {
         unsigned short terminal_width = utils::get_terminal_width();
-        usable_width = terminal_width * DEFAULT_WIDTH_PERCENT;
+        usable_width = terminal_width * width_percent;
         if (this->width <= 0 || this->width > terminal_width)
           width = usable_width;
         else

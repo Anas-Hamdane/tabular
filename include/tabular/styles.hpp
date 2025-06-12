@@ -29,21 +29,6 @@ namespace tabular {
     concealed = 8,
     crossed = 9,
   };
-
-  enum class ResetStyle {
-    bold = 22,
-    dim = 22,
-    italic = 23,
-
-    underline = 24,
-    double_underline = 24,
-
-    blink = 25,
-    fast_blink = 25,
-    reverse = 27,
-    concealed = 28,
-    crossed = 29
-  };
 } // namespace tabular
 
 #endif // TABULAR_STYLES_HPP

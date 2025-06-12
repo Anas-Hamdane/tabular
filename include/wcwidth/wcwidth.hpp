@@ -37,7 +37,7 @@ namespace display_width {
     return false;
   }
 
-  inline int wcwidth(wchar_t ucs) {
+  inline size_t wcwidth(wchar_t ucs) {
     if (ucs == 0)
       return 0;
 
@@ -72,7 +72,7 @@ namespace display_width {
 
     for (; *pwcs && n-- > 0; pwcs++)
       if ((w = wcwidth(*pwcs)) > 0)
-        width += static_cast<size_t>(w);
+        width += w;
 
     return width;
   }

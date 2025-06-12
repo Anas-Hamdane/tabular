@@ -116,11 +116,11 @@ namespace tabular {
       }
 
       // add Background Color to the whole column
-      Config& content_background_color(BackgroundColor color) {
+      Config& content_background_color(Color color) {
         if (!column.content_background_color.empty())
           column.content_background_color.clear();
 
-        column.content_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
+        column.content_background_color = CSI + std::to_string(static_cast<int>(color) + 10) + "m";
 
         return *this;
       }
@@ -160,11 +160,11 @@ namespace tabular {
       }
 
       // column background coloring
-      Config& column_background_color(BackgroundColor color) {
+      Config& column_background_color(Color color) {
         if (!column.column_background_color.empty())
           column.column_background_color.clear();
 
-        column.column_background_color = CSI + std::to_string(static_cast<int>(color)) + "m";
+        column.column_background_color = CSI + std::to_string(static_cast<int>(color) + 10) + "m";
 
         return *this;
       }

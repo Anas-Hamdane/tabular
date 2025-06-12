@@ -33,7 +33,6 @@
 #error Unsupported platform
 #endif
 
-#define DEFAULT_WIDTH_PERCENT .5
 #define CONTENT_MANIPULATION_BACK_LIMIT .3 // back limit percent
 
 // table ANSI printing

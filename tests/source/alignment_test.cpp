@@ -47,8 +47,8 @@ TEST(alignment_table_test, output_eq_expected) {
     table.add_row({"United States", "Washington"});
     table.add_row({"Brazil", "Brasilia"});
 
-    table.column(0).alignment(Alignment::left);
-    table.column(1).alignment(Alignment::right);
+    table.column(0).config().alignment(Alignment::left);
+    table.column(1).config().alignment(Alignment::right);
 
     table[0].config().alignment(Alignment::center);
 
