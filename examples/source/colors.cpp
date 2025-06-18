@@ -33,23 +33,23 @@ int main() {
 
   table.border().set().style(BorderStyle::ansi);
 
-  table[0][0].config().color(Color::black);
-  table[1][0].config().color(Color::red);
-  table[2][0].config().color(Color::green);
-  table[3][0].config().color(Color::yellow);
-  table[4][0].config().color(Color::blue);
-  table[5][0].config().color(Color::magenta);
-  table[6][0].config().color(Color::cyan);
-  table[7][0].config().color(Color::white);
+  table[0][0].style().content_color(Color::black);
+  table[1][0].style().content_color(Color::red);
+  table[2][0].style().content_color(Color::green);
+  table[3][0].style().content_color(Color::yellow);
+  table[4][0].style().content_color(Color::blue);
+  table[5][0].style().content_color(Color::magenta);
+  table[6][0].style().content_color(Color::cyan);
+  table[7][0].style().content_color(Color::white);
 
-  table[0][1].config().content_background_color(Color::black);
-  table[1][1].config().content_background_color(Color::red);
-  table[2][1].config().content_background_color(Color::green);
-  table[3][1].config().content_background_color(Color::yellow);
-  table[4][1].config().content_background_color(Color::blue);
-  table[5][1].config().content_background_color(Color::magenta);
-  table[6][1].config().content_background_color(Color::cyan);
-  table[7][1].config().content_background_color(Color::white);
+  table[0][1].style().content_background_color(Color::black);
+  table[1][1].style().content_background_color(Color::red);
+  table[2][1].style().content_background_color(Color::green);
+  table[3][1].style().content_background_color(Color::yellow);
+  table[4][1].style().content_background_color(Color::blue);
+  table[5][1].style().content_background_color(Color::magenta);
+  table[6][1].style().content_background_color(Color::cyan);
+  table[7][1].style().content_background_color(Color::white);
 
   table.set().width(60);
 

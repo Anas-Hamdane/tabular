@@ -294,39 +294,6 @@ namespace tabular {
       }
     };
 
-    class Getters {
-      const Column& column;
-
-  public:
-      Getters(const Column& column) : column(column) {}
-
-      Alignment alignment() const { return column.alignment; }
-
-      unsigned int width() const { return column.width; }
-
-      unsigned int top_padding() const { return column.top_padding; }
-
-      unsigned int bottom_padding() const { return column.bottom_padding; }
-
-      std::vector<std::string> lines() const { return column.lines; }
-
-      std::list<std::string> words() const { return column.words; }
-
-      std::string text_attributes() const { return column.text_attribute; }
-
-      std::string content_color() const { return column.content_color; }
-
-      std::string content_background_color() const { return column.content_background_color; }
-
-      std::string column_background_color() const { return column.column_background_color; }
-
-      bool multi_byte_characters() const { return column.multi_byte_characters; }
-
-      bool disabled_styles() const { return column.disabled_styles; }
-
-      size_t special_characters() const { return column.special_characters; }
-    };
-
     class Setters {
       Column& column;
 
@@ -369,6 +336,43 @@ namespace tabular {
       }
     };
 
+    class Getters {
+      const Column& column;
+
+  public:
+      Getters(const Column& column) : column(column) {}
+
+      Alignment alignment() const { return column.alignment; }
+
+      unsigned int width() const { return column.width; }
+
+      unsigned int top_padding() const { return column.top_padding; }
+
+      unsigned int bottom_padding() const { return column.bottom_padding; }
+
+      std::vector<std::string> lines() const { return column.lines; }
+
+      std::list<std::string> words() const { return column.words; }
+
+      std::string text_attributes() const { return column.text_attribute; }
+
+      std::string content_color() const { return column.content_color; }
+
+      std::string content_background_color() const { return column.content_background_color; }
+
+      std::string column_background_color() const { return column.column_background_color; }
+
+      bool multi_byte_characters() const { return column.multi_byte_characters; }
+
+      bool disabled_styles() const { return column.disabled_styles; }
+
+      size_t special_characters() const { return column.special_characters; }
+    };
+
+    Config configuration;
+    Setters setter;
+    Getters getter;
+
 public:
     std::string content;
 
@@ -380,13 +384,16 @@ public:
           bottom_padding(0),
           special_characters(0),
           multi_byte_characters(false),
-          disabled_styles(false) {}
+          disabled_styles(false),
+          configuration(*this),
+          setter(*this),
+          getter(*this) {}
 
-    Config config() { return Config(*this); }
+    Config& config() { return configuration; }
 
-    Getters get() const { return Getters(*this); }
+    Setters& set() { return setter; }
 
-    Setters set() { return Setters(*this); }
+    const Getters& get() const { return getter; }
   };
 
   class Row {
@@ -1203,7 +1210,7 @@ public:
       // percent should be between 1 and 100
       Setters& back_limit_percent(int percent) {
         if (percent > 0 && percent <= 100)
-          table.width_percent = static_cast<uint8_t>(percent);
+          table.back_limit_percent = static_cast<uint8_t>(percent);
 
         return *this;
       }
@@ -1254,7 +1261,7 @@ public:
         return result;
       }
 
-      std::vector<Column*> columns(int index) const {
+      std::vector<Column*> columns(size_t index) const {
         std::vector<Column*> result;
 
         for (const Row& row : table.rows) {
@@ -1265,7 +1272,7 @@ public:
         return result;
       }
 
-      uint8_t width_percent() { return table.width_percent; }
+      uint8_t width_percent() const { return table.width_percent; }
 
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
 
@@ -1278,20 +1285,25 @@ public:
       bool separated_rows() const { return table.separated_rows; }
     };
 
+    Setters setter;
+    Getters getter;
+
 public:
     std::vector<Row> rows;
 
-    Table() : width(0), width_percent(60), non_tui_width(60), columns_number(0), back_limit_percent(30), separated_rows(true), disabled_styles(false), regular(true) {}
+    Table() : width(0), width_percent(60), non_tui_width(60), columns_number(0), back_limit_percent(30), separated_rows(true), disabled_styles(false), regular(true), setter(*this), getter(*this) {}
 
     Border& border() { return table_border; }
 
-    Setters set() { return Setters(*this); }
+    Setters& set() { return setter; }
 
-    Getters get() const { return Getters(*this); }
+    const Getters& get() const { return getter; }
 
     Table& add_row(std::vector<std::string> contents) {
       std::vector<Column> columns;
-      for (std::string content : contents)
+      columns.reserve(contents.size());
+
+      for (const std::string& content : contents)
         columns.push_back(Column(content));
 
       // tracking Regularity

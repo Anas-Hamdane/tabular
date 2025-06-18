@@ -22,7 +22,7 @@ namespace tabular {
 public:
     std::vector<Column> columns;
 
-    Row(std::vector<Column> columns)
+    Row(const std::vector<Column>& columns)
         : columns(columns) {}
 
     Column& operator[](int index) {

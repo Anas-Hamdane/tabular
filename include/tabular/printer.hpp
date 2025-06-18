@@ -212,15 +212,6 @@ namespace tabular {
         unsigned int top_padding = column.get().top_padding();
         unsigned int bottom_padding = column.get().bottom_padding();
 
-        // the return result
-        std::vector<std::string> result;
-
-        // split the content into words to easily manipulate it
-        auto words = string_utils::split_text(content);
-
-        // TOP padding
-        result.insert(result.end(), top_padding, std::string());
-
         // to avoid empty columns
         if (column.get().width() <= 2)
           column.set().width(3);
@@ -228,13 +219,23 @@ namespace tabular {
         // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
         const size_t width = (column.get().width() - 2);
 
+        // the return result
+        std::vector<std::string> result;
+        result.reserve(content.length() / width);
+
+        // split the content into words to easily manipulate it
+        auto words = string_utils::split_text(content);
+
+        // TOP padding
+        result.insert(result.end(), top_padding, std::string());
+
         // back limit used to force split a long word
         const size_t back_limit = (width * back_limit_percent) / 100;
 
         std::string line;
         size_t line_width = 0;
         for (auto it = words.begin(); it != words.end(); ++it) {
-          std::string& word = *it;
+          const std::string& word = *it;
 
           // we need split
           size_t word_width = string_utils::display_width(word, multi_byte_characters);

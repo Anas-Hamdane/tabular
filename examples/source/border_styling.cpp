@@ -40,10 +40,10 @@ int main() {
   table.border().set().bottom_right_corner("◞");
 
   table.border().background_color().full(bg);
-  table[0][0].config().column_background_color(bg);
+  table[0][0].style().column_background_color(bg);
 
-  table[0][0].config().color(fg);
-  table[0][0].config().text_attribute(Attribute::bold);
+  table[0][0].style().content_color(fg);
+  table[0][0].style().text_attribute(Attribute::bold);
 
   table.set().width(60);
 

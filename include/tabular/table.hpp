@@ -76,7 +76,7 @@ namespace tabular {
       // percent should be between 1 and 100
       Setters& back_limit_percent(int percent) {
         if (percent > 0 && percent <= 100)
-          table.width_percent = static_cast<uint8_t>(percent);
+          table.back_limit_percent = static_cast<uint8_t>(percent);
 
         return *this;
       }
@@ -138,7 +138,7 @@ namespace tabular {
         return result;
       }
 
-      uint8_t width_percent() { return table.width_percent; }
+      uint8_t width_percent() const { return table.width_percent; }
 
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
 
@@ -162,9 +162,11 @@ public:
 
     Getters get() const { return Getters(*this); }
 
-    Table& add_row(std::vector<std::string> contents) {
+    Table& add_row(const std::vector<std::string>& contents) {
       std::vector<Column> columns;
-      for (std::string content : contents)
+      columns.reserve(contents.size());
+
+      for (const std::string& content : contents)
         columns.push_back(Column(content));
 
       // tracking Regularity

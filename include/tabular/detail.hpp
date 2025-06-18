@@ -23,48 +23,8 @@
 namespace tabular {
   namespace detail {
     namespace string_utils {
-      // multi byte string width
-      inline size_t mbswidth(const std::string& str) {
-        size_t width = detail::codec::utf8dw(str.c_str());
-        return width;
-      }
-
       inline size_t display_width(const std::string& str, bool is_multi_byte) {
-        return is_multi_byte ? mbswidth(str) : str.length();
-      }
-
-      /**
-       * In UTF-8 encoding, multi-byte characters are structured as:
-       * - First byte:  110xxxxx, 1110xxxx, or 11110xxx (depending on char length)
-       * - Following bytes: 10xxxxxx (continuation bytes)
-       *
-       * This function identifies continuation bytes by checking if the first two bits
-       * are "10" (binary pattern 10xxxxxx).
-       *
-       * @param byte The byte to check
-       * @return true if this byte is a UTF-8 continuation byte (10xxxxxx pattern)
-       */
-      inline bool is_continuation_byte(unsigned char byte) {
-        return (byte & 0xC0) == 0x80; // 10xxxxxx
-      }
-
-      /**
-       * Problem: Splitting a UTF-8 string at an arbitrary position might break
-       * in the middle of a multi-byte character, corrupting the text.
-       *
-       * Solution: Find the nearest valid split position at or before the desired
-       * position that doesn't break any UTF-8 character.
-       *
-       * @param s The UTF-8 encoded string
-       * @param pos Desired split position (will be clamped to string length)
-       * @return Safe position where string can be split without breaking UTF-8 chars
-       */
-      inline std::size_t safe_split_pos(const std::string& s, std::size_t pos) {
-        if (pos > s.size()) pos = s.size();
-        while (pos > 0 && is_continuation_byte(static_cast<unsigned char>(s[pos]))) {
-          --pos;
-        }
-        return pos;
+        return is_multi_byte ? codec::utf8dw(str.c_str()) : str.length();
       }
 
       // split by words AND save both '\n' and ' ' as words too

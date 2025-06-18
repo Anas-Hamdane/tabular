@@ -19,10 +19,10 @@
 #include <vector>
 
 #include <tabular/alignment.hpp>
+#include <tabular/attributes.hpp>
 #include <tabular/colors.hpp>
 #include <tabular/global.hpp>
 #include <tabular/rgb.hpp>
-#include <tabular/styles.hpp>
 
 namespace tabular {
   class Column {
@@ -102,9 +102,15 @@ namespace tabular {
 
         return *this;
       }
+    };
 
-      // add text style to the whole column
-      Config& text_attribute(const Attribute& attribute) {
+    class Style {
+      Column& column;
+
+  public:
+      Style(Column& column) : column(column) {}
+
+      Style& text_attribute(const Attribute& attribute) {
         if (column.text_attribute.empty())
           column.text_attribute.append(ansi::CSI);
 
@@ -113,8 +119,7 @@ namespace tabular {
         return *this;
       }
 
-      // add multiple text styles to the whole column
-      Config& text_attribute(const std::vector<Attribute>& attribute) {
+      Style& text_attribute(const std::vector<Attribute>& attribute) {
         if (attribute.empty()) return *this;
 
         if (column.text_attribute.empty())
@@ -127,16 +132,28 @@ namespace tabular {
         return *this;
       }
 
-      // add Background Color to the whole column
-      Config& content_background_color(const Color& color) {
+      Style& content_color(const Color& color) {
+        column.content_color = std::string(ansi::CSI) + std::to_string(static_cast<int>(color)) + "m";
+
+        return *this;
+      }
+
+      Style& content_color(const RGB& rgb) {
+        column.content_color = std::string(ansi::CSI) + "38;2;" + std::to_string(rgb.r) + ";" +
+                               std::to_string(rgb.g) + ";" +
+                               std::to_string(rgb.b) + "m";
+
+        return *this;
+      }
+
+      Style& content_background_color(const Color& color) {
         // one color could be applied
         column.content_background_color = std::string(ansi::CSI) + std::to_string(static_cast<int>(color) + 10) + "m";
 
         return *this;
       }
 
-      // add background RGB to the whole column
-      Config& content_background_color(const RGB& rgb) {
+      Style& content_background_color(const RGB& rgb) {
         // one color could be applied
         column.content_background_color = std::string(ansi::CSI) + "48;2;" + std::to_string(rgb.r) + ";" +
                                           std::to_string(rgb.g) + ";" +
@@ -145,69 +162,19 @@ namespace tabular {
         return *this;
       }
 
-      // add Color to the whole column
-      Config& color(const Color& color) {
-        column.content_color = std::string(ansi::CSI) + std::to_string(static_cast<int>(color)) + "m";
-
-        return *this;
-      }
-
-      // add RGB to the whole column
-      Config& color(const RGB& rgb) {
-        column.content_color = std::string(ansi::CSI) + "38;2;" + std::to_string(rgb.r) + ";" +
-                               std::to_string(rgb.g) + ";" +
-                               std::to_string(rgb.b) + "m";
-
-        return *this;
-      }
-
-      // column background coloring
-      Config& column_background_color(const Color& color) {
+      Style& column_background_color(const Color& color) {
         column.column_background_color = std::string(ansi::CSI) + std::to_string(static_cast<int>(color) + 10) + "m";
 
         return *this;
       }
 
-      Config& column_background_color(const RGB& rgb) {
+      Style& column_background_color(const RGB& rgb) {
         column.column_background_color = std::string(ansi::CSI) + "48;2;" + std::to_string(rgb.r) + ";" +
                                          std::to_string(rgb.g) + ";" +
                                          std::to_string(rgb.b) + "m";
 
         return *this;
       }
-    };
-
-    class Getters {
-      const Column& column;
-
-  public:
-      Getters(const Column& column) : column(column) {}
-
-      Alignment alignment() const { return column.alignment; }
-
-      unsigned int width() const { return column.width; }
-
-      unsigned int top_padding() const { return column.top_padding; }
-
-      unsigned int bottom_padding() const { return column.bottom_padding; }
-
-      std::vector<std::string> lines() const { return column.lines; }
-
-      std::list<std::string> words() const { return column.words; }
-
-      std::string text_attributes() const { return column.text_attribute; }
-
-      std::string content_color() const { return column.content_color; }
-
-      std::string content_background_color() const { return column.content_background_color; }
-
-      std::string column_background_color() const { return column.column_background_color; }
-
-      bool multi_byte_characters() const { return column.multi_byte_characters; }
-
-      bool disabled_styles() const { return column.disabled_styles; }
-
-      size_t special_characters() const { return column.special_characters; }
     };
 
     class Setters {
@@ -252,11 +219,44 @@ namespace tabular {
       }
     };
 
+    class Getters {
+      const Column& column;
+
+  public:
+      Getters(const Column& column) : column(column) {}
+
+      Alignment alignment() const { return column.alignment; }
+
+      unsigned int width() const { return column.width; }
+
+      unsigned int top_padding() const { return column.top_padding; }
+
+      unsigned int bottom_padding() const { return column.bottom_padding; }
+
+      std::vector<std::string> lines() const { return column.lines; }
+
+      std::list<std::string> words() const { return column.words; }
+
+      std::string text_attributes() const { return column.text_attribute; }
+
+      std::string content_color() const { return column.content_color; }
+
+      std::string content_background_color() const { return column.content_background_color; }
+
+      std::string column_background_color() const { return column.column_background_color; }
+
+      bool multi_byte_characters() const { return column.multi_byte_characters; }
+
+      bool disabled_styles() const { return column.disabled_styles; }
+
+      size_t special_characters() const { return column.special_characters; }
+    };
+
 public:
     std::string content;
 
-    Column(std::string content)
-        : content(std::move(content)),
+    Column(const std::string& content)
+        : content(content),
           alignment(Alignment::left),
           width(0),
           top_padding(0),
@@ -267,9 +267,11 @@ public:
 
     Config config() { return Config(*this); }
 
-    Getters get() const { return Getters(*this); }
+    Style style() { return Style(*this); }
 
     Setters set() { return Setters(*this); }
+
+    Getters get() const { return Getters(*this); }
   };
 } // namespace tabular
 

@@ -11,8 +11,8 @@
 
 */
 
-#ifndef TABULAR_STYLES_HPP
-#define TABULAR_STYLES_HPP
+#ifndef TABULAR_ATTRIBUTES_HPP
+#define TABULAR_ATTRIBUTES_HPP
 
 namespace tabular {
   enum class Attribute {
@@ -31,4 +31,4 @@ namespace tabular {
   };
 } // namespace tabular
 
-#endif // TABULAR_STYLES_HPP
+#endif // TABULAR_ATTRIBUTES_HPP
