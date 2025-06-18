@@ -12,7 +12,7 @@
     * EXAMPLE for "tabular" statement
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -23,11 +23,10 @@ int main() {
   Table table;
   table.add_row({"tabular"});
 
-  table.border().set().style(BorderStyle::ANSI);
-  table.config().alignment(Alignment::center);
+  table.border().set().style(BorderStyle::ansi);
+  table[0][0].config().alignment(Alignment::center);
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(11, true);
+  table.set().width(11);
 
   std::cout << table << std::endl;
   return 0;

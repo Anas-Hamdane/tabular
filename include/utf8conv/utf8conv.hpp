@@ -211,9 +211,8 @@ namespace conv {
 
   /* Convert wstring to UTF-8 string */
   inline std::string utf8wsts(const std::wstring& input) {
-    if (input.empty()) {
+    if (input.empty())
       return std::string();
-    }
 
     std::string output;
     // Reserve space (worst case: 4 bytes per wide char)
@@ -249,9 +248,9 @@ namespace conv {
 
   /* Convenience overload for C-style wide strings */
   inline std::string utf8wsts(const wchar_t* input) {
-    if (!input) {
+    if (!input)
       return std::string();
-    }
+    
     return utf8wsts(std::wstring(input));
   }
 } // namespace conv

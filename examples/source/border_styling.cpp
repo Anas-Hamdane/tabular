@@ -12,7 +12,7 @@
     * EXAMPLE of a customizable border in a table
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -26,7 +26,7 @@ int main() {
   RGB bg(20, 21, 35);
   RGB fg(255, 255, 255);
 
-  table.border().set().style(BorderStyle::ANSI);
+  table.border().set().style(BorderStyle::ansi);
   table.set().multi_byte_characters(true);
 
   table.border().color().horizontal(RGB(166, 227, 161));
@@ -43,10 +43,9 @@ int main() {
   table[0][0].config().column_background_color(bg);
 
   table[0][0].config().color(fg);
-  table[0][0].config().text_style(Style::bold);
+  table[0][0].config().text_attribute(Attribute::bold);
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(70, true);
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

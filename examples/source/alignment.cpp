@@ -12,7 +12,7 @@
     * EXAMPLE of aligning table content
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -27,13 +27,19 @@ int main() {
   table.add_row({"United States", "Washington"});
   table.add_row({"Brazil", "Brasilia"});
 
-  table.column(0).config().alignment(Alignment::left);
-  table.column(1).config().alignment(Alignment::right);
+  table[1][0].config().alignment(Alignment::left);
+  table[2][0].config().alignment(Alignment::left);
+  table[3][0].config().alignment(Alignment::left);
+  table[4][0].config().alignment(Alignment::left);
 
-  table[0].config().alignment(Alignment::center);
+  table[1][1].config().alignment(Alignment::right);
+  table[2][1].config().alignment(Alignment::right);
+  table[3][1].config().alignment(Alignment::right);
+  table[4][1].config().alignment(Alignment::right);
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table[0][0].config().alignment(Alignment::center);
+
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

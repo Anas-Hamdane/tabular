@@ -12,7 +12,7 @@
     * EXAMPLE of using background column coloring in a table
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -32,7 +32,7 @@ int main() {
   table.add_row({"rgb(0,255,0)"});
   table.add_row({"rgb(255,255,0)"});
 
-  table.border().set().style(BorderStyle::ANSI);
+  table.border().set().style(BorderStyle::ansi);
 
   table[0][0].config().column_background_color(Color::black);
   table[1][0].config().column_background_color(Color::magenta);
@@ -44,8 +44,7 @@ int main() {
   table[6][0].config().column_background_color(RGB(0, 255, 0));
   table[7][0].config().column_background_color(RGB(255, 255, 0));
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

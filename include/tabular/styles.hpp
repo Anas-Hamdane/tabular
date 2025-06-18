@@ -15,7 +15,7 @@
 #define TABULAR_STYLES_HPP
 
 namespace tabular {
-  enum class Style {
+  enum class Attribute {
     bold = 1,
     dim = 2,
     italic = 3,

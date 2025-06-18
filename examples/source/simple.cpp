@@ -12,7 +12,7 @@
     * EXAMPLE of a simple tables
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -28,8 +28,7 @@ int main() {
   table.add_row({"United States", "340.1 million (2024)"});
   table.add_row({"Brazil", "211.1 million (2023)"});
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

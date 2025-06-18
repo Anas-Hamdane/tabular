@@ -12,7 +12,7 @@
     * EXAMPLE of using multi byte characters in a table
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -32,8 +32,7 @@ int main() {
   table[2][1].set().multi_byte_characters(true);
   table[3][1].set().multi_byte_characters(true);
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

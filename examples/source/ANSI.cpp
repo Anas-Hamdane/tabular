@@ -12,7 +12,7 @@
     * EXAMPLE of an ANSI table
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -28,13 +28,15 @@ int main() {
   table.add_row({"National University of Singapore (NUS)", "90.6"});
   table.add_row({"University of Oxford", "89.8"});
 
-  table[0].config().padding(1);
-  table.config().alignment(Alignment::center);
+  table[0][0].config().padding(1);
 
-  table.border().set().style(BorderStyle::ANSI);
+  for (Row& row : table.rows)
+    for (Column& column : row.columns)
+      column.config().alignment(Alignment::center);
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table.border().set().style(BorderStyle::ansi);
+
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

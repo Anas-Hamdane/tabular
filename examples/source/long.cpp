@@ -12,7 +12,7 @@
     * EXAMPLE of a Long text and a new line in a table
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -22,10 +22,9 @@ int main() {
 
   Table table;
 
-  table.add_row({"This a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this another paragraph\nwith a '\\n' inside it"});
+  table.add_row({"This is a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this is another paragraph\nwith a '\\n' inside it"});
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

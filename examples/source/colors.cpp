@@ -12,7 +12,7 @@
     * EXAMPLE of using background and foreground colors of the content of a column in a table
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -31,7 +31,7 @@ int main() {
   table.add_row({"CYAN", "CYAN_BACK"});
   table.add_row({"WHITE", "WHITE_BACK"});
 
-  table.border().set().style(BorderStyle::ANSI);
+  table.border().set().style(BorderStyle::ansi);
 
   table[0][0].config().color(Color::black);
   table[1][0].config().color(Color::red);
@@ -51,8 +51,7 @@ int main() {
   table[6][1].config().content_background_color(Color::cyan);
   table[7][1].config().content_background_color(Color::white);
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

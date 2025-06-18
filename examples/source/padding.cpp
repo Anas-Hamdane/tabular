@@ -12,7 +12,7 @@
     * EXAMPLE of a using paddin in a table
 */
 
-#include <tabular/table.hpp>
+#include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
 #include <iostream>
@@ -28,11 +28,10 @@ int main() {
   table.add_row({"Amazon", "$2.039 T"});
   table.add_row({"Google", "$1.880 T"});
 
-  table[0].config().alignment(Alignment::center);
-  table[0].config().padding(1);
+  table[0][0].config().alignment(Alignment::center).padding(1);
+  table[0][1].config().alignment(Alignment::center).padding(1);
 
-  // for testing because "ninja" change the output stream of the program
-  table.set().forced_width(60, true);
+  table.set().width(60);
 
   std::cout << table << std::endl;
   return 0;

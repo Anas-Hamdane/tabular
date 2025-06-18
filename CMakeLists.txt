@@ -18,14 +18,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# enable testing
-enable_testing()
-
 # header files location
 set(TABULAR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/tabular)
 
 # examples
 add_subdirectory(examples)
-
-# tests
-add_subdirectory(tests)

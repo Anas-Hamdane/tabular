@@ -17,15 +17,14 @@
 #include <map>
 #include <string>
 
-#include <tabular/colors.hpp>
-#include <tabular/definitions.hpp>
-#include <tabular/rgb.hpp>
+#include <tabular/row.hpp>
 
 namespace tabular {
   enum class BorderStyle {
     standard,
+    space,
     empty,
-    ANSI
+    ansi
   };
 
   struct BorderGlyphs {
@@ -46,15 +45,37 @@ namespace tabular {
   };
 
   class Border {
-private:
     BorderGlyphs glyphs;
-
     BorderStyle style;
 
     BorderGlyphs colors;
     BorderGlyphs background_colors;
 
     bool is_multi_byte;
+    bool disabled_styles;
+
+    mutable BorderGlyphs cached_glyphs;
+    mutable bool valid_cache;
+
+    static std::string solve_color(Color color, bool is_background) {
+      std::string result;
+      result.reserve(6);
+
+      result.append(ansi::CSI + std::to_string(static_cast<int>(color) + (is_background ? 10 : 0)) + "m");
+      return result;
+    }
+
+    static std::string solve_color(RGB rgb, bool is_background) {
+      std::string result;
+      result.reserve(20);
+
+      result.append(ansi::CSI);
+      result.append(is_background ? "48;" : "38;");
+      result.append("2;" + std::to_string(rgb.r) + ";" +
+                    std::to_string(rgb.g) + ";" +
+                    std::to_string(rgb.b) + "m");
+      return result;
+    }
 
     class Getters {
       Border& border;
@@ -62,132 +83,160 @@ private:
   public:
       Getters(Border& border) : border(border) {}
 
-      BorderStyle style() { return border.style; }
-
-      BorderGlyphs glyphs() {
-        static const std::map<BorderStyle, BorderGlyphs> styleTemplates{
-            {BorderStyle::empty, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
+      static const BorderGlyphs& style_templates(BorderStyle style) {
+        static const std::map<BorderStyle, BorderGlyphs> templates = {
+            {BorderStyle::space, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
+            {BorderStyle::empty, {"", "", "", "", "", "", "", "", "", "", ""}},
             {BorderStyle::standard, {"|", "-", "+", "+", "+", "+", "+", "+", "+", "+", "+"}},
-            {BorderStyle::ANSI, {
-                                    TABLE_MODE "x" RESET_TABLE_MODE, // vertical
-                                    TABLE_MODE "q" RESET_TABLE_MODE, // horizontal
-                                    TABLE_MODE "j" RESET_TABLE_MODE, // bottom_right_corner
-                                    TABLE_MODE "k" RESET_TABLE_MODE, // top_right_corner
-                                    TABLE_MODE "l" RESET_TABLE_MODE, // top_left_corner
-                                    TABLE_MODE "m" RESET_TABLE_MODE, // bottom_left_corner
-                                    TABLE_MODE "n" RESET_TABLE_MODE, // intersection
-                                    TABLE_MODE "t" RESET_TABLE_MODE, // left_connector
-                                    TABLE_MODE "u" RESET_TABLE_MODE, // right_connector
-                                    TABLE_MODE "v" RESET_TABLE_MODE, // bottom_connector
-                                    TABLE_MODE "w" RESET_TABLE_MODE  // top_connector
+            {BorderStyle::ansi, {
+                                    std::string("\033(0") + "x" + std::string("\033(B"), // vertical
+                                    std::string("\033(0") + "q" + std::string("\033(B"), // horizontal
+                                    std::string("\033(0") + "j" + std::string("\033(B"), // bottom_right_corner
+                                    std::string("\033(0") + "k" + std::string("\033(B"), // top_right_corner
+                                    std::string("\033(0") + "l" + std::string("\033(B"), // top_left_corner
+                                    std::string("\033(0") + "m" + std::string("\033(B"), // bottom_left_corner
+                                    std::string("\033(0") + "n" + std::string("\033(B"), // intersection
+                                    std::string("\033(0") + "t" + std::string("\033(B"), // left_connector
+                                    std::string("\033(0") + "u" + std::string("\033(B"), // right_connector
+                                    std::string("\033(0") + "v" + std::string("\033(B"), // bottom_connector
+                                    std::string("\033(0") + "w" + std::string("\033(B")  // top_connector
                                 }}};
+        return templates.at(style);
+      }
 
-        const BorderGlyphs& def = styleTemplates.at(border.style);
+      BorderStyle style() const { return border.style; }
+
+      BorderGlyphs processed_glyphs() const {
+        if (border.valid_cache)
+          return border.cached_glyphs;
+
+        const BorderGlyphs& def = style_templates(border.style);
         BorderGlyphs result;
 
         auto pick = [](const std::string& val, const std::string& fallback) -> std::string {
           return val.empty() ? fallback : val;
         };
 
-        auto wrap = [](const std::string& fg, const std::string& bg, const std::string& val) -> std::string {
-          if (fg.empty() && bg.empty()) return val;
-          return fg + bg + val + RESET;
+        auto wrap = [](const std::string& fg, const std::string& bg, const std::string& val, const Border& border) -> std::string {
+          if ((fg.empty() && bg.empty()) || border.disabled_styles) return val;
+          return fg + bg + val + ansi::RESET;
         };
 
         result.vertical = wrap(border.colors.vertical,
                                border.background_colors.vertical,
-                               pick(border.glyphs.vertical, def.vertical));
+                               pick(border.glyphs.vertical, def.vertical),
+                               border);
 
         result.horizontal = wrap(border.colors.horizontal,
                                  border.background_colors.horizontal,
-                                 pick(border.glyphs.horizontal, def.horizontal));
+                                 pick(border.glyphs.horizontal, def.horizontal),
+                                 border);
 
         result.bottom_right_corner = wrap(border.colors.bottom_right_corner,
                                           border.background_colors.bottom_right_corner,
-                                          pick(border.glyphs.bottom_right_corner, def.bottom_right_corner));
+                                          pick(border.glyphs.bottom_right_corner, def.bottom_right_corner),
+                                          border);
 
         result.top_right_corner = wrap(border.colors.top_right_corner,
                                        border.background_colors.top_right_corner,
-                                       pick(border.glyphs.top_right_corner, def.top_right_corner));
+                                       pick(border.glyphs.top_right_corner, def.top_right_corner),
+                                       border);
 
         result.top_left_corner = wrap(border.colors.top_left_corner,
                                       border.background_colors.top_left_corner,
-                                      pick(border.glyphs.top_left_corner, def.top_left_corner));
+                                      pick(border.glyphs.top_left_corner, def.top_left_corner),
+                                      border);
 
         result.bottom_left_corner = wrap(border.colors.bottom_left_corner,
                                          border.background_colors.bottom_left_corner,
-                                         pick(border.glyphs.bottom_left_corner, def.bottom_left_corner));
+                                         pick(border.glyphs.bottom_left_corner, def.bottom_left_corner),
+                                         border);
 
         result.intersection = wrap(border.colors.intersection,
                                    border.background_colors.intersection,
-                                   pick(border.glyphs.intersection, def.intersection));
+                                   pick(border.glyphs.intersection, def.intersection),
+                                   border);
 
         result.left_connector = wrap(border.colors.left_connector,
                                      border.background_colors.left_connector,
-                                     pick(border.glyphs.left_connector, def.left_connector));
+                                     pick(border.glyphs.left_connector, def.left_connector),
+                                     border);
 
         result.right_connector = wrap(border.colors.right_connector,
                                       border.background_colors.right_connector,
-                                      pick(border.glyphs.right_connector, def.right_connector));
+                                      pick(border.glyphs.right_connector, def.right_connector),
+                                      border);
 
         result.bottom_connector = wrap(border.colors.bottom_connector,
                                        border.background_colors.bottom_connector,
-                                       pick(border.glyphs.bottom_connector, def.bottom_connector));
+                                       pick(border.glyphs.bottom_connector, def.bottom_connector),
+                                       border);
 
         result.top_connector = wrap(border.colors.top_connector,
                                     border.background_colors.top_connector,
-                                    pick(border.glyphs.top_connector, def.top_connector));
+                                    pick(border.glyphs.top_connector, def.top_connector),
+                                    border);
+
+        border.cached_glyphs = std::move(result);
+        border.valid_cache = true;
+        return border.cached_glyphs;
+      }
+
+      BorderGlyphs glyphs() const {
+        const BorderGlyphs& def = style_templates(border.style);
+        BorderGlyphs result;
+
+        auto pick = [](const std::string& val, const std::string& fallback) -> std::string {
+          return val.empty() ? fallback : val;
+        };
+
+        result.vertical = pick(border.glyphs.vertical, def.vertical);
+        result.horizontal = pick(border.glyphs.horizontal, def.horizontal);
+        result.bottom_right_corner = pick(border.glyphs.bottom_right_corner, def.bottom_right_corner);
+        result.top_right_corner = pick(border.glyphs.top_right_corner, def.top_right_corner);
+        result.top_left_corner = pick(border.glyphs.top_left_corner, def.top_left_corner);
+        result.bottom_left_corner = pick(border.glyphs.bottom_left_corner, def.bottom_left_corner);
+        result.intersection = pick(border.glyphs.intersection, def.intersection);
+        result.left_connector = pick(border.glyphs.left_connector, def.left_connector);
+        result.right_connector = pick(border.glyphs.right_connector, def.right_connector);
+        result.bottom_connector = pick(border.glyphs.bottom_connector, def.bottom_connector);
+        result.top_connector = pick(border.glyphs.top_connector, def.top_connector);
 
         return result;
       }
 
-      std::string horizontal() const {
-        return border.glyphs.horizontal;
-      }
+      std::string horizontal() const { return border.glyphs.horizontal; }
 
-      std::string vertical() const {
-        return border.glyphs.vertical;
-      }
+      std::string vertical() const { return border.glyphs.vertical; }
 
-      std::string top_left_corner() const {
-        return border.glyphs.top_left_corner;
-      }
+      std::string top_left_corner() const { return border.glyphs.top_left_corner; }
 
-      std::string top_right_corner() const {
-        return border.glyphs.top_right_corner;
-      }
+      std::string top_right_corner() const { return border.glyphs.top_right_corner; }
 
-      std::string bottom_left_corner() const {
-        return border.glyphs.bottom_left_corner;
-      }
+      std::string bottom_left_corner() const { return border.glyphs.bottom_left_corner; }
 
-      std::string bottom_right_corner() const {
-        return border.glyphs.bottom_right_corner;
-      }
+      std::string bottom_right_corner() const { return border.glyphs.bottom_right_corner; }
 
-      std::string intersection() const {
-        return border.glyphs.intersection;
-      }
+      std::string intersection() const { return border.glyphs.intersection; }
 
-      std::string left_connector() const {
-        return border.glyphs.left_connector;
-      }
+      std::string left_connector() const { return border.glyphs.left_connector; }
 
-      std::string right_connector() const {
-        return border.glyphs.right_connector;
-      }
+      std::string right_connector() const { return border.glyphs.right_connector; }
 
-      std::string top_connector() const {
-        return border.glyphs.top_connector;
-      }
+      std::string top_connector() const { return border.glyphs.top_connector; }
 
-      std::string bottom_connector() const {
-        return border.glyphs.bottom_connector;
-      }
+      std::string bottom_connector() const { return border.glyphs.bottom_connector; }
+
+      bool disabled_styles() const { return border.disabled_styles; }
     };
 
     class Setters {
       Border& border;
+
+      void invalidate_cache() {
+        if (border.valid_cache)
+          border.valid_cache = false;
+      }
 
   public:
       Setters(Border& border) : border(border) {}
@@ -198,28 +247,26 @@ private:
        * layout may break.
        *
        * Using str.length() is unreliable for multi-byte characters, and calling utils::mbswidth()
-       * on every assignment would introduce unnecessary performance overhead. Supporting accurate
-       * width checks would also require UTF-8 decoding and wide character handling, which is
-       * beyond the scope of this setter.
+       * on every assignment would introduce unnecessary performance overhead.
        *
-       * Since this library is aimed at developers, it assumes users understand the implications
-       * of using multi-byte or wide characters in border definitions.
-       *
-       * — Anas Hamdane, 2025-06-09
+       * — Anas Hamdane, 2025-06-14
        */
 
       Setters& style(BorderStyle style) {
         border.style = style;
+        invalidate_cache();
         return *this;
       }
 
       Setters& horizontal(std::string horizontal) {
         border.glyphs.horizontal = horizontal;
+        invalidate_cache();
         return *this;
       }
 
       Setters& vertical(std::string vertical) {
         border.glyphs.vertical = vertical;
+        invalidate_cache();
         return *this;
       }
 
@@ -229,57 +276,78 @@ private:
 
         border.glyphs.bottom_left_corner = corner;
         border.glyphs.top_left_corner = corner;
+
+        invalidate_cache();
         return *this;
       }
 
       Setters& top_left_corner(std::string corner) {
         border.glyphs.top_left_corner = corner;
+        invalidate_cache();
         return *this;
       }
 
       Setters& top_right_corner(std::string corner) {
         border.glyphs.top_right_corner = corner;
+        invalidate_cache();
         return *this;
       }
 
       Setters& bottom_left_corner(std::string corner) {
         border.glyphs.bottom_left_corner = corner;
+        invalidate_cache();
         return *this;
       }
 
       Setters& bottom_right_corner(std::string corner) {
         border.glyphs.bottom_right_corner = corner;
+        invalidate_cache();
         return *this;
       }
 
-      Setters intersection(std::string intersection) {
+      Setters& intersection(std::string intersection) {
         border.glyphs.intersection = intersection;
+        invalidate_cache();
         return *this;
       }
 
       Setters& left_connector(std::string connector) {
         border.glyphs.left_connector = connector;
+        invalidate_cache();
         return *this;
       }
 
       Setters& right_connector(std::string connector) {
         border.glyphs.right_connector = connector;
+        invalidate_cache();
         return *this;
       }
 
       Setters& top_connector(std::string connector) {
         border.glyphs.top_connector = connector;
+        invalidate_cache();
         return *this;
       }
 
       Setters& bottom_connector(std::string connector) {
         border.glyphs.bottom_connector = connector;
+        invalidate_cache();
+        return *this;
+      }
+
+      Setters& disabled_styles(bool is_disabled) {
+        border.disabled_styles = is_disabled;
         return *this;
       }
     };
 
     class Coloring {
       Border& border;
+
+      void invalidate_cache() {
+        if (border.valid_cache)
+          border.valid_cache = false;
+      }
 
   public:
       Coloring(Border& border) : border(border) {}
@@ -301,10 +369,7 @@ private:
 
       /* ------------------ horizontal ------------------------ */
       Coloring& horizontal(Color color) {
-        if (!border.colors.horizontal.empty())
-          border.colors.horizontal.clear();
-
-        border.colors.horizontal = CSI + std::to_string(static_cast<int>(color)) + "m";
+        border.colors.horizontal = border.solve_color(color, false);
 
         top_connector(color);
         bottom_connector(color);
@@ -316,12 +381,7 @@ private:
       }
 
       Coloring& horizontal(RGB rgb) {
-        if (!border.colors.horizontal.empty())
-          border.colors.horizontal.clear();
-
-        border.colors.horizontal = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                   std::to_string(rgb.g) + ";" +
-                                   std::to_string(rgb.b) + "m";
+        border.colors.horizontal = border.solve_color(rgb, false);
 
         top_connector(rgb);
         bottom_connector(rgb);
@@ -333,113 +393,83 @@ private:
       }
 
       Coloring& bottom_connector(Color color) {
-        if (!border.colors.bottom_connector.empty())
-          border.colors.bottom_connector.clear();
+        border.colors.bottom_connector = border.solve_color(color, false);
 
-        border.colors.bottom_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_connector(RGB rgb) {
-        if (!border.colors.bottom_connector.empty())
-          border.colors.bottom_connector.clear();
+        border.colors.bottom_connector = border.solve_color(rgb, false);
 
-        border.colors.bottom_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                         std::to_string(rgb.g) + ";" +
-                                         std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& top_connector(Color color) {
-        if (!border.colors.top_connector.empty())
-          border.colors.top_connector.clear();
+        border.colors.top_connector = border.solve_color(color, false);
 
-        border.colors.top_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& top_connector(RGB rgb) {
-        if (!border.colors.top_connector.empty())
-          border.colors.top_connector.clear();
+        border.colors.top_connector = border.solve_color(rgb, false);
 
-        border.colors.top_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                      std::to_string(rgb.g) + ";" +
-                                      std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       /* ------------------ vertical ------------------------ */
       Coloring& vertical(Color color) {
-        if (!border.colors.vertical.empty())
-          border.colors.vertical.clear();
-
-        border.colors.vertical = CSI + std::to_string(static_cast<int>(color)) + "m";
+        border.colors.vertical = border.solve_color(color, false);
 
         left_connector(color);
         right_connector(color);
 
         corners(color);
 
+        invalidate_cache();
         return *this;
       }
 
       Coloring& vertical(RGB rgb) {
-        if (!border.colors.vertical.empty())
-          border.colors.vertical.clear();
-
-        border.colors.vertical = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                 std::to_string(rgb.g) + ";" +
-                                 std::to_string(rgb.b) + "m";
+        border.colors.vertical = border.solve_color(rgb, false);
 
         left_connector(rgb);
         right_connector(rgb);
 
         corners(rgb);
 
+        invalidate_cache();
         return *this;
       }
 
       Coloring& left_connector(Color color) {
-        if (!border.colors.left_connector.empty())
-          border.colors.left_connector.clear();
+        border.colors.left_connector = border.solve_color(color, false);
 
-        border.colors.left_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& left_connector(RGB rgb) {
-        if (!border.colors.left_connector.empty())
-          border.colors.left_connector.clear();
+        border.colors.left_connector = border.solve_color(rgb, false);
 
-        border.colors.left_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                       std::to_string(rgb.g) + ";" +
-                                       std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& right_connector(Color color) {
-        if (!border.colors.right_connector.empty())
-          border.colors.right_connector.clear();
+        border.colors.right_connector = border.solve_color(color, false);
 
-        border.colors.right_connector = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& right_connector(RGB rgb) {
-        if (!border.colors.right_connector.empty())
-          border.colors.right_connector.clear();
+        border.colors.right_connector = border.solve_color(rgb, false);
 
-        border.colors.right_connector = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                        std::to_string(rgb.g) + ";" +
-                                        std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
@@ -465,103 +495,73 @@ private:
       }
 
       Coloring& top_left_corner(Color color) {
-        if (!border.colors.top_left_corner.empty())
-          border.colors.top_left_corner.clear();
+        border.colors.top_left_corner = border.solve_color(color, false);
 
-        border.colors.top_left_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& top_left_corner(RGB rgb) {
-        if (!border.colors.top_left_corner.empty())
-          border.colors.top_left_corner.clear();
+        border.colors.top_left_corner = border.solve_color(rgb, false);
 
-        border.colors.top_left_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                        std::to_string(rgb.g) + ";" +
-                                        std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& top_right_corner(Color color) {
-        if (!border.colors.top_right_corner.empty())
-          border.colors.top_right_corner.clear();
+        border.colors.top_right_corner = border.solve_color(color, false);
 
-        border.colors.top_right_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& top_right_corner(RGB rgb) {
-        if (!border.colors.top_right_corner.empty())
-          border.colors.top_right_corner.clear();
+        border.colors.top_right_corner = border.solve_color(rgb, false);
 
-        border.colors.top_right_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                         std::to_string(rgb.g) + ";" +
-                                         std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_left_corner(Color color) {
-        if (!border.colors.bottom_left_corner.empty())
-          border.colors.bottom_left_corner.clear();
+        border.colors.bottom_left_corner = border.solve_color(color, false);
 
-        border.colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_left_corner(RGB rgb) {
-        if (!border.colors.bottom_left_corner.empty())
-          border.colors.bottom_left_corner.clear();
+        border.colors.bottom_left_corner = border.solve_color(rgb, false);
 
-        border.colors.bottom_left_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                           std::to_string(rgb.g) + ";" +
-                                           std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_right_corner(Color color) {
-        if (!border.colors.bottom_right_corner.empty())
-          border.colors.bottom_right_corner.clear();
+        border.colors.bottom_right_corner = border.solve_color(color, false);
 
-        border.colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_right_corner(RGB rgb) {
-        if (!border.colors.bottom_right_corner.empty())
-          border.colors.bottom_right_corner.clear();
+        border.colors.bottom_right_corner = border.solve_color(rgb, false);
 
-        border.colors.bottom_right_corner = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                            std::to_string(rgb.g) + ";" +
-                                            std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       /* ------------------ intersection point ------------------------ */
       Coloring& intersection(Color color) {
-        if (!border.colors.intersection.empty())
-          border.colors.intersection.clear();
+        border.colors.intersection = border.solve_color(color, false);
 
-        border.colors.intersection = CSI + std::to_string(static_cast<int>(color)) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       Coloring& intersection(RGB rgb) {
-        if (!border.colors.intersection.empty())
-          border.colors.intersection.clear();
+        border.colors.intersection = border.solve_color(rgb, false);
 
-        border.colors.intersection = CSI "38;2;" + std::to_string(rgb.r) + ";" +
-                                     std::to_string(rgb.g) + ";" +
-                                     std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
     };
@@ -569,13 +569,18 @@ private:
     class BackgroundColoring {
       Border& border;
 
+      void invalidate_cache() {
+        if (border.valid_cache)
+          border.valid_cache = false;
+      }
+
   public:
       BackgroundColoring(Border& border) : border(border) {}
 
       /* ------------------ full ------------------------ */
-      BackgroundColoring& full(Color background_color) {
-        horizontal(background_color);
-        vertical(background_color);
+      BackgroundColoring& full(Color color) {
+        horizontal(color);
+        vertical(color);
 
         return *this;
       }
@@ -588,153 +593,118 @@ private:
       }
 
       /* ------------------ horizontal ------------------------ */
-      BackgroundColoring& horizontal(Color background_color) {
-        if (!border.background_colors.horizontal.empty())
-          border.background_colors.horizontal.clear();
+      BackgroundColoring& horizontal(Color color) {
+        border.background_colors.horizontal = border.solve_color(color, true);
 
-        border.background_colors.horizontal = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
+        top_connector(color);
+        bottom_connector(color);
+        intersection(color);
 
-        top_connector(background_color);
-        bottom_connector(background_color);
+        corners(color);
 
-        corners(background_color);
         return *this;
       }
 
       BackgroundColoring& horizontal(RGB rgb) {
-        if (!border.background_colors.horizontal.empty())
-          border.background_colors.horizontal.clear();
-
-        border.background_colors.horizontal = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                              std::to_string(rgb.g) + ";" +
-                                              std::to_string(rgb.b) + "m";
+        border.background_colors.horizontal = border.solve_color(rgb, true);
 
         top_connector(rgb);
         bottom_connector(rgb);
+        intersection(rgb);
 
         corners(rgb);
 
         return *this;
       }
 
-      BackgroundColoring& bottom_connector(Color background_color) {
-        if (!border.background_colors.bottom_connector.empty())
-          border.background_colors.bottom_connector.clear();
+      BackgroundColoring& bottom_connector(Color color) {
+        border.background_colors.bottom_connector = border.solve_color(color, true);
 
-        border.background_colors.bottom_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_connector(RGB rgb) {
-        if (!border.background_colors.bottom_connector.empty())
-          border.background_colors.bottom_connector.clear();
+        border.background_colors.bottom_connector = border.solve_color(rgb, true);
 
-        border.background_colors.bottom_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                    std::to_string(rgb.g) + ";" +
-                                                    std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_connector(Color background_color) {
-        if (!border.background_colors.top_connector.empty())
-          border.background_colors.top_connector.clear();
+      BackgroundColoring& top_connector(Color color) {
+        border.background_colors.top_connector = border.solve_color(color, true);
 
-        border.background_colors.top_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_connector(RGB rgb) {
-        if (!border.background_colors.top_connector.empty())
-          border.background_colors.top_connector.clear();
+        border.background_colors.top_connector = border.solve_color(rgb, true);
 
-        border.background_colors.top_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                 std::to_string(rgb.g) + ";" +
-                                                 std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       /* ------------------ vertical ------------------------ */
-      BackgroundColoring& vertical(Color background_color) {
-        if (!border.background_colors.vertical.empty())
-          border.background_colors.vertical.clear();
+      BackgroundColoring& vertical(Color color) {
+        border.background_colors.vertical = border.solve_color(color, true);
 
-        border.background_colors.vertical = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
+        left_connector(color);
+        right_connector(color);
 
-        left_connector(background_color);
-        left_connector(background_color);
+        corners(color);
 
-        corners(background_color);
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& vertical(RGB rgb) {
-        if (!border.background_colors.vertical.empty())
-          border.background_colors.vertical.clear();
-
-        border.background_colors.vertical = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                            std::to_string(rgb.g) + ";" +
-                                            std::to_string(rgb.b) + "m";
+        border.background_colors.vertical = border.solve_color(rgb, true);
 
         left_connector(rgb);
-        left_connector(rgb);
+        right_connector(rgb);
 
         corners(rgb);
 
+        invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& left_connector(Color background_color) {
-        if (!border.background_colors.left_connector.empty())
-          border.background_colors.left_connector.clear();
+      BackgroundColoring& left_connector(Color color) {
+        border.background_colors.left_connector = border.solve_color(color, true);
 
-        border.background_colors.left_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& left_connector(RGB rgb) {
-        if (!border.background_colors.left_connector.empty())
-          border.background_colors.left_connector.clear();
+        border.background_colors.left_connector = border.solve_color(rgb, true);
 
-        border.background_colors.left_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                  std::to_string(rgb.g) + ";" +
-                                                  std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& right_connector(Color background_color) {
-        if (!border.background_colors.right_connector.empty())
-          border.background_colors.right_connector.clear();
+      BackgroundColoring& right_connector(Color color) {
+        border.background_colors.right_connector = border.solve_color(color, true);
 
-        border.background_colors.right_connector = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& right_connector(RGB rgb) {
-        if (!border.background_colors.right_connector.empty())
-          border.background_colors.right_connector.clear();
+        border.background_colors.right_connector = border.solve_color(rgb, true);
 
-        border.background_colors.right_connector = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                   std::to_string(rgb.g) + ";" +
-                                                   std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       /* ------------------ corners ------------------------ */
-      BackgroundColoring& corners(Color background_color) {
-        top_left_corner(background_color);
-        top_right_corner(background_color);
+      BackgroundColoring& corners(Color color) {
+        top_left_corner(color);
+        top_right_corner(color);
 
-        bottom_left_corner(background_color);
-        bottom_right_corner(background_color);
+        bottom_left_corner(color);
+        bottom_right_corner(color);
 
         return *this;
       }
@@ -749,110 +719,80 @@ private:
         return *this;
       }
 
-      BackgroundColoring& top_left_corner(Color background_color) {
-        if (!border.background_colors.top_left_corner.empty())
-          border.background_colors.top_left_corner.clear();
+      BackgroundColoring& top_left_corner(Color color) {
+        border.background_colors.top_left_corner = border.solve_color(color, true);
 
-        border.background_colors.top_left_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_left_corner(RGB rgb) {
-        if (!border.background_colors.top_left_corner.empty())
-          border.background_colors.top_left_corner.clear();
+        border.background_colors.top_left_corner = border.solve_color(rgb, true);
 
-        border.background_colors.top_left_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                   std::to_string(rgb.g) + ";" +
-                                                   std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_right_corner(Color background_color) {
-        if (!border.background_colors.top_right_corner.empty())
-          border.background_colors.top_right_corner.clear();
+      BackgroundColoring& top_right_corner(Color color) {
+        border.background_colors.top_right_corner = border.solve_color(color, true);
 
-        border.background_colors.top_right_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_right_corner(RGB rgb) {
-        if (!border.background_colors.top_right_corner.empty())
-          border.background_colors.top_right_corner.clear();
+        border.background_colors.top_right_corner = border.solve_color(rgb, true);
 
-        border.background_colors.top_right_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                    std::to_string(rgb.g) + ";" +
-                                                    std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_left_corner(Color background_color) {
-        if (!border.background_colors.bottom_left_corner.empty())
-          border.background_colors.bottom_left_corner.clear();
+      BackgroundColoring& bottom_left_corner(Color color) {
+        border.background_colors.bottom_left_corner = border.solve_color(color, true);
 
-        border.background_colors.bottom_left_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_left_corner(RGB rgb) {
-        if (!border.background_colors.bottom_left_corner.empty())
-          border.background_colors.bottom_left_corner.clear();
+        border.background_colors.bottom_left_corner = border.solve_color(rgb, true);
 
-        border.background_colors.bottom_left_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                      std::to_string(rgb.g) + ";" +
-                                                      std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_right_corner(Color background_color) {
-        if (!border.background_colors.bottom_right_corner.empty())
-          border.background_colors.bottom_right_corner.clear();
+      BackgroundColoring& bottom_right_corner(Color color) {
+        border.background_colors.bottom_right_corner = border.solve_color(color, true);
 
-        border.background_colors.bottom_right_corner = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_right_corner(RGB rgb) {
-        if (!border.background_colors.bottom_right_corner.empty())
-          border.background_colors.bottom_right_corner.clear();
+        border.background_colors.bottom_right_corner = border.solve_color(rgb, true);
 
-        border.background_colors.bottom_right_corner = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                       std::to_string(rgb.g) + ";" +
-                                                       std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       /* ------------------ intersection point ------------------------ */
-      BackgroundColoring& intersection(Color background_color) {
-        if (!border.background_colors.intersection.empty())
-          border.background_colors.intersection.clear();
+      BackgroundColoring& intersection(Color color) {
+        border.background_colors.intersection = border.solve_color(color, true);
 
-        border.background_colors.intersection = CSI + std::to_string(static_cast<int>(background_color) + 10) + "m";
-
+        invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& intersection(RGB rgb) {
-        if (!border.background_colors.intersection.empty())
-          border.background_colors.intersection.clear();
+        border.background_colors.intersection = border.solve_color(rgb, true);
 
-        border.background_colors.intersection = CSI "48;2;" + std::to_string(rgb.r) + ";" +
-                                                std::to_string(rgb.g) + ";" +
-                                                std::to_string(rgb.b) + "m";
-
+        invalidate_cache();
         return *this;
       }
     };
 
 public:
-    Border() : style(BorderStyle::standard) {}
+    Border() : style(BorderStyle::standard), disabled_styles(false), valid_cache(false) {}
 
     Getters get() { return Getters(*this); }
 
