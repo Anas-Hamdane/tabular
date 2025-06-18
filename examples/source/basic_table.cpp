@@ -8,8 +8,6 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
-
-    * EXAMPLE of a Long text and a new line in a table
 */
 
 #include <tabular/printer.hpp>
@@ -21,11 +19,14 @@ int main() {
   using namespace tabular;
 
   Table table;
+  table.add_row({"Countries Capitals"})
+      .add_row({"United States", "Washington"})
+      .add_row({"Brazil", "Brasilia"})
+      .add_row({"France", "Paris"})
+      .add_row({"Japan", "Tokyo"})
+      .add_row({"India", "New Delhi"});
 
-  table.add_row({"This is a normal paragraph with a very loooooooooooooooooooooooooooooooooooooooooooooooooooooong word", "And this is another paragraph\nwith a '\\n' inside it"});
-
-  table.set().width(60);
-
+  table.set().width(50);
   std::cout << table << std::endl;
   return 0;
 }

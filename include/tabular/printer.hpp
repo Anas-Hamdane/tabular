@@ -20,72 +20,63 @@
 #include <tabular/border.hpp>
 #include <tabular/detail.hpp>
 #include <tabular/table.hpp>
+#include <tabular/column_line.hpp>
 
 namespace tabular {
   namespace detail {
     namespace printer {
       // returns the processed line
-      inline std::string process_line(std::string& line, size_t& sub_width, size_t width, Column& column, bool disabled_styles) {
-        std::string result;
+      inline ColumnLines process_line(std::string& line, size_t& line_width, size_t width, Column& column, bool disabled_styles) {
+        std::string result_string;
         Alignment align = column.get().alignment();
 
         std::string styles;
 
-        // styling
-        // "m" to complete the text styles statement
-        // mentioned in the Column class.
-        styles += column.get().text_attributes();
+        if (!disabled_styles) {
+          // styling
+          // "m" to complete the text styles statement
+          // mentioned in the Column class.
+          styles.append(column.get().text_attributes());
 
-        if (!styles.empty())
-          styles += "m";
+          if (!styles.empty()) styles.push_back(ansi::suffix);
 
-        styles += column.get().content_color();
-        styles += column.get().content_background_color();
-
-        // for non-tui output streams styles are disabled
-        if (disabled_styles)
-          styles.clear();
-
-        // 0 if styles are disabled
-        column.set().special_characters(styles.empty() ? 0 : styles.size() + strlen(ansi::RESET));
+          styles.append(column.get().content_color());
+          styles.append(column.get().content_background_color());
+        }
 
         int start;
         if (align == Alignment::center)
-          start = (width - sub_width) / 2;
+          start = (width - line_width) / 2;
         else if (align == Alignment::right)
-          start = (width - sub_width);
+          start = (width - line_width);
         else
           start = 0;
 
-        size_t line_size = start + styles.size() + line.size() + result.empty() + (styles.empty() ? 0 : strlen(ansi::RESET));
-
-        result.reserve(line_size);
+        size_t line_size = start + styles.size() + line.size() + (styles.empty() ? 0 : strlen(ansi::RESET));
+        result_string.reserve(line_size);
 
         // auto horizontal padding of 1
-        if (result.empty())
-          result.append(" ");
+        result_string = " ";
+        result_string.append(start, ' ');
+        // for spaces
+        line_width += start + 1;
 
-        result.append(start, ' ');
-
-        result.append(styles + line);
-
+        result_string.append(styles + line);
         if (!styles.empty())
-          result.append(ansi::RESET);
+          result_string.append(ansi::RESET);
 
-        line.clear();
-        sub_width = 0;
-
-        return result;
+        return ColumnLines(result_string, line_width);
       }
 
       inline void process_word(size_t width, size_t back_limit,
                                size_t& line_width, size_t word_width,
-                               bool multi_byte_characters, bool disabled_styles,
-                               std::list<std::string>& words, std::list<std::string>::iterator& it,
                                std::string& line, Column& column,
-                               std::vector<std::string>& result) {
+                               std::vector<ColumnLines>& result,
+                               const std::string& word) {
 
-        std::string word = *it;
+        bool multi_byte_characters = column.get().multi_byte_characters();
+        bool disabled_styles = column.get().disabled_styles();
+
         if (line.empty() && word == " ")
           return;
 
@@ -94,6 +85,8 @@ namespace tabular {
           result.push_back(
               process_line(line, line_width, width, column, disabled_styles));
 
+          line.clear();
+          line_width = 0;
           return;
         }
 
@@ -116,8 +109,8 @@ namespace tabular {
 
             size_t first_part_width = 0;
 
-             // ASCII characters are the standard for English
-             // so adding a hyphen would be better when wrapping a word
+            // ASCII characters are the standard for English
+            // so adding a hyphen would be better when wrapping a word
             if (!multi_byte_characters) {
               first_part = word.substr(0, remaining_space - 1) + '-';
               remainder = word.substr(remaining_space - 1);
@@ -158,6 +151,8 @@ namespace tabular {
                 first_part = word.substr(0, width_limit);
                 remainder = word.substr(width_limit);
               }
+
+              first_part_width = w;
             }
 
             // finally we add the first part to the sub
@@ -165,15 +160,13 @@ namespace tabular {
             line += first_part;
             line_width += first_part_width;
 
-            result.push_back(
+            result.emplace_back(
                 process_line(line, line_width, width, column, disabled_styles));
 
             line.clear();
             line_width = 0;
 
-            // insert the second part to ensure it will be
-            // well processed in the next iteration
-            words.insert(std::next(it), remainder);
+            process_word(width, back_limit, line_width, string_utils::display_width(remainder, multi_byte_characters), line, column, result, remainder);
           }
 
           // does not exceed the back_limit
@@ -183,13 +176,13 @@ namespace tabular {
               line_width--;
             }
 
-            result.push_back(
+            result.emplace_back(
                 process_line(line, line_width, width, column, disabled_styles));
 
             line.clear();
             line_width = 0;
 
-            --it;
+            process_word(width, back_limit, line_width, word_width, line, column, result, word);
           }
         }
 
@@ -205,7 +198,7 @@ namespace tabular {
         const bool multi_byte_characters = column.get().multi_byte_characters();
 
         if (content.empty()) {
-          column.set().lines(std::vector<std::string>());
+          column.set().lines(std::vector<ColumnLines>());
           return;
         }
 
@@ -220,14 +213,14 @@ namespace tabular {
         const size_t width = (column.get().width() - 2);
 
         // the return result
-        std::vector<std::string> result;
+        std::vector<ColumnLines> result;
         result.reserve(content.length() / width);
 
         // split the content into words to easily manipulate it
         auto words = string_utils::split_text(content);
 
         // TOP padding
-        result.insert(result.end(), top_padding, std::string());
+        result.insert(result.end(), top_padding, ColumnLines("", 0));
 
         // back limit used to force split a long word
         const size_t back_limit = (width * back_limit_percent) / 100;
@@ -242,22 +235,19 @@ namespace tabular {
 
           process_word(width, back_limit,
                        line_width, word_width,
-                       multi_byte_characters, disabled_styles,
-                       words, it,
                        line, column,
-                       result);
+                       result, word);
         }
 
         // any remaining words
         if (!line.empty())
-          result.push_back(
+          result.emplace_back(
               process_line(line, line_width, width, column, disabled_styles));
 
         // BOTTOM padding
-        result.insert(result.end(), bottom_padding, std::string());
+        result.insert(result.end(), bottom_padding, ColumnLines("", 0));
 
         column.set().lines(result);
-        return;
       }
 
       // return the size of the tallest splitted_content vector
@@ -294,7 +284,7 @@ namespace tabular {
 
           for (Column& column : row.columns) {
             unsigned int col_width = column.get().width();
-            if (columns_width != 0) {
+            if (col_width != 0) {
               table_usable_width -= col_width;
               columns_width += col_width;
               columns_num--;
@@ -461,16 +451,14 @@ namespace tabular {
             size_t rest = column.get().width();
 
             if (lines_size > i) {
-              const std::string& current_line = lines[i];
-              const size_t special_characters = column.get().special_characters();
+              const std::string& current_line = lines[i].line;
+              const size_t current_line_size = lines[i].display_width;
               const bool multi_byte_characters = column.get().multi_byte_characters();
 
               // appending the column
               result += column_background_color + current_line;
 
-              size_t current_line_size = string_utils::display_width(current_line, multi_byte_characters);
-
-              rest -= (current_line_size - special_characters);
+              rest -= current_line_size;
             }
 
             result += column_background_color;

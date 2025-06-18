@@ -167,7 +167,7 @@ public:
       columns.reserve(contents.size());
 
       for (const std::string& content : contents)
-        columns.push_back(Column(content));
+        columns.emplace_back(content);
 
       // tracking Regularity
       if (regular) {
@@ -178,7 +178,7 @@ public:
           regular = false;
       }
 
-      this->rows.push_back(Row(columns));
+      this->rows.emplace_back(std::move(columns));
 
       return *this;
     }
@@ -187,6 +187,4 @@ public:
       return this->rows.at(index);
     }
   };
-
-
 } // namespace tabular

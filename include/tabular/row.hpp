@@ -22,8 +22,8 @@ namespace tabular {
 public:
     std::vector<Column> columns;
 
-    Row(const std::vector<Column>& columns)
-        : columns(columns) {}
+    Row(std::vector<Column>&& columns)
+        : columns(std::move(columns)) {}
 
     Column& operator[](int index) {
       return this->columns.at(index);

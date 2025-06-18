@@ -8,24 +8,21 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
+
 */
 
-#include <tabular/printer.hpp>
-// #include <tabular/tabular.hpp>
+#ifndef TABULAR_COLUMN_LINES_HPP
+#define TABULAR_COLUMN_LINES_HPP
 
-#include <iostream>
+#include <string>
 
-int main() {
-  using namespace tabular;
+namespace tabular {
+  struct ColumnLines {
+    std::string line;
+    size_t display_width;
 
-  Table table;
-  table.add_row({"tabular"});
+    ColumnLines(std::string line, size_t width) : line(std::move(line)), display_width(width) {}
+  };
+} // namespace tabular
 
-  table.border().set().style(BorderStyle::ansi);
-  table[0][0].config().alignment(Alignment::center);
-
-  table.set().width(11);
-
-  std::cout << table << std::endl;
-  return 0;
-}
+#endif // !TABULAR_COLUMN_LINES_HPP

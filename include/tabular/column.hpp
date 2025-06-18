@@ -21,6 +21,7 @@
 #include <tabular/alignment.hpp>
 #include <tabular/attributes.hpp>
 #include <tabular/colors.hpp>
+#include <tabular/column_line.hpp>
 #include <tabular/global.hpp>
 #include <tabular/rgb.hpp>
 
@@ -39,7 +40,8 @@ namespace tabular {
     // column coloring
     std::string column_background_color;
 
-    std::vector<std::string> lines;
+    std::vector<ColumnLines> lines;
+
     std::list<std::string> words;
 
     Alignment alignment;
@@ -51,8 +53,6 @@ namespace tabular {
 
     bool multi_byte_characters;
     bool disabled_styles;
-
-    size_t special_characters;
 
     class Config {
       Column& column;
@@ -183,12 +183,12 @@ namespace tabular {
   public:
       Setters(Column& column) : column(column) {}
 
-      Setters& lines(std::vector<std::string> splittedContent) {
-        column.lines = splittedContent;
+      Setters& lines(const std::vector<ColumnLines>& lines) {
+        column.lines = lines;
         return *this;
       }
 
-      Setters& words(std::list<std::string> words) {
+      Setters& words(const std::list<std::string>& words) {
         column.words = words;
         return *this;
       }
@@ -212,11 +212,6 @@ namespace tabular {
         column.disabled_styles = is_disabled;
         return *this;
       }
-
-      Setters& special_characters(size_t special_characters) {
-        column.special_characters = special_characters;
-        return *this;
-      }
     };
 
     class Getters {
@@ -233,7 +228,7 @@ namespace tabular {
 
       unsigned int bottom_padding() const { return column.bottom_padding; }
 
-      std::vector<std::string> lines() const { return column.lines; }
+      std::vector<ColumnLines> lines() const { return column.lines; }
 
       std::list<std::string> words() const { return column.words; }
 
@@ -248,20 +243,17 @@ namespace tabular {
       bool multi_byte_characters() const { return column.multi_byte_characters; }
 
       bool disabled_styles() const { return column.disabled_styles; }
-
-      size_t special_characters() const { return column.special_characters; }
     };
 
 public:
     std::string content;
 
-    Column(const std::string& content)
-        : content(content),
+    Column(std::string content)
+        : content(std::move(content)),
           alignment(Alignment::left),
           width(0),
           top_padding(0),
           bottom_padding(0),
-          special_characters(0),
           multi_byte_characters(false),
           disabled_styles(false) {}
 

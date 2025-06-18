@@ -30,7 +30,6 @@ foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
     target_include_directories(${EXAMPLE_NAME} 
         PRIVATE 
         ${CMAKE_SOURCE_DIR}/include 
-        ${CMAKE_SOURCE_DIR}/single_include
     )
 
     set_target_properties(${EXAMPLE_NAME} PROPERTIES
@@ -40,18 +39,4 @@ foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
     list(APPEND EXAMPLE_TARGETS ${EXAMPLE_NAME})
 
     message(STATUS "Added example: ${EXAMPLE_NAME}")
-endforeach()
-
-add_custom_target(run_examples
-    WORKING_DIRECTORY ${EXAMPLES_BIN_DIR}
-    DEPENDS ${EXAMPLE_TARGETS}
-)
-
-foreach(EXAMPLE_TARGET ${EXAMPLE_TARGETS})
-    add_custom_command(
-        TARGET run_examples
-        POST_BUILD
-        COMMAND ${EXAMPLES_BIN_DIR}/${EXAMPLE_TARGET}
-        COMMENT "Running example ${EXAMPLE_TARGET}\n"
-    )
 endforeach()

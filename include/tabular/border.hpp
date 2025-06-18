@@ -14,16 +14,15 @@
 #ifndef TABULAR_BORDER_HPP
 #define TABULAR_BORDER_HPP
 
-#include <map>
 #include <string>
-
+#include <array>
 #include <tabular/row.hpp>
 
 namespace tabular {
-  enum class BorderStyle {
+  enum class BorderStyle : size_t {
+    empty = 0,
     standard,
     space,
-    empty,
     ansi
   };
 
@@ -58,11 +57,8 @@ namespace tabular {
     mutable bool valid_cache;
 
     static std::string solve_color(Color color, bool is_background) {
-      std::string result;
-      result.reserve(6);
-
-      result.append(ansi::CSI + std::to_string(static_cast<int>(color) + (is_background ? 10 : 0)) + "m");
-      return result;
+      int code = static_cast<int>(color) + (is_background ? 10 : 0);
+      return ansi::CSI + std::to_string(code) + ansi::suffix;
     }
 
     static std::string solve_color(RGB rgb, bool is_background) {
@@ -70,11 +66,18 @@ namespace tabular {
       result.reserve(20);
 
       result.append(ansi::CSI);
-      result.append(is_background ? "48;" : "38;");
-      result.append("2;" + std::to_string(rgb.r) + ";" +
+
+      result.append(is_background ? "48;2;" : "38;2;");
+
+      result.append(std::to_string(rgb.r) + ";" +
                     std::to_string(rgb.g) + ";" +
                     std::to_string(rgb.b) + "m");
       return result;
+    }
+
+    void invalidate_cache() {
+      if (this->valid_cache)
+        this->valid_cache = false;
     }
 
     class Getters {
@@ -84,24 +87,28 @@ namespace tabular {
       Getters(Border& border) : border(border) {}
 
       static const BorderGlyphs& style_templates(BorderStyle style) {
-        static const std::map<BorderStyle, BorderGlyphs> templates = {
-            {BorderStyle::space, {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "}},
-            {BorderStyle::empty, {"", "", "", "", "", "", "", "", "", "", ""}},
-            {BorderStyle::standard, {"|", "-", "+", "+", "+", "+", "+", "+", "+", "+", "+"}},
-            {BorderStyle::ansi, {
-                                    std::string("\033(0") + "x" + std::string("\033(B"), // vertical
-                                    std::string("\033(0") + "q" + std::string("\033(B"), // horizontal
-                                    std::string("\033(0") + "j" + std::string("\033(B"), // bottom_right_corner
-                                    std::string("\033(0") + "k" + std::string("\033(B"), // top_right_corner
-                                    std::string("\033(0") + "l" + std::string("\033(B"), // top_left_corner
-                                    std::string("\033(0") + "m" + std::string("\033(B"), // bottom_left_corner
-                                    std::string("\033(0") + "n" + std::string("\033(B"), // intersection
-                                    std::string("\033(0") + "t" + std::string("\033(B"), // left_connector
-                                    std::string("\033(0") + "u" + std::string("\033(B"), // right_connector
-                                    std::string("\033(0") + "v" + std::string("\033(B"), // bottom_connector
-                                    std::string("\033(0") + "w" + std::string("\033(B")  // top_connector
-                                }}};
-        return templates.at(style);
+
+        // clang-format off
+        static const std::array<BorderGlyphs, 4> templates = {{
+          {"", "", "", "", "", "", "", "", "", "", ""},
+          {"|", "-", "+", "+", "+", "+", "+", "+", "+", "+", "+"},
+          {" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "},
+          {
+            std::string(ansi::TABLE_MODE) + "x" + ansi::RESET_TABLE_MODE, // vertical
+            std::string(ansi::TABLE_MODE) + "q" + ansi::RESET_TABLE_MODE, // horizontal
+            std::string(ansi::TABLE_MODE) + "j" + ansi::RESET_TABLE_MODE, // bottom_right_corner
+            std::string(ansi::TABLE_MODE) + "k" + ansi::RESET_TABLE_MODE, // top_right_corner
+            std::string(ansi::TABLE_MODE) + "l" + ansi::RESET_TABLE_MODE, // top_left_corner
+            std::string(ansi::TABLE_MODE) + "m" + ansi::RESET_TABLE_MODE, // bottom_left_corner
+            std::string(ansi::TABLE_MODE) + "n" + ansi::RESET_TABLE_MODE, // intersection
+            std::string(ansi::TABLE_MODE) + "t" + ansi::RESET_TABLE_MODE, // left_connector
+            std::string(ansi::TABLE_MODE) + "u" + ansi::RESET_TABLE_MODE, // right_connector
+            std::string(ansi::TABLE_MODE) + "v" + ansi::RESET_TABLE_MODE, // bottom_connector
+            std::string(ansi::TABLE_MODE) + "w" + ansi::RESET_TABLE_MODE  // top_connector
+          }}};
+        // clang-format on
+
+        return templates[static_cast<size_t>(style)];
       }
 
       BorderStyle style() const { return border.style; }
@@ -230,16 +237,18 @@ namespace tabular {
       bool disabled_styles() const { return border.disabled_styles; }
     };
 
-    class Setters {
+    class Parts {
       Border& border;
 
-      void invalidate_cache() {
-        if (border.valid_cache)
-          border.valid_cache = false;
+      template <typename T>
+      Parts& set_glyph(std::string BorderGlyphs::* member, T&& value) {
+        (border.glyphs.*member) = std::forward<T>(value);
+        border.invalidate_cache();
+        return *this;
       }
 
   public:
-      Setters(Border& border) : border(border) {}
+      Parts(Border& border) : border(border) {}
 
       /*
        * Note: It is the user's responsibility to ensure that each border glyph is a single
@@ -252,102 +261,72 @@ namespace tabular {
        * — Anas Hamdane, 2025-06-14
        */
 
-      Setters& style(BorderStyle style) {
-        border.style = style;
-        invalidate_cache();
-        return *this;
+      Parts& horizontal(std::string horizontal) {
+        return set_glyph(&BorderGlyphs::horizontal, std::move(horizontal));
       }
 
-      Setters& horizontal(std::string horizontal) {
-        border.glyphs.horizontal = horizontal;
-        invalidate_cache();
-        return *this;
+      Parts& vertical(std::string vertical) {
+        return set_glyph(&BorderGlyphs::vertical, std::move(vertical));
       }
 
-      Setters& vertical(std::string vertical) {
-        border.glyphs.vertical = vertical;
-        invalidate_cache();
-        return *this;
+      Parts& top_left_corner(std::string corner) {
+        return set_glyph(&BorderGlyphs::top_left_corner, std::move(corner));
       }
 
-      Setters& corner(std::string corner) {
-        border.glyphs.bottom_right_corner = corner;
-        border.glyphs.top_right_corner = corner;
-
-        border.glyphs.bottom_left_corner = corner;
-        border.glyphs.top_left_corner = corner;
-
-        invalidate_cache();
-        return *this;
+      Parts& top_right_corner(std::string corner) {
+        return set_glyph(&BorderGlyphs::top_right_corner, std::move(corner));
       }
 
-      Setters& top_left_corner(std::string corner) {
-        border.glyphs.top_left_corner = corner;
-        invalidate_cache();
-        return *this;
+      Parts& bottom_left_corner(std::string corner) {
+        return set_glyph(&BorderGlyphs::bottom_left_corner, std::move(corner));
       }
 
-      Setters& top_right_corner(std::string corner) {
-        border.glyphs.top_right_corner = corner;
-        invalidate_cache();
-        return *this;
+      Parts& bottom_right_corner(std::string corner) {
+        return set_glyph(&BorderGlyphs::bottom_right_corner, std::move(corner));
       }
 
-      Setters& bottom_left_corner(std::string corner) {
-        border.glyphs.bottom_left_corner = corner;
-        invalidate_cache();
-        return *this;
+      Parts& intersection(std::string intersection) {
+        return set_glyph(&BorderGlyphs::intersection, std::move(intersection));
       }
 
-      Setters& bottom_right_corner(std::string corner) {
-        border.glyphs.bottom_right_corner = corner;
-        invalidate_cache();
-        return *this;
+      Parts& left_connector(std::string connector) {
+        return set_glyph(&BorderGlyphs::left_connector, std::move(connector));
       }
 
-      Setters& intersection(std::string intersection) {
-        border.glyphs.intersection = intersection;
-        invalidate_cache();
-        return *this;
+      Parts& right_connector(std::string connector) {
+        return set_glyph(&BorderGlyphs::right_connector, std::move(connector));
       }
 
-      Setters& left_connector(std::string connector) {
-        border.glyphs.left_connector = connector;
-        invalidate_cache();
-        return *this;
+      Parts& top_connector(std::string connector) {
+        return set_glyph(&BorderGlyphs::top_connector, std::move(connector));
       }
 
-      Setters& right_connector(std::string connector) {
-        border.glyphs.right_connector = connector;
-        invalidate_cache();
-        return *this;
+      Parts& bottom_connector(std::string connector) {
+        return set_glyph(&BorderGlyphs::bottom_connector, std::move(connector));
       }
+    };
 
-      Setters& top_connector(std::string connector) {
-        border.glyphs.top_connector = connector;
-        invalidate_cache();
-        return *this;
-      }
+    class Setters {
+      Border& border;
 
-      Setters& bottom_connector(std::string connector) {
-        border.glyphs.bottom_connector = connector;
-        invalidate_cache();
-        return *this;
-      }
+  public:
+      Setters(Border& border) : border(border) {}
 
       Setters& disabled_styles(bool is_disabled) {
         border.disabled_styles = is_disabled;
+        border.invalidate_cache();
+        return *this;
+      }
+
+      Setters& style(BorderStyle style) {
+        border.style = style;
+        border.invalidate_cache();
         return *this;
       }
     };
 
     class Coloring {
       Border& border;
-
-      void invalidate_cache() {
-        if (border.valid_cache)
-          border.valid_cache = false;
-      }
 
   public:
       Coloring(Border& border) : border(border) {}
@@ -395,28 +374,28 @@ namespace tabular {
       Coloring& bottom_connector(Color color) {
         border.colors.bottom_connector = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_connector(RGB rgb) {
         border.colors.bottom_connector = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& top_connector(Color color) {
         border.colors.top_connector = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& top_connector(RGB rgb) {
         border.colors.top_connector = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -429,7 +408,7 @@ namespace tabular {
 
         corners(color);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -441,35 +420,35 @@ namespace tabular {
 
         corners(rgb);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& left_connector(Color color) {
         border.colors.left_connector = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& left_connector(RGB rgb) {
         border.colors.left_connector = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& right_connector(Color color) {
         border.colors.right_connector = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& right_connector(RGB rgb) {
         border.colors.right_connector = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -497,56 +476,56 @@ namespace tabular {
       Coloring& top_left_corner(Color color) {
         border.colors.top_left_corner = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& top_left_corner(RGB rgb) {
         border.colors.top_left_corner = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& top_right_corner(Color color) {
         border.colors.top_right_corner = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& top_right_corner(RGB rgb) {
         border.colors.top_right_corner = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_left_corner(Color color) {
         border.colors.bottom_left_corner = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_left_corner(RGB rgb) {
         border.colors.bottom_left_corner = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_right_corner(Color color) {
         border.colors.bottom_right_corner = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& bottom_right_corner(RGB rgb) {
         border.colors.bottom_right_corner = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -554,14 +533,14 @@ namespace tabular {
       Coloring& intersection(Color color) {
         border.colors.intersection = border.solve_color(color, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       Coloring& intersection(RGB rgb) {
         border.colors.intersection = border.solve_color(rgb, false);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
     };
@@ -620,28 +599,28 @@ namespace tabular {
       BackgroundColoring& bottom_connector(Color color) {
         border.background_colors.bottom_connector = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_connector(RGB rgb) {
         border.background_colors.bottom_connector = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_connector(Color color) {
         border.background_colors.top_connector = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_connector(RGB rgb) {
         border.background_colors.top_connector = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -654,7 +633,7 @@ namespace tabular {
 
         corners(color);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -666,35 +645,35 @@ namespace tabular {
 
         corners(rgb);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& left_connector(Color color) {
         border.background_colors.left_connector = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& left_connector(RGB rgb) {
         border.background_colors.left_connector = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& right_connector(Color color) {
         border.background_colors.right_connector = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& right_connector(RGB rgb) {
         border.background_colors.right_connector = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -722,56 +701,56 @@ namespace tabular {
       BackgroundColoring& top_left_corner(Color color) {
         border.background_colors.top_left_corner = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_left_corner(RGB rgb) {
         border.background_colors.top_left_corner = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_right_corner(Color color) {
         border.background_colors.top_right_corner = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& top_right_corner(RGB rgb) {
         border.background_colors.top_right_corner = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_left_corner(Color color) {
         border.background_colors.bottom_left_corner = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_left_corner(RGB rgb) {
         border.background_colors.bottom_left_corner = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_right_corner(Color color) {
         border.background_colors.bottom_right_corner = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& bottom_right_corner(RGB rgb) {
         border.background_colors.bottom_right_corner = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
@@ -779,14 +758,14 @@ namespace tabular {
       BackgroundColoring& intersection(Color color) {
         border.background_colors.intersection = border.solve_color(color, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
 
       BackgroundColoring& intersection(RGB rgb) {
         border.background_colors.intersection = border.solve_color(rgb, true);
 
-        invalidate_cache();
+        border.invalidate_cache();
         return *this;
       }
     };
@@ -797,6 +776,8 @@ public:
     Getters get() { return Getters(*this); }
 
     Setters set() { return Setters(*this); }
+
+    Parts parts() { return Parts(*this); }
 
     Coloring color() { return Coloring(*this); }
 

@@ -16,13 +16,11 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define WINDOWS 1
-#define UTF16 1
 #include <windows.h>
 #undef RGB
 
 #elif defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__linux__)
 #define UNIX_BASED 1
-#define UTF16 0
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -39,6 +37,9 @@ namespace tabular {
     // Control sequence introducer (for font styles and colors)
     constexpr const char* CSI = "\x1b[";
     constexpr const char* RESET = "\x1b[0m";
+
+    // end of an ansi sequence
+    constexpr const char suffix = 'm';
 
     constexpr const char* FG_COLOR_RESET = "\x1b[39m";
     constexpr const char* BG_COLOR_RESET = "\x1b[49m";
