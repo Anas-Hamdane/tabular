@@ -3,7 +3,7 @@
 </div>
 
 # Tabular
-A lightweight, header-only C++ library for creating beautiful, fully-customizable, cross-platform CLI tables.
+A lightweight, header-only C++ library for creating well-formatted, fully-customizable CLI tables.
 
 ## Why Yet Another Tabling Library?
 This project was inspired primarily by [tabulate](https://github.com/p-ranav/tabulate), a modern C++ table formatting library. However, while using it, I encountered several limitations:
