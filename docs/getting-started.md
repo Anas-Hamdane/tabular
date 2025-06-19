@@ -1,5 +1,5 @@
-# Tabular Documentation
-Complete guide for using Tabular, a lightweight header-only C++ library for creating beautiful CLI tables.
+# tabular Documentation
+Complete guide for using tabular, a lightweight header-only C++ library for creating beautiful CLI tables.
 
 - [Getting Started](#getting-started)
   - [Installation](#installation)
@@ -298,7 +298,7 @@ border.background_color().vertical(RGB(240, 240, 240));
 ```
 
 ## Multi-byte Character Support
-Tabular provides robust support for Unicode and multi-byte characters while remaining locale-independent.
+tabular provides robust support for Unicode and multi-byte characters while remaining locale-independent.
 
 ### Enabling Multi-byte Support
 For performance reasons, multi-byte character support must be explicitly enabled:

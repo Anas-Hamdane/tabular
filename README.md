@@ -2,7 +2,7 @@
   <img src="img/examples.png"/>
 </div>
 
-# Tabular
+# tabular
 A lightweight, header-only C++ library for creating well-formatted, fully-customizable CLI tables.
 
 ## Why Yet Another Tabling Library?
