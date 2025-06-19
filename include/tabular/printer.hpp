@@ -17,10 +17,9 @@
 #include <string.h>
 #include <unordered_set>
 
-#include <tabular/border.hpp>
+#include <tabular/column_line.hpp>
 #include <tabular/detail.hpp>
 #include <tabular/table.hpp>
-#include <tabular/column_line.hpp>
 
 namespace tabular {
   namespace detail {
@@ -193,9 +192,12 @@ namespace tabular {
         }
       }
 
-      inline void format_column(Column& column, uint8_t back_limit_percent, bool disabled_styles) {
+      inline void format_column(Column& column, uint8_t back_limit_percent, bool disabled_styles, bool& multi_byte_characters_flag) {
         const std::string& content = column.content;
         const bool multi_byte_characters = column.get().multi_byte_characters();
+
+        if (multi_byte_characters && !multi_byte_characters_flag)
+          multi_byte_characters_flag = true;
 
         if (content.empty()) {
           column.set().lines(std::vector<ColumnLines>());
@@ -473,12 +475,54 @@ namespace tabular {
 
         return result;
       }
+
+      inline void handle_output(const std::string& formatted_table, bool multi_byte_characters_flag) {
+        // clang-format off
+        #if defined(WINDOWS)
+          HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+          DWORD mode;
+          DWORD written;
+          bool is_console_output = GetConsoleMode(handle, &mode);
+
+          if (!is_console_output) {
+            // Output is redirected: write raw UTF-8 bytes
+            WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+            return;
+          }
+
+          if (multi_byte_characters_flag) {
+            // Convert UTF-8 to UTF-16 for proper console rendering
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, formatted_table.c_str(), -1, nullptr, 0);
+            if (wlen <= 0) {
+              WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+              return;
+            }
+
+            std::wstring wstr(wlen - 1, L'\0'); // exclude null terminator
+            int result = MultiByteToWideChar(CP_UTF8, 0, formatted_table.c_str(), -1, &wstr[0], wlen);
+            if (result <= 0) {
+              WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+              return;
+            }
+
+            WriteConsoleW(handle, wstr.c_str(), static_cast<DWORD>(wstr.length()), &written, nullptr);
+          } else {
+            // ASCII or simple UTF-8 output
+            WriteConsoleA(handle, formatted_table.c_str(),
+                static_cast<DWORD>(formatted_table.length()), &written, nullptr);
+          }
+        #else
+          fwrite(formatted_table.c_str(), 1, formatted_table.length(), stdout);
+          fflush(stdout);
+        #endif
+        // clang-format on
+      }
     } // namespace printer
   } // namespace detail
 
-  inline void print(Table& table, std::ostream& stream) {
+  inline void print(Table& table) {
     // result
-    std::string formated_table;
+    std::string formatted_table;
 
     if (table.rows.empty())
       return;
@@ -507,9 +551,11 @@ namespace tabular {
     bool disabled_styles = table.get().disabled_styles();
     uint8_t back_limit_percent = table.get().back_limit_percent();
 
+    bool multi_byte_characters_flag = false;
     for (Row& row : table.rows) {
       for (Column& column : row.columns) {
-        detail::printer::format_column(column, back_limit_percent, disabled_styles);
+        detail::printer::format_column(column, back_limit_percent,
+                                       disabled_styles, multi_byte_characters_flag);
       }
     }
 
@@ -524,27 +570,26 @@ namespace tabular {
     size_t width = table.get().width();
 
     auto it = rows.begin();
-    formated_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+    formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
 
     is_first = false;
     for (it = rows.begin(); it != rows.end(); ++it) {
       const Row& row = *it;
 
-      formated_table += detail::printer::print_row(row, glyphs, width);
+      formatted_table += detail::printer::print_row(row, glyphs, width);
 
       if ((it + 1) == rows.end())
         is_last = true;
 
       if (separated_rows)
-        formated_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+        formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
     }
 
-    stream << formated_table;
-  }
+    // appending last new line
+    formatted_table.push_back('\n');
 
-  inline std::ostream& operator<<(std::ostream& stream, const Table& table) {
-    print(const_cast<Table&>(table), stream);
-    return stream;
+    // printing to stdout
+    detail::printer::handle_output(formatted_table, multi_byte_characters_flag);
   }
 } // namespace tabular
 

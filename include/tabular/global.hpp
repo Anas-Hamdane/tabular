@@ -15,12 +15,12 @@
 #define TABULAR_GLOBAL_HPP
 
 #if defined(_WIN32) || defined(_WIN64)
-#define WINDOWS 1
+#define WINDOWS
 #include <windows.h>
 #undef RGB
 
 #elif defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__linux__)
-#define UNIX_BASED 1
+#define UNIX_LIKE
 #include <sys/ioctl.h>
 #include <unistd.h>
 

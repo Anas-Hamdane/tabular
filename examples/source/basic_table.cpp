@@ -13,8 +13,6 @@
 #include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
-#include <iostream>
-
 int main() {
   using namespace tabular;
 
@@ -27,6 +25,6 @@ int main() {
       .add_row({"India", "New Delhi"});
 
   table.set().width(50);
-  std::cout << table << std::endl;
+  print(table);
   return 0;
 }

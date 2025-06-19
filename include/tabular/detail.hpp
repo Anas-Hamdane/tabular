@@ -19,6 +19,7 @@
 #include <list>
 
 #include <tabular/codec.hpp>
+#include <tabular/global.hpp>
 
 namespace tabular {
   namespace detail {
@@ -71,7 +72,7 @@ namespace tabular {
 
         unsigned short width = 0;
 
-        #if defined(UNIX_BASED)
+        #if defined(UNIX_LIKE)
           struct winsize ws;
           if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
             width = 0;

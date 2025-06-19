@@ -13,8 +13,6 @@
 #include <tabular/printer.hpp>
 // #include <tabular/tabular.hpp>
 
-#include <iostream>
-
 int main(int argc, char* argv[]) {
   using namespace tabular;
 
@@ -75,7 +73,7 @@ int main(int argc, char* argv[]) {
   }
 
   table.border().set().style(BorderStyle::ansi);
-  std::cout << table << std::endl;
+  print(table);
 
   return 0;
 }
