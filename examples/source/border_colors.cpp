@@ -10,7 +10,7 @@
     *  Github: https://github.com/Anas-Hamdane
 */
 
-#include <tabular/printer.hpp>
+#include <tabular/tabular.hpp>
 // #include <tabular/tabular.hpp>
 
 int main() {
@@ -46,7 +46,6 @@ int main() {
   table[0][0].style().text_attribute(Attribute::bold);
 
   table.set().width(50);
-
   print(table);
   return 0;
 }

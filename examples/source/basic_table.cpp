@@ -10,7 +10,7 @@
     *  Github: https://github.com/Anas-Hamdane
 */
 
-#include <tabular/printer.hpp>
+#include <tabular/tabular.hpp>
 // #include <tabular/tabular.hpp>
 
 int main() {

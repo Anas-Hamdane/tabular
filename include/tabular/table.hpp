@@ -11,23 +11,6 @@
 
 */
 
-/*
-    TODO:
-      -  [x] implement Dynamic table logic
-      -  [x] default padding
-      -  [x] ANSI Support
-      -  [x] Alignment support
-      -  [x] terminal colors and 16 colors support
-      -  [x] terminal colors rgb support
-      -  [x] terminal font styles support
-      -  [x] padding control
-      -  [x] width control
-      -  [x] range columns setters (functions)
-      -  [x] support for multi byte characters (automatic and manual)
-      -  [x] full column background color support
-      -  [x] full border styling control
-*/
-
 #include <vector>
 
 // this include all headers
@@ -114,29 +97,6 @@ namespace tabular {
       Getters(const Table& table) : table(table) {}
 
       unsigned int width() const { return table.width; }
-
-      std::vector<Column*> columns() const {
-        std::vector<Column*> result;
-
-        for (const Row& row : table.rows) {
-          for (const Column& column : row.columns) {
-            result.push_back(const_cast<Column*>(&column));
-          }
-        }
-
-        return result;
-      }
-
-      std::vector<Column*> columns(int index) const {
-        std::vector<Column*> result;
-
-        for (const Row& row : table.rows) {
-          if (index >= 0 && index < row.columns.size())
-            result.push_back(const_cast<Column*>(&row.columns[index]));
-        }
-
-        return result;
-      }
 
       uint8_t width_percent() const { return table.width_percent; }
 

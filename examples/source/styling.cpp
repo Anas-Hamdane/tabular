@@ -10,7 +10,7 @@
     *  Github: https://github.com/Anas-Hamdane
 */
 
-#include <tabular/printer.hpp>
+#include <tabular/tabular.hpp>
 // #include <tabular/tabular.hpp>
 
 int main(int argc, char* argv[]) {
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 
   for (int row = 1; row <= 5; ++row) {
     table[row][3].style().content_color(priority_colors[row - 1]);
-    table[row][1].style().content_background_color(priority_colors[row - 1]);
+    table[row][1].style().column_background_color(priority_colors[row - 1]);
   }
 
   table.border().set().style(BorderStyle::ansi);

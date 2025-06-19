@@ -11,13 +11,12 @@
 
 */
 
-#ifndef TABULAR_PRINTER_HPP
-#define TABULAR_PRINTER_HPP
+#ifndef TABULAR_TABULAR_HPP
+#define TABULAR_TABULAR_HPP
 
 #include <string.h>
 #include <unordered_set>
 
-#include <tabular/STDS.hpp>
 #include <tabular/column_line.hpp>
 #include <tabular/detail.hpp>
 #include <tabular/table.hpp>
@@ -166,8 +165,8 @@ namespace tabular {
             line_width = 0;
 
             process_word(width, back_limit, line_width,
-                string_utils::display_width(remainder, multi_byte_characters),
-                line, column, result, remainder, disabled_styles);
+                         string_utils::display_width(remainder, multi_byte_characters),
+                         line, column, result, remainder, disabled_styles);
           }
 
           // does not exceed the back_limit
@@ -184,7 +183,7 @@ namespace tabular {
             line_width = 0;
 
             process_word(width, back_limit, line_width,
-                word_width, line, column, result, word, disabled_styles);
+                         word_width, line, column, result, word, disabled_styles);
           }
         }
 
@@ -241,7 +240,7 @@ namespace tabular {
           process_word(width, back_limit,
                        line_width, word_width,
                        line, column,
-                      result, word, disabled_styles);
+                       result, word, disabled_styles);
         }
 
         // any remaining words
@@ -318,6 +317,9 @@ namespace tabular {
             // force overriding the original width
             forced = true;
           }
+
+          if (columns_num == 0 && !forced)
+            continue;
 
           int indiv_column_width = table_usable_width / columns_num;
           int rest = table_usable_width % columns_num;
@@ -480,7 +482,7 @@ namespace tabular {
       }
 
       inline void handle_output(const std::string& formatted_table,
-          bool multi_byte_characters_flag, STD std) {
+                                bool multi_byte_characters_flag, STD std) {
         // clang-format off
         #if defined(WINDOWS)
           HANDLE handle;
@@ -528,7 +530,7 @@ namespace tabular {
       }
 
       inline std::string format_table(Table& table, bool disabled_styles,
-                                      bool& multi_byte_characters_flag) {
+                                      bool& multi_byte_characters_flag, STD std) {
         // result
         std::string formatted_table;
 
@@ -542,7 +544,10 @@ namespace tabular {
           table.set().width((terminal_width * table.get().width_percent()) / 100);
         }
 
-        if (!detail::utils::enable_ansi_support()) {
+        if (disabled_styles && table.get().width() == 0)
+            table.set().width(table.get().non_tui_width());
+
+        else if (!(disabled_styles || detail::utils::enable_ansi_support(std))) {
           // if it is not a TUI just disable all the styling stuff
           disabled_styles = true;
 
@@ -604,6 +609,77 @@ namespace tabular {
 
         return formatted_table;
       }
+
+      // for files
+      inline std::string format_table(Table& table, bool disabled_styles,
+                                      bool& multi_byte_characters_flag) {
+
+        // result
+        std::string formatted_table;
+
+        if (table.rows.empty())
+          return "";
+
+        if (table.get().width() == 0) {
+          unsigned short terminal_width = detail::utils::get_terminal_width();
+
+          // setting the width via the percent
+          table.set().width((terminal_width * table.get().width_percent()) / 100);
+        }
+
+        if (disabled_styles && table.get().width() == 0)
+            table.set().width(table.get().non_tui_width());
+
+        detail::printer::adjust_width(table);
+
+        uint8_t back_limit_percent = table.get().back_limit_percent();
+
+        for (Row& row : table.rows) {
+          for (Column& column : row.columns) {
+            detail::printer::format_column(column, back_limit_percent,
+                                           disabled_styles, multi_byte_characters_flag);
+          }
+        }
+
+        const BorderStyle old_style = table.border().get().style();
+
+        if (disabled_styles && old_style == BorderStyle::ansi)
+          table.border().set().style(BorderStyle::standard);
+
+        // border parts
+        BorderGlyphs glyphs = table.border().get().processed_glyphs();
+
+        if (table.border().get().style() != old_style)
+          table.border().set().style(old_style);
+
+        /* Starting printing */
+        const auto& rows = table.rows;
+
+        bool is_first = true, is_last = (rows.size() == 1) ? true : false;
+        bool separated_rows = table.get().separated_rows();
+        size_t width = table.get().width();
+
+        auto it = rows.begin();
+        formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+
+        is_first = false;
+        for (it = rows.begin(); it != rows.end(); ++it) {
+          const Row& row = *it;
+
+          formatted_table += detail::printer::print_row(row, glyphs, width);
+
+          if ((it + 1) == rows.end())
+            is_last = true;
+
+          if (separated_rows)
+            formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+        }
+
+        // appending last new line
+        formatted_table.push_back('\n');
+
+        return formatted_table;
+      }
     } // namespace printer
   } // namespace detail
 
@@ -611,7 +687,7 @@ namespace tabular {
     bool multi_byte_characters_flag = false;
 
     std::string formatted_table = detail::printer::format_table(table, table.get().disabled_styles(),
-                                                                multi_byte_characters_flag);
+                                                                multi_byte_characters_flag, std);
 
     detail::printer::handle_output(formatted_table, multi_byte_characters_flag, std);
   }
@@ -659,4 +735,4 @@ namespace tabular {
   }
 } // namespace tabular
 
-#endif // !TABULAR_PRINTER_HPP
+#endif // !TABULAR_TABULAR_HPP

@@ -20,6 +20,7 @@
 
 #include <tabular/codec.hpp>
 #include <tabular/global.hpp>
+#include <tabular/STDS.hpp>
 
 namespace tabular {
   namespace detail {
@@ -88,27 +89,14 @@ namespace tabular {
         return width;
       }
 
-      /*
-       * Note: On Unix-like systems, this library does not attempt to detect whether
-       * the output stream is a terminal or a file. It is the user's responsibility
-       * to enable or disable styling based on the intended output target.
-       *
-       * On Windows, the library attempts to enable VIRTUAL_TERMINAL_PROCESSING (VTP)
-       * to support ANSI escape sequences. If this operation fails—either because
-       * the terminal does not support ANSI sequences or because the output stream
-       * is redirected to a file—styling will be automatically disabled to avoid
-       * printing raw escape sequences.
-       *
-       * *Unless* the user explicitly enables forced styling, in which case styles
-       * will be applied regardless of stream type or VTP status.
-       *
-       * — Anas Hamdane, 2025-06-13
-       */
-
-      inline bool enable_ansi_support() {
+      inline bool enable_ansi_support(STD std) {
         #if defined(WINDOWS)
           static bool support_enabled = []() -> bool {
-            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            HANDLE hOut;
+            if (std == STD::OUT)
+              hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            else
+              hOut = GetStdHandle(STD_ERROR_HANDLE)
             if (hOut == INVALID_HANDLE_VALUE) return false;
 
             DWORD dwMode = 0;

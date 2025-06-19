@@ -11,23 +11,6 @@
 
 */
 
-/*
-    TODO:
-      -  [x] implement Dynamic table logic
-      -  [x] default padding
-      -  [x] ANSI Support
-      -  [x] Alignment support
-      -  [x] terminal colors and 16 colors support
-      -  [x] terminal colors rgb support
-      -  [x] terminal font styles support
-      -  [x] padding control
-      -  [x] width control
-      -  [x] range columns setters (functions)
-      -  [x] support for multi byte characters (automatic and manual)
-      -  [x] full column background color support
-      -  [x] border styling (colors, rgb)
-*/
-
 #include <array>
 #include <climits>
 #include <cstdint>
@@ -44,7 +27,7 @@
 #undef RGB
 
 #elif defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__linux__)
-#define UNIX_BASED 1
+#define UNIX_LIKE 1
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -1230,29 +1213,6 @@ public:
 
       unsigned int width() const { return table.width; }
 
-      std::vector<Column*> columns() const {
-        std::vector<Column*> result;
-
-        for (const Row& row : table.rows) {
-          for (const Column& column : row.columns) {
-            result.push_back(const_cast<Column*>(&column));
-          }
-        }
-
-        return result;
-      }
-
-      std::vector<Column*> columns(int index) const {
-        std::vector<Column*> result;
-
-        for (const Row& row : table.rows) {
-          if (index >= 0 && index < row.columns.size())
-            result.push_back(const_cast<Column*>(&row.columns[index]));
-        }
-
-        return result;
-      }
-
       uint8_t width_percent() const { return table.width_percent; }
 
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
@@ -1610,27 +1570,14 @@ public:
         return width;
       }
 
-      /*
-       * Note: On Unix-like systems, this library does not attempt to detect whether
-       * the output stream is a terminal or a file. It is the user's responsibility
-       * to enable or disable styling based on the intended output target.
-       *
-       * On Windows, the library attempts to enable VIRTUAL_TERMINAL_PROCESSING (VTP)
-       * to support ANSI escape sequences. If this operation fails—either because
-       * the terminal does not support ANSI sequences or because the output stream
-       * is redirected to a file—styling will be automatically disabled to avoid
-       * printing raw escape sequences.
-       *
-       * *Unless* the user explicitly enables forced styling, in which case styles
-       * will be applied regardless of stream type or VTP status.
-       *
-       * — Anas Hamdane, 2025-06-13
-       */
-
-      inline bool enable_ansi_support() {
+      inline bool enable_ansi_support(STD std) {
         #if defined(WINDOWS)
           static bool support_enabled = []() -> bool {
-            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            HANDLE hOut;
+            if (std == STD::OUT)
+              hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            else
+              hOut = GetStdHandle(STD_ERROR_HANDLE)
             if (hOut == INVALID_HANDLE_VALUE) return false;
 
             DWORD dwMode = 0;
@@ -1944,6 +1891,9 @@ public:
             forced = true;
           }
 
+          if (columns_num == 0 && !forced)
+            continue;
+
           int indiv_column_width = table_usable_width / columns_num;
           int rest = table_usable_width % columns_num;
 
@@ -2153,7 +2103,7 @@ public:
       }
 
       inline std::string format_table(Table& table, bool disabled_styles,
-                                      bool& multi_byte_characters_flag) {
+                                      bool& multi_byte_characters_flag, STD std) {
         // result
         std::string formatted_table;
 
@@ -2167,7 +2117,10 @@ public:
           table.set().width((terminal_width * table.get().width_percent()) / 100);
         }
 
-        if (!detail::utils::enable_ansi_support()) {
+        if (disabled_styles && table.get().width() == 0)
+            table.set().width(table.get().non_tui_width());
+
+        else if (!(disabled_styles || detail::utils::enable_ansi_support(std))) {
           // if it is not a TUI just disable all the styling stuff
           disabled_styles = true;
 
@@ -2229,6 +2182,77 @@ public:
 
         return formatted_table;
       }
+
+      // for files
+      inline std::string format_table(Table& table, bool disabled_styles,
+                                      bool& multi_byte_characters_flag) {
+
+        // result
+        std::string formatted_table;
+
+        if (table.rows.empty())
+          return "";
+
+        if (table.get().width() == 0) {
+          unsigned short terminal_width = detail::utils::get_terminal_width();
+
+          // setting the width via the percent
+          table.set().width((terminal_width * table.get().width_percent()) / 100);
+        }
+
+        if (disabled_styles && table.get().width() == 0)
+            table.set().width(table.get().non_tui_width());
+
+        detail::printer::adjust_width(table);
+
+        uint8_t back_limit_percent = table.get().back_limit_percent();
+
+        for (Row& row : table.rows) {
+          for (Column& column : row.columns) {
+            detail::printer::format_column(column, back_limit_percent,
+                                           disabled_styles, multi_byte_characters_flag);
+          }
+        }
+
+        const BorderStyle old_style = table.border().get().style();
+
+        if (disabled_styles && old_style == BorderStyle::ansi)
+          table.border().set().style(BorderStyle::standard);
+
+        // border parts
+        BorderGlyphs glyphs = table.border().get().processed_glyphs();
+
+        if (table.border().get().style() != old_style)
+          table.border().set().style(old_style);
+
+        /* Starting printing */
+        const auto& rows = table.rows;
+
+        bool is_first = true, is_last = (rows.size() == 1) ? true : false;
+        bool separated_rows = table.get().separated_rows();
+        size_t width = table.get().width();
+
+        auto it = rows.begin();
+        formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+
+        is_first = false;
+        for (it = rows.begin(); it != rows.end(); ++it) {
+          const Row& row = *it;
+
+          formatted_table += detail::printer::print_row(row, glyphs, width);
+
+          if ((it + 1) == rows.end())
+            is_last = true;
+
+          if (separated_rows)
+            formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+        }
+
+        // appending last new line
+        formatted_table.push_back('\n');
+
+        return formatted_table;
+      }
     } // namespace printer
   } // namespace detail
 
@@ -2236,7 +2260,7 @@ public:
     bool multi_byte_characters_flag = false;
 
     std::string formatted_table = detail::printer::format_table(table, table.get().disabled_styles(),
-                                                                multi_byte_characters_flag);
+                                                                multi_byte_characters_flag, std);
 
     detail::printer::handle_output(formatted_table, multi_byte_characters_flag, std);
   }
