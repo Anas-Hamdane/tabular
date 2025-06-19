@@ -1,5 +1,6 @@
 # tabular Documentation
-Complete guide for using tabular, a lightweight header-only C++ library for creating beautiful CLI tables.
+Complete guide for using tabular, a lightweight, header-only C++ library
+for creating well-formatted, fully-customizable CLI tables.
 
 - [Getting Started](#getting-started)
   - [Installation](#installation)
