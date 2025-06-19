@@ -72,10 +72,9 @@ namespace tabular {
                                size_t& line_width, size_t word_width,
                                std::string& line, Column& column,
                                std::vector<ColumnLines>& result,
-                               const std::string& word) {
+                               const std::string& word, bool disabled_styles) {
 
         bool multi_byte_characters = column.get().multi_byte_characters();
-        bool disabled_styles = column.get().disabled_styles();
 
         if (line.empty() && word == " ")
           return;
@@ -166,7 +165,9 @@ namespace tabular {
             line.clear();
             line_width = 0;
 
-            process_word(width, back_limit, line_width, string_utils::display_width(remainder, multi_byte_characters), line, column, result, remainder);
+            process_word(width, back_limit, line_width,
+                string_utils::display_width(remainder, multi_byte_characters),
+                line, column, result, remainder, disabled_styles);
           }
 
           // does not exceed the back_limit
@@ -182,7 +183,8 @@ namespace tabular {
             line.clear();
             line_width = 0;
 
-            process_word(width, back_limit, line_width, word_width, line, column, result, word);
+            process_word(width, back_limit, line_width,
+                word_width, line, column, result, word, disabled_styles);
           }
         }
 
@@ -239,7 +241,7 @@ namespace tabular {
           process_word(width, back_limit,
                        line_width, word_width,
                        line, column,
-                       result, word);
+                      result, word, disabled_styles);
         }
 
         // any remaining words
@@ -563,8 +565,16 @@ namespace tabular {
           }
         }
 
+        const BorderStyle old_style = table.border().get().style();
+
+        if (disabled_styles && old_style == BorderStyle::ansi)
+          table.border().set().style(BorderStyle::standard);
+
         // border parts
         BorderGlyphs glyphs = table.border().get().processed_glyphs();
+
+        if (table.border().get().style() != old_style)
+          table.border().set().style(old_style);
 
         /* Starting printing */
         const auto& rows = table.rows;

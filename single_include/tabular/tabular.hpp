@@ -32,7 +32,6 @@
 #include <climits>
 #include <cstdint>
 #include <list>
-#include <ostream>
 #include <string.h>
 #include <string>
 #include <unordered_set>
@@ -40,13 +39,12 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define WINDOWS 1
-#define UTF16 1
+#include <io.h> // for _isatty
 #include <windows.h>
 #undef RGB
 
 #elif defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__linux__)
 #define UNIX_BASED 1
-#define UTF16 0
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -104,6 +102,11 @@ namespace tabular {
     reverse = 7,
     concealed = 8,
     crossed = 9,
+  };
+
+  enum class STD {
+    OUT,
+    ERROR
   };
 
   struct BorderGlyphs {
@@ -1302,58 +1305,59 @@ public:
 
   namespace detail {
     namespace codec {
+
       struct interval {
         uint32_t first;
         uint32_t last;
       };
 
       // clang-format off
-    static constexpr interval wide[] = {
-      {0x1100, 0x115F}, {0x231A, 0x231B}, {0x2329, 0x232A}, 
-      {0x23E9, 0x23EC}, {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, 
-      {0x25FD, 0x25FE}, {0x2614, 0x2615}, {0x2630, 0x2637}, 
-      {0x2648, 0x2653}, {0x267F, 0x267F}, {0x268A, 0x268F}, 
-      {0x2693, 0x2693}, {0x26A1, 0x26A1}, {0x26AA, 0x26AB}, 
-      {0x26BD, 0x26BE}, {0x26C4, 0x26C5}, {0x26CE, 0x26CE}, 
-      {0x26D4, 0x26D4}, {0x26EA, 0x26EA}, {0x26F2, 0x26F3}, 
-      {0x26F5, 0x26F5}, {0x26FA, 0x26FA}, {0x26FD, 0x26FD}, 
-      {0x2705, 0x2705}, {0x270A, 0x270B}, {0x2728, 0x2728}, 
-      {0x274C, 0x274C}, {0x274E, 0x274E}, {0x2753, 0x2755}, 
-      {0x2757, 0x2757}, {0x2795, 0x2797}, {0x27B0, 0x27B0}, 
-      {0x27BF, 0x27BF}, {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, 
-      {0x2B55, 0x2B55}, {0x2E80, 0x2E99}, {0x2E9B, 0x2EF3}, 
-      {0x2F00, 0x2FD5}, {0x2FF0, 0x3029}, {0x302E, 0x303E}, 
-      {0x3041, 0x3096}, {0x309B, 0x30FF}, {0x3105, 0x312F}, 
-      {0x3131, 0x318E}, {0x3190, 0x31E5}, {0x31EF, 0x321E}, 
-      {0x3220, 0x3247}, {0x3250, 0xA48C}, {0xA490, 0xA4C6}, 
-      {0xA960, 0xA97C}, {0xAC00, 0xD7A3}, {0xF900, 0xFA6D}, 
-      {0xFA70, 0xFAD9}, {0xFE10, 0xFE19}, {0xFE30, 0xFE52}, 
-      {0xFE54, 0xFE66}, {0xFE68, 0xFE6B}, {0xFF01, 0xFF60}, 
-      {0xFFE0, 0xFFE6}, {0x16FE0, 0x16FE3}, {0x16FF0, 0x16FF1}, 
-      {0x17000, 0x187F7}, {0x18800, 0x18CD5}, {0x18CFF, 0x18D08}, 
-      {0x1AFF0, 0x1AFF3}, {0x1AFF5, 0x1AFFB}, {0x1AFFD, 0x1AFFE}, 
-      {0x1B000, 0x1B122}, {0x1B132, 0x1B132}, {0x1B150, 0x1B152}, 
-      {0x1B155, 0x1B155}, {0x1B164, 0x1B167}, {0x1B170, 0x1B2FB}, 
-      {0x1D300, 0x1D356}, {0x1D360, 0x1D376}, {0x1F004, 0x1F004}, 
-      {0x1F0CF, 0x1F0CF}, {0x1F18E, 0x1F18E}, {0x1F191, 0x1F19A}, 
-      {0x1F200, 0x1F202}, {0x1F210, 0x1F23B}, {0x1F240, 0x1F248}, 
-      {0x1F250, 0x1F251}, {0x1F260, 0x1F265}, {0x1F300, 0x1F320}, 
-      {0x1F32D, 0x1F335}, {0x1F337, 0x1F37C}, {0x1F37E, 0x1F393}, 
-      {0x1F3A0, 0x1F3CA}, {0x1F3CF, 0x1F3D3}, {0x1F3E0, 0x1F3F0}, 
-      {0x1F3F4, 0x1F3F4}, {0x1F3F8, 0x1F43E}, {0x1F440, 0x1F440}, 
-      {0x1F442, 0x1F4FC}, {0x1F4FF, 0x1F53D}, {0x1F54B, 0x1F54E}, 
-      {0x1F550, 0x1F567}, {0x1F57A, 0x1F57A}, {0x1F595, 0x1F596}, 
-      {0x1F5A4, 0x1F5A4}, {0x1F5FB, 0x1F64F}, {0x1F680, 0x1F6C5}, 
-      {0x1F6CC, 0x1F6CC}, {0x1F6D0, 0x1F6D2}, {0x1F6D5, 0x1F6D7}, 
-      {0x1F6DC, 0x1F6DF}, {0x1F6EB, 0x1F6EC}, {0x1F6F4, 0x1F6FC}, 
-      {0x1F7E0, 0x1F7EB}, {0x1F7F0, 0x1F7F0}, {0x1F90C, 0x1F93A}, 
-      {0x1F93C, 0x1F945}, {0x1F947, 0x1F9FF}, {0x1FA70, 0x1FA7C}, 
-      {0x1FA80, 0x1FA89}, {0x1FA8F, 0x1FAC6}, {0x1FACE, 0x1FADC}, 
-      {0x1FADF, 0x1FAE9}, {0x1FAF0, 0x1FAF8}, {0x20000, 0x2A6DF}, 
-      {0x2A700, 0x2B739}, {0x2B740, 0x2B81D}, {0x2B820, 0x2CEA1}, 
-      {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D}, {0x2F800, 0x2FA1D}, 
-      {0x30000, 0x3134A}, {0x31350, 0x323AF}
-    };
+      static constexpr interval wide[] = {
+        {0x1100, 0x115F}, {0x231A, 0x231B}, {0x2329, 0x232A}, 
+        {0x23E9, 0x23EC}, {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, 
+        {0x25FD, 0x25FE}, {0x2614, 0x2615}, {0x2630, 0x2637}, 
+        {0x2648, 0x2653}, {0x267F, 0x267F}, {0x268A, 0x268F}, 
+        {0x2693, 0x2693}, {0x26A1, 0x26A1}, {0x26AA, 0x26AB}, 
+        {0x26BD, 0x26BE}, {0x26C4, 0x26C5}, {0x26CE, 0x26CE}, 
+        {0x26D4, 0x26D4}, {0x26EA, 0x26EA}, {0x26F2, 0x26F3}, 
+        {0x26F5, 0x26F5}, {0x26FA, 0x26FA}, {0x26FD, 0x26FD}, 
+        {0x2705, 0x2705}, {0x270A, 0x270B}, {0x2728, 0x2728}, 
+        {0x274C, 0x274C}, {0x274E, 0x274E}, {0x2753, 0x2755}, 
+        {0x2757, 0x2757}, {0x2795, 0x2797}, {0x27B0, 0x27B0}, 
+        {0x27BF, 0x27BF}, {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, 
+        {0x2B55, 0x2B55}, {0x2E80, 0x2E99}, {0x2E9B, 0x2EF3}, 
+        {0x2F00, 0x2FD5}, {0x2FF0, 0x3029}, {0x302E, 0x303E}, 
+        {0x3041, 0x3096}, {0x309B, 0x30FF}, {0x3105, 0x312F}, 
+        {0x3131, 0x318E}, {0x3190, 0x31E5}, {0x31EF, 0x321E}, 
+        {0x3220, 0x3247}, {0x3250, 0xA48C}, {0xA490, 0xA4C6}, 
+        {0xA960, 0xA97C}, {0xAC00, 0xD7A3}, {0xF900, 0xFA6D}, 
+        {0xFA70, 0xFAD9}, {0xFE10, 0xFE19}, {0xFE30, 0xFE52}, 
+        {0xFE54, 0xFE66}, {0xFE68, 0xFE6B}, {0xFF01, 0xFF60}, 
+        {0xFFE0, 0xFFE6}, {0x16FE0, 0x16FE3}, {0x16FF0, 0x16FF1}, 
+        {0x17000, 0x187F7}, {0x18800, 0x18CD5}, {0x18CFF, 0x18D08}, 
+        {0x1AFF0, 0x1AFF3}, {0x1AFF5, 0x1AFFB}, {0x1AFFD, 0x1AFFE}, 
+        {0x1B000, 0x1B122}, {0x1B132, 0x1B132}, {0x1B150, 0x1B152}, 
+        {0x1B155, 0x1B155}, {0x1B164, 0x1B167}, {0x1B170, 0x1B2FB}, 
+        {0x1D300, 0x1D356}, {0x1D360, 0x1D376}, {0x1F004, 0x1F004}, 
+        {0x1F0CF, 0x1F0CF}, {0x1F18E, 0x1F18E}, {0x1F191, 0x1F19A}, 
+        {0x1F200, 0x1F202}, {0x1F210, 0x1F23B}, {0x1F240, 0x1F248}, 
+        {0x1F250, 0x1F251}, {0x1F260, 0x1F265}, {0x1F300, 0x1F320}, 
+        {0x1F32D, 0x1F335}, {0x1F337, 0x1F37C}, {0x1F37E, 0x1F393}, 
+        {0x1F3A0, 0x1F3CA}, {0x1F3CF, 0x1F3D3}, {0x1F3E0, 0x1F3F0}, 
+        {0x1F3F4, 0x1F3F4}, {0x1F3F8, 0x1F43E}, {0x1F440, 0x1F440}, 
+        {0x1F442, 0x1F4FC}, {0x1F4FF, 0x1F53D}, {0x1F54B, 0x1F54E}, 
+        {0x1F550, 0x1F567}, {0x1F57A, 0x1F57A}, {0x1F595, 0x1F596}, 
+        {0x1F5A4, 0x1F5A4}, {0x1F5FB, 0x1F64F}, {0x1F680, 0x1F6C5}, 
+        {0x1F6CC, 0x1F6CC}, {0x1F6D0, 0x1F6D2}, {0x1F6D5, 0x1F6D7}, 
+        {0x1F6DC, 0x1F6DF}, {0x1F6EB, 0x1F6EC}, {0x1F6F4, 0x1F6FC}, 
+        {0x1F7E0, 0x1F7EB}, {0x1F7F0, 0x1F7F0}, {0x1F90C, 0x1F93A}, 
+        {0x1F93C, 0x1F945}, {0x1F947, 0x1F9FF}, {0x1FA70, 0x1FA7C}, 
+        {0x1FA80, 0x1FA89}, {0x1FA8F, 0x1FAC6}, {0x1FACE, 0x1FADC}, 
+        {0x1FADF, 0x1FAE9}, {0x1FAF0, 0x1FAF8}, {0x20000, 0x2A6DF}, 
+        {0x2A700, 0x2B739}, {0x2B740, 0x2B81D}, {0x2B820, 0x2CEA1}, 
+        {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D}, {0x2F800, 0x2FA1D}, 
+        {0x30000, 0x3134A}, {0x31350, 0x323AF}
+      };
       // clang-format on
 
       static constexpr size_t wide_size = sizeof(wide) / sizeof(interval);
@@ -1538,6 +1542,7 @@ public:
 
         return true;
       }
+
     } // namespace codec
 
     namespace string_utils {
@@ -1589,7 +1594,7 @@ public:
 
         unsigned short width = 0;
 
-        #if defined(UNIX_BASED)
+        #if defined(UNIX_LIKE)
           struct winsize ws;
           if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
             width = 0;
@@ -1692,10 +1697,9 @@ public:
                                size_t& line_width, size_t word_width,
                                std::string& line, Column& column,
                                std::vector<ColumnLines>& result,
-                               const std::string& word) {
+                               const std::string& word, bool disabled_styles) {
 
         bool multi_byte_characters = column.get().multi_byte_characters();
-        bool disabled_styles = column.get().disabled_styles();
 
         if (line.empty() && word == " ")
           return;
@@ -1786,7 +1790,9 @@ public:
             line.clear();
             line_width = 0;
 
-            process_word(width, back_limit, line_width, string_utils::display_width(remainder, multi_byte_characters), line, column, result, remainder);
+            process_word(width, back_limit, line_width,
+                         string_utils::display_width(remainder, multi_byte_characters),
+                         line, column, result, remainder, disabled_styles);
           }
 
           // does not exceed the back_limit
@@ -1802,7 +1808,8 @@ public:
             line.clear();
             line_width = 0;
 
-            process_word(width, back_limit, line_width, word_width, line, column, result, word);
+            process_word(width, back_limit, line_width,
+                         word_width, line, column, result, word, disabled_styles);
           }
         }
 
@@ -1813,9 +1820,12 @@ public:
         }
       }
 
-      inline void format_column(Column& column, uint8_t back_limit_percent, bool disabled_styles) {
+      inline void format_column(Column& column, uint8_t back_limit_percent, bool disabled_styles, bool& multi_byte_characters_flag) {
         const std::string& content = column.content;
         const bool multi_byte_characters = column.get().multi_byte_characters();
+
+        if (multi_byte_characters && !multi_byte_characters_flag)
+          multi_byte_characters_flag = true;
 
         if (content.empty()) {
           column.set().lines(std::vector<ColumnLines>());
@@ -1856,7 +1866,7 @@ public:
           process_word(width, back_limit,
                        line_width, word_width,
                        line, column,
-                       result, word);
+                       result, word, disabled_styles);
         }
 
         // any remaining words
@@ -2093,77 +2103,183 @@ public:
 
         return result;
       }
+
+      inline void handle_output(const std::string& formatted_table,
+                                bool multi_byte_characters_flag, STD std) {
+        // clang-format off
+        #if defined(WINDOWS)
+          HANDLE handle;
+          if (std == STD::OUT)
+            handle = GetStdHandle(STD_OUTPUT_HANDLE);
+          else
+            handle = GetStdHandle(STD_ERROR_HANDLE)
+
+          DWORD mode;
+          DWORD written;
+          bool is_console_output = GetConsoleMode(handle, &mode);
+
+          if (!is_console_output) {
+            // Output is redirected: write raw UTF-8 bytes
+            WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+            return;
+          }
+
+          if (multi_byte_characters_flag) {
+            // Convert UTF-8 to UTF-16 for proper console rendering
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, formatted_table.c_str(), -1, nullptr, 0);
+            if (wlen <= 0) {
+              WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+              return;
+            }
+
+            std::wstring wstr(wlen - 1, L'\0'); // exclude null terminator
+            int result = MultiByteToWideChar(CP_UTF8, 0, formatted_table.c_str(), -1, &wstr[0], wlen);
+            if (result <= 0) {
+              WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+              return;
+            }
+
+            WriteConsoleW(handle, wstr.c_str(), static_cast<DWORD>(wstr.length()), &written, nullptr);
+          } else {
+            // ASCII or simple UTF-8 output
+            WriteConsoleA(handle, formatted_table.c_str(),
+                static_cast<DWORD>(formatted_table.length()), &written, nullptr);
+          }
+        #else
+          fwrite(formatted_table.c_str(), 1, formatted_table.length(), stdout);
+          fflush(stdout);
+        #endif
+        // clang-format on
+      }
+
+      inline std::string format_table(Table& table, bool disabled_styles,
+                                      bool& multi_byte_characters_flag) {
+        // result
+        std::string formatted_table;
+
+        if (table.rows.empty())
+          return "";
+
+        if (table.get().width() == 0) {
+          unsigned short terminal_width = detail::utils::get_terminal_width();
+
+          // setting the width via the percent
+          table.set().width((terminal_width * table.get().width_percent()) / 100);
+        }
+
+        if (!detail::utils::enable_ansi_support()) {
+          // if it is not a TUI just disable all the styling stuff
+          disabled_styles = true;
+
+          // in case it is not a TTY (for example the output stream is a file)
+          // the usable_width will be a very large value (maybe infinity)
+          // if it is not set via table.set().width(int_value)
+          // so in this case we set a default value for non_tui streams
+          if (table.get().width() == 0)
+            table.set().width(table.get().non_tui_width());
+        }
+
+        detail::printer::adjust_width(table);
+
+        uint8_t back_limit_percent = table.get().back_limit_percent();
+
+        for (Row& row : table.rows) {
+          for (Column& column : row.columns) {
+            detail::printer::format_column(column, back_limit_percent,
+                                           disabled_styles, multi_byte_characters_flag);
+          }
+        }
+
+        const BorderStyle old_style = table.border().get().style();
+
+        if (disabled_styles && old_style == BorderStyle::ansi)
+          table.border().set().style(BorderStyle::standard);
+
+        // border parts
+        BorderGlyphs glyphs = table.border().get().processed_glyphs();
+
+        if (table.border().get().style() != old_style)
+          table.border().set().style(old_style);
+
+        /* Starting printing */
+        const auto& rows = table.rows;
+
+        bool is_first = true, is_last = (rows.size() == 1) ? true : false;
+        bool separated_rows = table.get().separated_rows();
+        size_t width = table.get().width();
+
+        auto it = rows.begin();
+        formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+
+        is_first = false;
+        for (it = rows.begin(); it != rows.end(); ++it) {
+          const Row& row = *it;
+
+          formatted_table += detail::printer::print_row(row, glyphs, width);
+
+          if ((it + 1) == rows.end())
+            is_last = true;
+
+          if (separated_rows)
+            formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+        }
+
+        // appending last new line
+        formatted_table.push_back('\n');
+
+        return formatted_table;
+      }
     } // namespace printer
   } // namespace detail
 
-  inline void print(Table& table, std::ostream& stream) {
-    // result
-    std::string formated_table;
+  inline void print(Table& table, STD std = STD::OUT) {
+    bool multi_byte_characters_flag = false;
 
-    if (table.rows.empty())
-      return;
+    std::string formatted_table = detail::printer::format_table(table, table.get().disabled_styles(),
+                                                                multi_byte_characters_flag);
 
-    if (table.get().width() == 0) {
-      unsigned short terminal_width = detail::utils::get_terminal_width();
-
-      // setting the width via the percent
-      table.set().width((terminal_width * table.get().width_percent()) / 100);
-    }
-
-    if (!detail::utils::enable_ansi_support()) {
-      // if it is not a TUI just disable all the styling stuff
-      table.set().disabled_styles(true);
-
-      // in case it is not a TTY (for example the output stream is a file)
-      // the usable_width will be a very large value (maybe infinity)
-      // if it is not set via table.set().width(int_value)
-      // so in this case we set a default value for non_tui streams
-      if (table.get().width() == 0)
-        table.set().width(table.get().non_tui_width());
-    }
-
-    detail::printer::adjust_width(table);
-
-    bool disabled_styles = table.get().disabled_styles();
-    uint8_t back_limit_percent = table.get().back_limit_percent();
-
-    for (Row& row : table.rows) {
-      for (Column& column : row.columns) {
-        detail::printer::format_column(column, back_limit_percent, disabled_styles);
-      }
-    }
-
-    // border parts
-    BorderGlyphs glyphs = table.border().get().processed_glyphs();
-
-    /* Starting printing */
-    const auto& rows = table.rows;
-
-    bool is_first = true, is_last = (rows.size() == 1) ? true : false;
-    bool separated_rows = table.get().separated_rows();
-    size_t width = table.get().width();
-
-    auto it = rows.begin();
-    formated_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
-
-    is_first = false;
-    for (it = rows.begin(); it != rows.end(); ++it) {
-      const Row& row = *it;
-
-      formated_table += detail::printer::print_row(row, glyphs, width);
-
-      if ((it + 1) == rows.end())
-        is_last = true;
-
-      if (separated_rows)
-        formated_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
-    }
-
-    stream << formated_table;
+    detail::printer::handle_output(formatted_table, multi_byte_characters_flag, std);
   }
 
-  inline std::ostream& operator<<(std::ostream& stream, const Table& table) {
-    print(const_cast<Table&>(table), stream);
-    return stream;
+  inline void print(Table& table, FILE* file) {
+    if (!file)
+      return;
+
+    bool multi_byte_characters_flag = false;
+    bool disabled_styles = false;
+
+    int fd = 0;
+
+    // clang-format off
+    #if defined(WINDOWS)
+      if (!_isatty((fd = _fileno(file))))
+        disabled_styles = true;
+    #elif defined(UNIX_LIKE)
+      if (!isatty((fd = fileno(file))))
+        disabled_styles = true;
+    #endif
+    // clang-format on
+
+    std::string formatted_table = detail::printer::format_table(table, disabled_styles,
+                                                                multi_byte_characters_flag);
+
+    // clang-format off
+    #if defined(WINDOWS)
+      HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+      DWORD written;
+
+      if (handle != INVALID_HANDLE_VALUE) {
+        WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+        return;
+      }
+    #elif defined (UNIX_LIKE)
+      fwrite(formatted_table.c_str(), 1, formatted_table.length(), file);
+      fflush(file);
+      return;
+    #endif
+    // clang-format on
+
+    // fallback
+    fprintf(file, "%s", formatted_table.c_str());
   }
 } // namespace tabular
