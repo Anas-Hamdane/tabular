@@ -17,6 +17,7 @@
 #if defined(_WIN32) || defined(_WIN64)
 #define WINDOWS
 #include <windows.h>
+#include <io.h> // for _isatty
 #undef RGB
 
 #elif defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__linux__)

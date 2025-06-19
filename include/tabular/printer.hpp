@@ -17,6 +17,7 @@
 #include <string.h>
 #include <unordered_set>
 
+#include <tabular/STDS.hpp>
 #include <tabular/column_line.hpp>
 #include <tabular/detail.hpp>
 #include <tabular/table.hpp>
@@ -476,10 +477,16 @@ namespace tabular {
         return result;
       }
 
-      inline void handle_output(const std::string& formatted_table, bool multi_byte_characters_flag) {
+      inline void handle_output(const std::string& formatted_table,
+          bool multi_byte_characters_flag, STD std) {
         // clang-format off
         #if defined(WINDOWS)
-          HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+          HANDLE handle;
+          if (std == STD::OUT)
+            handle = GetStdHandle(STD_OUTPUT_HANDLE);
+          else
+            handle = GetStdHandle(STD_ERROR_HANDLE)
+
           DWORD mode;
           DWORD written;
           bool is_console_output = GetConsoleMode(handle, &mode);
@@ -517,79 +524,128 @@ namespace tabular {
         #endif
         // clang-format on
       }
+
+      inline std::string format_table(Table& table, bool disabled_styles,
+                                      bool& multi_byte_characters_flag) {
+        // result
+        std::string formatted_table;
+
+        if (table.rows.empty())
+          return "";
+
+        if (table.get().width() == 0) {
+          unsigned short terminal_width = detail::utils::get_terminal_width();
+
+          // setting the width via the percent
+          table.set().width((terminal_width * table.get().width_percent()) / 100);
+        }
+
+        if (!detail::utils::enable_ansi_support()) {
+          // if it is not a TUI just disable all the styling stuff
+          disabled_styles = true;
+
+          // in case it is not a TTY (for example the output stream is a file)
+          // the usable_width will be a very large value (maybe infinity)
+          // if it is not set via table.set().width(int_value)
+          // so in this case we set a default value for non_tui streams
+          if (table.get().width() == 0)
+            table.set().width(table.get().non_tui_width());
+        }
+
+        detail::printer::adjust_width(table);
+
+        uint8_t back_limit_percent = table.get().back_limit_percent();
+
+        for (Row& row : table.rows) {
+          for (Column& column : row.columns) {
+            detail::printer::format_column(column, back_limit_percent,
+                                           disabled_styles, multi_byte_characters_flag);
+          }
+        }
+
+        // border parts
+        BorderGlyphs glyphs = table.border().get().processed_glyphs();
+
+        /* Starting printing */
+        const auto& rows = table.rows;
+
+        bool is_first = true, is_last = (rows.size() == 1) ? true : false;
+        bool separated_rows = table.get().separated_rows();
+        size_t width = table.get().width();
+
+        auto it = rows.begin();
+        formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+
+        is_first = false;
+        for (it = rows.begin(); it != rows.end(); ++it) {
+          const Row& row = *it;
+
+          formatted_table += detail::printer::print_row(row, glyphs, width);
+
+          if ((it + 1) == rows.end())
+            is_last = true;
+
+          if (separated_rows)
+            formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+        }
+
+        // appending last new line
+        formatted_table.push_back('\n');
+
+        return formatted_table;
+      }
     } // namespace printer
   } // namespace detail
 
-  inline void print(Table& table) {
-    // result
-    std::string formatted_table;
+  inline void print(Table& table, STD std = STD::OUT) {
+    bool multi_byte_characters_flag = false;
 
-    if (table.rows.empty())
+    std::string formatted_table = detail::printer::format_table(table, table.get().disabled_styles(),
+                                                                multi_byte_characters_flag);
+
+    detail::printer::handle_output(formatted_table, multi_byte_characters_flag, std);
+  }
+
+  inline void print(Table& table, FILE* file) {
+    if (!file)
       return;
 
-    if (table.get().width() == 0) {
-      unsigned short terminal_width = detail::utils::get_terminal_width();
-
-      // setting the width via the percent
-      table.set().width((terminal_width * table.get().width_percent()) / 100);
-    }
-
-    if (!detail::utils::enable_ansi_support()) {
-      // if it is not a TUI just disable all the styling stuff
-      table.set().disabled_styles(true);
-
-      // in case it is not a TTY (for example the output stream is a file)
-      // the usable_width will be a very large value (maybe infinity)
-      // if it is not set via table.set().width(int_value)
-      // so in this case we set a default value for non_tui streams
-      if (table.get().width() == 0)
-        table.set().width(table.get().non_tui_width());
-    }
-
-    detail::printer::adjust_width(table);
-
-    bool disabled_styles = table.get().disabled_styles();
-    uint8_t back_limit_percent = table.get().back_limit_percent();
-
     bool multi_byte_characters_flag = false;
-    for (Row& row : table.rows) {
-      for (Column& column : row.columns) {
-        detail::printer::format_column(column, back_limit_percent,
-                                       disabled_styles, multi_byte_characters_flag);
+    bool disabled_styles = false;
+
+    int fd = 0;
+
+    // clang-format off
+    #if defined(WINDOWS)
+      if (!_isatty((fd = _fileno(file))))
+        disabled_styles = true;
+    #elif defined(UNIX_LIKE)
+      if (!isatty((fd = fileno(file))))
+        disabled_styles = true;
+    #endif
+    // clang-format on
+
+    std::string formatted_table = detail::printer::format_table(table, disabled_styles,
+                                                                multi_byte_characters_flag);
+
+    // clang-format off
+    #if defined(WINDOWS)
+      HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+      DWORD written;
+
+      if (handle != INVALID_HANDLE_VALUE) {
+        WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+        return;
       }
-    }
+    #elif defined (UNIX_LIKE)
+      fwrite(formatted_table.c_str(), 1, formatted_table.length(), file);
+      fflush(file);
+      return;
+    #endif
+    // clang-format on
 
-    // border parts
-    BorderGlyphs glyphs = table.border().get().processed_glyphs();
-
-    /* Starting printing */
-    const auto& rows = table.rows;
-
-    bool is_first = true, is_last = (rows.size() == 1) ? true : false;
-    bool separated_rows = table.get().separated_rows();
-    size_t width = table.get().width();
-
-    auto it = rows.begin();
-    formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
-
-    is_first = false;
-    for (it = rows.begin(); it != rows.end(); ++it) {
-      const Row& row = *it;
-
-      formatted_table += detail::printer::print_row(row, glyphs, width);
-
-      if ((it + 1) == rows.end())
-        is_last = true;
-
-      if (separated_rows)
-        formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
-    }
-
-    // appending last new line
-    formatted_table.push_back('\n');
-
-    // printing to stdout
-    detail::printer::handle_output(formatted_table, multi_byte_characters_flag);
+    // fallback
+    fprintf(file, "%s", formatted_table.c_str());
   }
 } // namespace tabular
 
