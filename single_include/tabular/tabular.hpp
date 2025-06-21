@@ -1234,7 +1234,7 @@ public:
 
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
 
-      unsigned int non_tui_width() const { return table.non_tty_width; }
+      unsigned int non_tty_width() const { return table.non_tty_width; }
 
       bool disabled_styles() const { return table.disabled_styles; }
 
@@ -2202,7 +2202,7 @@ public:
           // due to the large value of table.width because non-tty streams
           // most of the times, don't have a limited columns number.
           if (rc == 3)
-            table.set().width(table.get().non_tui_width());
+            table.set().width(table.get().non_tty_width());
         }
 
         detail::printer::adjust_width(table);

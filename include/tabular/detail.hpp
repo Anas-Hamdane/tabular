@@ -701,7 +701,7 @@ namespace tabular {
           // due to the large value of table.width because non-tty streams
           // most of the times, don't have a limited columns number.
           if (rc == 3)
-            table.set().width(table.get().non_tui_width());
+            table.set().width(table.get().non_tty_width());
         }
 
         detail::printer::adjust_width(table);

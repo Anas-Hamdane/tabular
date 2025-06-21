@@ -111,7 +111,7 @@ namespace tabular {
 
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
 
-      unsigned int non_tui_width() const { return table.non_tty_width; }
+      unsigned int non_tty_width() const { return table.non_tty_width; }
 
       bool disabled_styles() const { return table.disabled_styles; }
 
