@@ -14,8 +14,8 @@
 #ifndef TABULAR_BORDER_HPP
 #define TABULAR_BORDER_HPP
 
-#include <string>
 #include <array>
+#include <string>
 #include <tabular/row.hpp>
 
 namespace tabular {
@@ -124,7 +124,8 @@ namespace tabular {
           return val.empty() ? fallback : val;
         };
 
-        auto wrap = [](const std::string& fg, const std::string& bg, const std::string& val, const Border& border) -> std::string {
+        auto wrap = [](const std::string& fg, const std::string& bg,
+                       const std::string& val, const Border& border) -> std::string {
           if ((fg.empty() && bg.empty()) || border.disabled_styles) return val;
           return fg + bg + val + ansi::RESET;
         };
@@ -255,8 +256,9 @@ namespace tabular {
        * terminal column wide. If a string with a visual width > 1 is provided, the table
        * layout may break.
        *
-       * Using str.length() is unreliable for multi-byte characters, and calling utils::mbswidth()
-       * on every assignment would introduce unnecessary performance overhead.
+       * Using str.length() is unreliable for multi-byte characters,
+       * and calling utils::mbswidth() on every assignment would
+       * introduce unnecessary performance overhead.
        *
        * — Anas Hamdane, 2025-06-14
        */

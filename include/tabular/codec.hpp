@@ -9,7 +9,6 @@
 namespace tabular {
   namespace detail {
     namespace codec {
-
       struct interval {
         uint32_t first;
         uint32_t last;

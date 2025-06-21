@@ -16,8 +16,8 @@
 
 #define TABULAR_VERSION_MAJOR 1
 #define TABULAR_VERSION_MINOR 0
-#define TABULAR_VERSION_PATCH 0
-#define TABULAR_VERSION "1.0.0"
+#define TABULAR_VERSION_PATCH 1
+#define TABULAR_VERSION "1.0.1"
 
 #if defined(_WIN32) || defined(_WIN64)
 #define WINDOWS

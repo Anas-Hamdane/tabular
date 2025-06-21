@@ -22,8 +22,8 @@
 
 #define TABULAR_VERSION_MAJOR 1
 #define TABULAR_VERSION_MINOR 0
-#define TABULAR_VERSION_PATCH 0
-#define TABULAR_VERSION "1.0.0"
+#define TABULAR_VERSION_PATCH 1
+#define TABULAR_VERSION "1.0.1"
 
 #if defined(_WIN32) || defined(_WIN64)
 #define WINDOWS 1
@@ -93,8 +93,8 @@ namespace tabular {
   };
 
   enum class STD {
-    OUT,
-    ERROR
+    Out,
+    Error
   };
 
   struct BorderGlyphs {
@@ -477,7 +477,8 @@ public:
           return val.empty() ? fallback : val;
         };
 
-        auto wrap = [](const std::string& fg, const std::string& bg, const std::string& val, const Border& border) -> std::string {
+        auto wrap = [](const std::string& fg, const std::string& bg,
+                       const std::string& val, const Border& border) -> std::string {
           if ((fg.empty() && bg.empty()) || border.disabled_styles) return val;
           return fg + bg + val + ansi::RESET;
         };
@@ -608,8 +609,9 @@ public:
        * terminal column wide. If a string with a visual width > 1 is provided, the table
        * layout may break.
        *
-       * Using str.length() is unreliable for multi-byte characters, and calling utils::mbswidth()
-       * on every assignment would introduce unnecessary performance overhead.
+       * Using str.length() is unreliable for multi-byte characters,
+       * and calling utils::mbswidth() on every assignment would
+       * introduce unnecessary performance overhead.
        *
        * — Anas Hamdane, 2025-06-14
        */
@@ -1141,7 +1143,10 @@ public:
     Border table_border;
 
     unsigned int width;
-    unsigned int non_tui_width;
+
+    // used when the output stream is not
+    // a valid TTY
+    unsigned int non_tty_width;
 
     // columns number to track Regularity
     unsigned int columns_number;
@@ -1168,7 +1173,8 @@ public:
         return *this;
       }
 
-      // percent should be between 1 and 100
+      // Sets the table width as a percentage of the total width of the terminal.
+      // Values outside the 1–100 range are ignored.
       Setters& width_percent(int percent) {
         if (percent > 0 && percent <= 100)
           table.width_percent = static_cast<uint8_t>(percent);
@@ -1176,7 +1182,8 @@ public:
         return *this;
       }
 
-      // percent should be between 1 and 100
+      // Sets the wrap threshold as a percentage of the total width.
+      // Values outside the 1–100 range are ignored.
       Setters& back_limit_percent(int percent) {
         if (percent > 0 && percent <= 100)
           table.back_limit_percent = static_cast<uint8_t>(percent);
@@ -1184,13 +1191,15 @@ public:
         return *this;
       }
 
-      Setters& non_tui_width(int width) {
+      // Sets the table width for invalid output streams.
+      Setters& non_tty_width(int width) {
         if (width > 0)
-          table.non_tui_width = static_cast<unsigned int>(width);
+          table.non_tty_width = static_cast<unsigned int>(width);
 
         return *this;
       }
 
+      // multi-byte strings support
       Setters& multi_byte_characters(bool is_multi_byte) {
         for (Row& row : table.rows)
           for (Column& column : row.columns)
@@ -1199,11 +1208,14 @@ public:
         return *this;
       }
 
+      // border between rows
       Setters& separated_rows(bool is_separated) {
         table.separated_rows = is_separated;
         return *this;
       }
 
+      // disable the whole table styles.
+      // useful when dealing with non-tty streams
       Setters& disabled_styles(bool is_disabled) {
         table.disabled_styles = is_disabled;
         return *this;
@@ -1222,7 +1234,7 @@ public:
 
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
 
-      unsigned int non_tui_width() const { return table.non_tui_width; }
+      unsigned int non_tui_width() const { return table.non_tty_width; }
 
       bool disabled_styles() const { return table.disabled_styles; }
 
@@ -1234,7 +1246,15 @@ public:
 public:
     std::vector<Row> rows;
 
-    Table() : width(0), width_percent(60), non_tui_width(60), columns_number(0), back_limit_percent(30), separated_rows(true), disabled_styles(false), regular(true) {}
+    Table()
+        : width(0),
+          width_percent(60),
+          non_tty_width(60),
+          columns_number(0),
+          back_limit_percent(30),
+          separated_rows(true),
+          disabled_styles(false),
+          regular(true) {}
 
     Border& border() { return table_border; }
 
@@ -1259,7 +1279,6 @@ public:
       }
 
       this->rows.emplace_back(std::move(columns));
-
       return *this;
     }
 
@@ -1270,59 +1289,58 @@ public:
 
   namespace detail {
     namespace codec {
-
       struct interval {
         uint32_t first;
         uint32_t last;
       };
 
       // clang-format off
-      static constexpr interval wide[] = {
-        {0x1100, 0x115F}, {0x231A, 0x231B}, {0x2329, 0x232A}, 
-        {0x23E9, 0x23EC}, {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, 
-        {0x25FD, 0x25FE}, {0x2614, 0x2615}, {0x2630, 0x2637}, 
-        {0x2648, 0x2653}, {0x267F, 0x267F}, {0x268A, 0x268F}, 
-        {0x2693, 0x2693}, {0x26A1, 0x26A1}, {0x26AA, 0x26AB}, 
-        {0x26BD, 0x26BE}, {0x26C4, 0x26C5}, {0x26CE, 0x26CE}, 
-        {0x26D4, 0x26D4}, {0x26EA, 0x26EA}, {0x26F2, 0x26F3}, 
-        {0x26F5, 0x26F5}, {0x26FA, 0x26FA}, {0x26FD, 0x26FD}, 
-        {0x2705, 0x2705}, {0x270A, 0x270B}, {0x2728, 0x2728}, 
-        {0x274C, 0x274C}, {0x274E, 0x274E}, {0x2753, 0x2755}, 
-        {0x2757, 0x2757}, {0x2795, 0x2797}, {0x27B0, 0x27B0}, 
-        {0x27BF, 0x27BF}, {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, 
-        {0x2B55, 0x2B55}, {0x2E80, 0x2E99}, {0x2E9B, 0x2EF3}, 
-        {0x2F00, 0x2FD5}, {0x2FF0, 0x3029}, {0x302E, 0x303E}, 
-        {0x3041, 0x3096}, {0x309B, 0x30FF}, {0x3105, 0x312F}, 
-        {0x3131, 0x318E}, {0x3190, 0x31E5}, {0x31EF, 0x321E}, 
-        {0x3220, 0x3247}, {0x3250, 0xA48C}, {0xA490, 0xA4C6}, 
-        {0xA960, 0xA97C}, {0xAC00, 0xD7A3}, {0xF900, 0xFA6D}, 
-        {0xFA70, 0xFAD9}, {0xFE10, 0xFE19}, {0xFE30, 0xFE52}, 
-        {0xFE54, 0xFE66}, {0xFE68, 0xFE6B}, {0xFF01, 0xFF60}, 
-        {0xFFE0, 0xFFE6}, {0x16FE0, 0x16FE3}, {0x16FF0, 0x16FF1}, 
-        {0x17000, 0x187F7}, {0x18800, 0x18CD5}, {0x18CFF, 0x18D08}, 
-        {0x1AFF0, 0x1AFF3}, {0x1AFF5, 0x1AFFB}, {0x1AFFD, 0x1AFFE}, 
-        {0x1B000, 0x1B122}, {0x1B132, 0x1B132}, {0x1B150, 0x1B152}, 
-        {0x1B155, 0x1B155}, {0x1B164, 0x1B167}, {0x1B170, 0x1B2FB}, 
-        {0x1D300, 0x1D356}, {0x1D360, 0x1D376}, {0x1F004, 0x1F004}, 
-        {0x1F0CF, 0x1F0CF}, {0x1F18E, 0x1F18E}, {0x1F191, 0x1F19A}, 
-        {0x1F200, 0x1F202}, {0x1F210, 0x1F23B}, {0x1F240, 0x1F248}, 
-        {0x1F250, 0x1F251}, {0x1F260, 0x1F265}, {0x1F300, 0x1F320}, 
-        {0x1F32D, 0x1F335}, {0x1F337, 0x1F37C}, {0x1F37E, 0x1F393}, 
-        {0x1F3A0, 0x1F3CA}, {0x1F3CF, 0x1F3D3}, {0x1F3E0, 0x1F3F0}, 
-        {0x1F3F4, 0x1F3F4}, {0x1F3F8, 0x1F43E}, {0x1F440, 0x1F440}, 
-        {0x1F442, 0x1F4FC}, {0x1F4FF, 0x1F53D}, {0x1F54B, 0x1F54E}, 
-        {0x1F550, 0x1F567}, {0x1F57A, 0x1F57A}, {0x1F595, 0x1F596}, 
-        {0x1F5A4, 0x1F5A4}, {0x1F5FB, 0x1F64F}, {0x1F680, 0x1F6C5}, 
-        {0x1F6CC, 0x1F6CC}, {0x1F6D0, 0x1F6D2}, {0x1F6D5, 0x1F6D7}, 
-        {0x1F6DC, 0x1F6DF}, {0x1F6EB, 0x1F6EC}, {0x1F6F4, 0x1F6FC}, 
-        {0x1F7E0, 0x1F7EB}, {0x1F7F0, 0x1F7F0}, {0x1F90C, 0x1F93A}, 
-        {0x1F93C, 0x1F945}, {0x1F947, 0x1F9FF}, {0x1FA70, 0x1FA7C}, 
-        {0x1FA80, 0x1FA89}, {0x1FA8F, 0x1FAC6}, {0x1FACE, 0x1FADC}, 
-        {0x1FADF, 0x1FAE9}, {0x1FAF0, 0x1FAF8}, {0x20000, 0x2A6DF}, 
-        {0x2A700, 0x2B739}, {0x2B740, 0x2B81D}, {0x2B820, 0x2CEA1}, 
-        {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D}, {0x2F800, 0x2FA1D}, 
-        {0x30000, 0x3134A}, {0x31350, 0x323AF}
-      };
+    static constexpr interval wide[] = {
+      {0x1100, 0x115F}, {0x231A, 0x231B}, {0x2329, 0x232A}, 
+      {0x23E9, 0x23EC}, {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, 
+      {0x25FD, 0x25FE}, {0x2614, 0x2615}, {0x2630, 0x2637}, 
+      {0x2648, 0x2653}, {0x267F, 0x267F}, {0x268A, 0x268F}, 
+      {0x2693, 0x2693}, {0x26A1, 0x26A1}, {0x26AA, 0x26AB}, 
+      {0x26BD, 0x26BE}, {0x26C4, 0x26C5}, {0x26CE, 0x26CE}, 
+      {0x26D4, 0x26D4}, {0x26EA, 0x26EA}, {0x26F2, 0x26F3}, 
+      {0x26F5, 0x26F5}, {0x26FA, 0x26FA}, {0x26FD, 0x26FD}, 
+      {0x2705, 0x2705}, {0x270A, 0x270B}, {0x2728, 0x2728}, 
+      {0x274C, 0x274C}, {0x274E, 0x274E}, {0x2753, 0x2755}, 
+      {0x2757, 0x2757}, {0x2795, 0x2797}, {0x27B0, 0x27B0}, 
+      {0x27BF, 0x27BF}, {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, 
+      {0x2B55, 0x2B55}, {0x2E80, 0x2E99}, {0x2E9B, 0x2EF3}, 
+      {0x2F00, 0x2FD5}, {0x2FF0, 0x3029}, {0x302E, 0x303E}, 
+      {0x3041, 0x3096}, {0x309B, 0x30FF}, {0x3105, 0x312F}, 
+      {0x3131, 0x318E}, {0x3190, 0x31E5}, {0x31EF, 0x321E}, 
+      {0x3220, 0x3247}, {0x3250, 0xA48C}, {0xA490, 0xA4C6}, 
+      {0xA960, 0xA97C}, {0xAC00, 0xD7A3}, {0xF900, 0xFA6D}, 
+      {0xFA70, 0xFAD9}, {0xFE10, 0xFE19}, {0xFE30, 0xFE52}, 
+      {0xFE54, 0xFE66}, {0xFE68, 0xFE6B}, {0xFF01, 0xFF60}, 
+      {0xFFE0, 0xFFE6}, {0x16FE0, 0x16FE3}, {0x16FF0, 0x16FF1}, 
+      {0x17000, 0x187F7}, {0x18800, 0x18CD5}, {0x18CFF, 0x18D08}, 
+      {0x1AFF0, 0x1AFF3}, {0x1AFF5, 0x1AFFB}, {0x1AFFD, 0x1AFFE}, 
+      {0x1B000, 0x1B122}, {0x1B132, 0x1B132}, {0x1B150, 0x1B152}, 
+      {0x1B155, 0x1B155}, {0x1B164, 0x1B167}, {0x1B170, 0x1B2FB}, 
+      {0x1D300, 0x1D356}, {0x1D360, 0x1D376}, {0x1F004, 0x1F004}, 
+      {0x1F0CF, 0x1F0CF}, {0x1F18E, 0x1F18E}, {0x1F191, 0x1F19A}, 
+      {0x1F200, 0x1F202}, {0x1F210, 0x1F23B}, {0x1F240, 0x1F248}, 
+      {0x1F250, 0x1F251}, {0x1F260, 0x1F265}, {0x1F300, 0x1F320}, 
+      {0x1F32D, 0x1F335}, {0x1F337, 0x1F37C}, {0x1F37E, 0x1F393}, 
+      {0x1F3A0, 0x1F3CA}, {0x1F3CF, 0x1F3D3}, {0x1F3E0, 0x1F3F0}, 
+      {0x1F3F4, 0x1F3F4}, {0x1F3F8, 0x1F43E}, {0x1F440, 0x1F440}, 
+      {0x1F442, 0x1F4FC}, {0x1F4FF, 0x1F53D}, {0x1F54B, 0x1F54E}, 
+      {0x1F550, 0x1F567}, {0x1F57A, 0x1F57A}, {0x1F595, 0x1F596}, 
+      {0x1F5A4, 0x1F5A4}, {0x1F5FB, 0x1F64F}, {0x1F680, 0x1F6C5}, 
+      {0x1F6CC, 0x1F6CC}, {0x1F6D0, 0x1F6D2}, {0x1F6D5, 0x1F6D7}, 
+      {0x1F6DC, 0x1F6DF}, {0x1F6EB, 0x1F6EC}, {0x1F6F4, 0x1F6FC}, 
+      {0x1F7E0, 0x1F7EB}, {0x1F7F0, 0x1F7F0}, {0x1F90C, 0x1F93A}, 
+      {0x1F93C, 0x1F945}, {0x1F947, 0x1F9FF}, {0x1FA70, 0x1FA7C}, 
+      {0x1FA80, 0x1FA89}, {0x1FA8F, 0x1FAC6}, {0x1FACE, 0x1FADC}, 
+      {0x1FADF, 0x1FAE9}, {0x1FAF0, 0x1FAF8}, {0x20000, 0x2A6DF}, 
+      {0x2A700, 0x2B739}, {0x2B740, 0x2B81D}, {0x2B820, 0x2CEA1}, 
+      {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D}, {0x2F800, 0x2FA1D}, 
+      {0x30000, 0x3134A}, {0x31350, 0x323AF}
+    };
       // clang-format on
 
       static constexpr size_t wide_size = sizeof(wide) / sizeof(interval);
@@ -1545,57 +1563,83 @@ public:
     namespace utils {
       // to align PPDirectives
       // clang-format off
-      inline unsigned short get_terminal_width() {
-        // first case: defined env var of COLUMNS
-        const char* columns_env = std::getenv("COLUMNS");
-        if (columns_env != nullptr) {
-          try {
-            int width_int = std::stoi(columns_env);
-            if (width_int > 0 && width_int <= USHRT_MAX)
-              return static_cast<unsigned short>(width_int);
-          } catch (...) {
+      inline unsigned short get_terminal_width(FILE* stream) {
+        // in case of stdout we could check the environnement variable
+        if (stream == stdout) {
+          const char* columns_env = std::getenv("COLUMNS");
+          if (columns_env != nullptr) {
+            try {
+              int width_int = std::stoi(columns_env);
+              if (width_int > 0 && width_int <= USHRT_MAX)
+                return static_cast<unsigned short>(width_int);
+            } catch (...) {}
           }
         }
 
         unsigned short width = 0;
 
         #if defined(UNIX_LIKE)
+          int fd = fileno(stream);
+          if (!isatty(fd)) return 0; // Note a terminal
+
           struct winsize ws;
-          if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
-            width = 0;
-          else
+          if (ioctl(fd, TIOCGWINSZ, &ws) == 0)
             width = ws.ws_col;
+
         #elif defined(WINDOWS)
+          int fd = _fileno(stream);
+          if (!_isatty(fd)) return 0; // Not a terminal
+
+          HANDLE hConsole = reinterpret_cast<HANDLE>(_get_osfhandle(fd)); 
           CONSOLE_SCREEN_BUFFER_INFO csbi;
-          if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+
+          if (hConsole != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(hConsole, &csbi))
             width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-        #else
-          width = 0;
+
         #endif
         return width;
       }
 
-      inline bool enable_ansi_support(STD std) {
+      /*
+       * return value:
+       *  1: when everything is fine (success)
+       *  2: can't enable VTP for windows 
+       *  3: `stream` is not a valid tty
+       */
+      inline int enable_ansi_support(FILE* stream) {
+        /*
+         * for windows we should enable VTP mode
+         * to ensure that ansi escape sequences
+         * will be displayed correctly.
+         */
         #if defined(WINDOWS)
-          static bool support_enabled = []() -> bool {
-            HANDLE hOut;
-            if (std == STD::OUT)
-              hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-            else
-              hOut = GetStdHandle(STD_ERROR_HANDLE)
-            if (hOut == INVALID_HANDLE_VALUE) return false;
-
-            DWORD dwMode = 0;
-            if (!GetConsoleMode(hOut, &dwMode)) return false;
-
-            dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-            if (!SetConsoleMode(hOut, dwMode)) return false;
-
-            return true;
-          }();
-          return support_enabled;
+          int fd = _fileno(stream);
+          if (!_isatty(fd))
+            return 3;
+      
+          HANDLE hOut = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+          if (hOut == INVALID_HANDLE_VALUE)
+            return 2;
+      
+          DWORD dwMode = 0;
+          if (!GetConsoleMode(hOut, &dwMode))
+            return 2;
+      
+          dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+          if (!SetConsoleMode(hOut, dwMode))
+            return 2;
+      
+          return 1;
+      
+        /*
+         * In Unix-like systems most consoles support ansi escape
+         * sequences by default.
+         */
         #else
-          return true; // by default Unix like systems has this ability
+          if (!isatty(fileno(stream)))
+            return 3;
+      
+          return 1;
         #endif
       }
       // clang-format on
@@ -1603,16 +1647,17 @@ public:
 
     namespace printer {
       // returns the processed line
-      inline ColumnLines process_line(std::string& line, size_t& line_width, size_t width, Column& column, bool disabled_styles) {
-        std::string result_string;
+      inline void append_column_line(std::string& line, size_t& line_width,
+                                     size_t max_width, Column& column,
+                                     std::vector<ColumnLines>& result,
+                                     bool disabled_styles) {
+        std::string formatted_line;
         Alignment align = column.get().alignment();
 
         std::string styles;
 
         if (!disabled_styles) {
-          // styling
-          // "m" to complete the text styles statement
-          // mentioned in the Column class.
+          // `suffix` to complete the text styles statement.
           styles.append(column.get().text_attributes());
 
           if (!styles.empty()) styles.push_back(ansi::suffix);
@@ -1621,36 +1666,45 @@ public:
           styles.append(column.get().content_background_color());
         }
 
+        // Adjusting Alignment
         int start;
         if (align == Alignment::center)
-          start = (width - line_width) / 2;
+          start = (max_width - line_width) / 2;
         else if (align == Alignment::right)
-          start = (width - line_width);
+          start = (max_width - line_width);
         else
           start = 0;
 
-        size_t line_size = start + styles.size() + line.size() + (styles.empty() ? 0 : strlen(ansi::RESET));
-        result_string.reserve(line_size);
+        // calculating line size
+        size_t line_len = start + styles.size() +
+                          line.size() + (styles.empty() ? 0 : strlen(ansi::RESET));
+        formatted_line.reserve(line_len);
 
         // auto horizontal padding of 1
-        result_string = " ";
-        result_string.append(start, ' ');
-        // for spaces
+        formatted_line = " ";
+
+        // alignment
+        formatted_line.append(start, ' ');
+
+        // counting spaces
         line_width += start + 1;
 
-        result_string.append(styles + line);
+        // appending the line with styles
+        formatted_line.append(styles + line);
         if (!styles.empty())
-          result_string.append(ansi::RESET);
+          formatted_line.append(ansi::RESET);
 
-        return ColumnLines(result_string, line_width);
+        result.emplace_back(formatted_line, line_width);
+
+        line.clear();
+        line_width = 0;
       }
 
-      inline void process_word(size_t width, size_t back_limit,
-                               size_t& line_width, size_t word_width,
-                               std::string& line, Column& column,
-                               std::vector<ColumnLines>& result,
-                               const std::string& word, bool disabled_styles) {
-
+      inline void process_word(const std::string& word, size_t& word_width,
+                               std::string& line, size_t& line_width,
+                               size_t max_width, size_t back_limit,
+                               std::vector<ColumnLines>& result, Column& column,
+                               bool disabled_styles) {
         bool multi_byte_characters = column.get().multi_byte_characters();
 
         if (line.empty() && word == " ")
@@ -1658,121 +1712,118 @@ public:
 
         // add existing content if we reach new line
         if (word == "\n") {
-          result.push_back(
-              process_line(line, line_width, width, column, disabled_styles));
-
-          line.clear();
-          line_width = 0;
+          append_column_line(line, line_width, max_width, column, result, disabled_styles);
           return;
         }
 
-        // adding the word will exceed the width
-        if (line_width + word_width > width) {
-          /*
-           * if the remaining space is larger than the back_limit
-           * we should force split to avoid a large empty space in the line
-           */
-          size_t remaining_space = width - line_width;
-
-          /*
-           * Why insert remainder instead of processing directly?
-           * The remainder itself might be longer than a full line width,
-           * so it may need to be split again in subsequent iterations.
-           */
-          if (remaining_space > back_limit) {
-            std::string first_part;
-            std::string remainder;
-
-            size_t first_part_width = 0;
-
-            // ASCII characters are the standard for English
-            // so adding a hyphen would be better when wrapping a word
-            if (!multi_byte_characters) {
-              first_part = word.substr(0, remaining_space - 1) + '-';
-              remainder = word.substr(remaining_space - 1);
-
-              first_part_width = string_utils::display_width(first_part, multi_byte_characters);
-            }
-
-            // we prefer to not using a hyphen for multi byte characters
-            // because some languages like Japanese shouldn't have it.
-            else {
-              size_t width_limit = remaining_space - 1;
-
-              size_t pos = 0;
-              size_t len = 0;
-              size_t w = 0;
-
-              char buffer[5];
-              while (pos < word.length()) {
-                // getting the next utf-8 character
-                codec::next_utf8_sequence(word, buffer, pos, len);
-
-                if (w + len > width_limit)
-                  break;
-
-                w += codec::utf8dw(buffer);
-
-                // to iterate for the next utf-8 sequence
-                pos += len;
-              }
-
-              if (pos < word.length()) {
-                first_part = word.substr(0, pos);
-                remainder = word.substr(pos);
-              }
-
-              // should rarely happen
-              else {
-                first_part = word.substr(0, width_limit);
-                remainder = word.substr(width_limit);
-              }
-
-              first_part_width = w;
-            }
-
-            // finally we add the first part to the sub
-            // and commit the stuff
-            line += first_part;
-            line_width += first_part_width;
-
-            result.emplace_back(
-                process_line(line, line_width, width, column, disabled_styles));
-
-            line.clear();
-            line_width = 0;
-
-            process_word(width, back_limit, line_width,
-                         string_utils::display_width(remainder, multi_byte_characters),
-                         line, column, result, remainder, disabled_styles);
-          }
-
-          // does not exceed the back_limit
-          else {
-            if (!line.empty() && line.back() == ' ') {
-              line.pop_back(); // pop the last space if exist
-              line_width--;
-            }
-
-            result.emplace_back(
-                process_line(line, line_width, width, column, disabled_styles));
-
-            line.clear();
-            line_width = 0;
-
-            process_word(width, back_limit, line_width,
-                         word_width, line, column, result, word, disabled_styles);
-          }
-        }
-
-        // just append the word we are not at the end of the line
-        else {
+        // normal case: append the word
+        if ((line_width + word_width) <= max_width) {
           line += word;
           line_width += word_width;
+
+          return;
         }
+
+        /*
+         * if we reach here, that means (line_width + word_width) > width
+         * we should append the line after processing the last word.
+         */
+
+        // space left
+        size_t remaining_space = max_width - line_width;
+
+        // append the line, and leave the current word for the next line,
+        // since the remaining_space doesn't exceed the back_limit
+        if (remaining_space <= back_limit) {
+          if (!line.empty() && line.back() == ' ') {
+            line.pop_back(); // pop the last space if exist
+            line_width--;
+          }
+
+          append_column_line(line, line_width, max_width, column, result, disabled_styles);
+
+          process_word(word, word_width, line, line_width,
+                       max_width, back_limit, result, column, disabled_styles);
+
+          return;
+        }
+
+        /*
+         * In this case we will be splitting the word into two parts.
+         * the first parts should fill int this line, with a hyphen
+         * ONLY if multi_byte_characters = false, otherwise we will not,
+         * since other languages like Japanese doesn't need (actually they shouldn't have)
+         * a hyphen at the end of a splitted word.
+         *
+         * The hardest part is handling multi-byte strings splitting.
+         */
+
+        // word parts
+        std::string first_part;
+        std::string remainder;
+
+        size_t first_part_width = 0;
+
+        // no multi-byte strings, basic case
+        if (!multi_byte_characters) {
+          // -1 for the hyphen
+          first_part = word.substr(0, remaining_space - 1) + '-';
+          remainder = word.substr(remaining_space - 1);
+
+          first_part_width = first_part.length();
+        }
+
+        else {
+          // initialize variables
+          size_t pos = 0, len = 0, w = 0;
+
+          char buffer[5];
+          while (pos < word.length()) {
+            // getting the next utf-8 sequence
+            codec::next_utf8_sequence(word, buffer, pos, len);
+
+            // don't exceed the remaining space
+            if (pos + len > remaining_space)
+              break;
+
+            // otherwise increase the width w
+            w += codec::utf8dw(buffer);
+
+            // to iterate for the next utf-8 sequence
+            pos += len;
+          }
+
+          // we found the right position to split
+          if (pos < word.length()) {
+            first_part = word.substr(0, pos);
+            remainder = word.substr(pos);
+          }
+
+          // in case something goes wrong fallback into
+          // using remaining_space, nothing will break
+          // but the layout may have some issues.
+          else {
+            first_part = word.substr(0, remaining_space);
+            remainder = word.substr(remaining_space);
+          }
+
+          // in all cases w is positive
+          first_part_width = w;
+        }
+
+        // append the first part and his width
+        line += first_part;
+        line_width += first_part_width;
+
+        append_column_line(line, line_width, max_width, column, result, disabled_styles);
+
+        size_t remainder_width = word_width - first_part_width + ((multi_byte_characters) ? 0 : 1);
+        process_word(remainder, remainder_width, line, line_width,
+                     max_width, back_limit, result, column, disabled_styles);
       }
 
-      inline void format_column(Column& column, uint8_t back_limit_percent, bool disabled_styles, bool& multi_byte_characters_flag) {
+      inline void format_column(Column& column, uint8_t back_limit_percent,
+                                bool disabled_styles, bool& multi_byte_characters_flag) {
         const std::string& content = column.content;
         const bool multi_byte_characters = column.get().multi_byte_characters();
 
@@ -1791,12 +1842,12 @@ public:
         if (column.get().width() <= 2)
           column.set().width(3);
 
-        // e.g: MAX sub size POSSIBLE, - 2 for two sides spaces
-        const size_t width = (column.get().width() - 2);
+        // MAX line width POSSIBLE, - 2 for two sides spaces
+        const size_t max_width = (column.get().width() - 2);
 
         // the return result
         std::vector<ColumnLines> result;
-        result.reserve(content.length() / width);
+        result.reserve(content.length() / max_width);
 
         // split the content into words to easily manipulate it
         auto words = string_utils::split_text(content);
@@ -1804,8 +1855,11 @@ public:
         // TOP padding
         result.insert(result.end(), top_padding, ColumnLines("", 0));
 
-        // back limit used to force split a long word
-        const size_t back_limit = (width * back_limit_percent) / 100;
+        // space we shouldn't exceed if we decided to leave the current word
+        // for the next line, meaning if the remaining_space > back_limit
+        // we should FORCE CUT the word, else we can just append this line
+        // and leave that word for the next line
+        const size_t back_limit = (max_width * back_limit_percent) / 100;
 
         std::string line;
         size_t line_width = 0;
@@ -1815,16 +1869,13 @@ public:
           // we need split
           size_t word_width = string_utils::display_width(word, multi_byte_characters);
 
-          process_word(width, back_limit,
-                       line_width, word_width,
-                       line, column,
-                       result, word, disabled_styles);
+          process_word(word, word_width, line, line_width,
+                       max_width, back_limit, result, column, disabled_styles);
         }
 
         // any remaining words
         if (!line.empty())
-          result.emplace_back(
-              process_line(line, line_width, width, column, disabled_styles));
+          append_column_line(line, line_width, max_width, column, result, disabled_styles);
 
         // BOTTOM padding
         result.insert(result.end(), bottom_padding, ColumnLines("", 0));
@@ -1899,8 +1950,12 @@ public:
           if (columns_num == 0 && !forced)
             continue;
 
-          int indiv_column_width = table_usable_width / columns_num;
-          int rest = table_usable_width % columns_num;
+          int indiv_column_width = 0;
+          int rest = 0;
+          if (columns_num != 0) {
+            indiv_column_width = table_usable_width / columns_num;
+            rest = table_usable_width % columns_num;
+          }
 
           for (Column& column : row.columns) {
             unsigned int width = column.get().width();
@@ -2060,14 +2115,14 @@ public:
       }
 
       inline void handle_output(const std::string& formatted_table,
-                                bool multi_byte_characters_flag, STD std) {
+                                bool multi_byte_characters_flag, STD stream) {
         // clang-format off
         #if defined(WINDOWS)
           HANDLE handle;
-          if (std == STD::OUT)
+          if (std == STD::Out)
             handle = GetStdHandle(STD_OUTPUT_HANDLE);
           else
-            handle = GetStdHandle(STD_ERROR_HANDLE)
+            handle = GetStdHandle(STD_ERROR_HANDLE);
 
           DWORD mode;
           DWORD written;
@@ -2075,40 +2130,47 @@ public:
 
           if (!is_console_output) {
             // Output is redirected: write raw UTF-8 bytes
-            WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+            WriteFile(handle, formatted_table.c_str(),
+                formatted_table.length(), &written, nullptr);
             return;
           }
 
           if (multi_byte_characters_flag) {
             // Convert UTF-8 to UTF-16 for proper console rendering
-            int wlen = MultiByteToWideChar(CP_UTF8, 0, formatted_table.c_str(), -1, nullptr, 0);
+            int wlen = MultiByteToWideChar(CP_UTF8, 0,
+                formatted_table.c_str(), -1, nullptr, 0);
             if (wlen <= 0) {
-              WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+              WriteFile(handle, formatted_table.c_str(),
+                  formatted_table.length(), &written, nullptr);
               return;
             }
 
             std::wstring wstr(wlen - 1, L'\0'); // exclude null terminator
-            int result = MultiByteToWideChar(CP_UTF8, 0, formatted_table.c_str(), -1, &wstr[0], wlen);
+            int result = MultiByteToWideChar(CP_UTF8, 0, formatted_table.c_str(),
+                -1, &wstr[0], wlen);
             if (result <= 0) {
-              WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
+              WriteFile(handle, formatted_table.c_str(), formatted_table.length(),
+                  &written, nullptr);
               return;
             }
 
-            WriteConsoleW(handle, wstr.c_str(), static_cast<DWORD>(wstr.length()), &written, nullptr);
+            WriteConsoleW(handle, wstr.c_str(), static_cast<DWORD>(wstr.length()),
+                &written, nullptr);
           } else {
             // ASCII or simple UTF-8 output
             WriteConsoleA(handle, formatted_table.c_str(),
                 static_cast<DWORD>(formatted_table.length()), &written, nullptr);
           }
         #else
-          fwrite(formatted_table.c_str(), 1, formatted_table.length(), stdout);
-          fflush(stdout);
+          FILE* out_stream = stream == STD::Out ? stdout : stderr;
+          fwrite(formatted_table.c_str(), 1, formatted_table.length(), out_stream);
+          fflush(out_stream);
         #endif
         // clang-format on
       }
 
       inline std::string format_table(Table& table, bool disabled_styles,
-                                      bool& multi_byte_characters_flag, STD std) {
+                                      bool& multi_byte_characters_flag, FILE* stream) {
         // result
         std::string formatted_table;
 
@@ -2116,24 +2178,30 @@ public:
           return "";
 
         if (table.get().width() == 0) {
-          unsigned short terminal_width = detail::utils::get_terminal_width();
+          unsigned short terminal_width = detail::utils::get_terminal_width(stream);
 
           // setting the width via the percent
           table.set().width((terminal_width * table.get().width_percent()) / 100);
         }
 
-        if (disabled_styles && table.get().width() == 0)
-            table.set().width(table.get().non_tui_width());
+        // return code
+        int rc = detail::utils::enable_ansi_support(stream);
 
-        else if (!(disabled_styles || detail::utils::enable_ansi_support(std))) {
-          // if it is not a TUI just disable all the styling stuff
+        /*
+         * In case enabling ansi escape sequences fail, or the `stream`
+         * is not a valid TTY disable the styles to prevent printing raw
+         * ansi escape sequences
+         */
+        if (rc != 1) {
+          // if something goes wrong disable the styles
+          // to prevent printing raw ansi escape sequences
           disabled_styles = true;
 
           // in case it is not a TTY (for example the output stream is a file)
-          // the usable_width will be a very large value (maybe infinity)
-          // if it is not set via table.set().width(int_value)
-          // so in this case we set a default value for non_tui streams
-          if (table.get().width() == 0)
+          // we will be applying the non_tui_width to prevent infinity loops
+          // due to the large value of table.width because non-tty streams
+          // most of the times, don't have a limited columns number.
+          if (rc == 3)
             table.set().width(table.get().non_tui_width());
         }
 
@@ -2179,78 +2247,8 @@ public:
             is_last = true;
 
           if (separated_rows)
-            formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
-        }
-
-        // appending last new line
-        formatted_table.push_back('\n');
-
-        return formatted_table;
-      }
-
-      // for files
-      inline std::string format_table(Table& table, bool disabled_styles,
-                                      bool& multi_byte_characters_flag) {
-
-        // result
-        std::string formatted_table;
-
-        if (table.rows.empty())
-          return "";
-
-        if (table.get().width() == 0) {
-          unsigned short terminal_width = detail::utils::get_terminal_width();
-
-          // setting the width via the percent
-          table.set().width((terminal_width * table.get().width_percent()) / 100);
-        }
-
-        if (disabled_styles && table.get().width() == 0)
-            table.set().width(table.get().non_tui_width());
-
-        detail::printer::adjust_width(table);
-
-        uint8_t back_limit_percent = table.get().back_limit_percent();
-
-        for (Row& row : table.rows) {
-          for (Column& column : row.columns) {
-            detail::printer::format_column(column, back_limit_percent,
-                                           disabled_styles, multi_byte_characters_flag);
-          }
-        }
-
-        const BorderStyle old_style = table.border().get().style();
-
-        if (disabled_styles && old_style == BorderStyle::ansi)
-          table.border().set().style(BorderStyle::standard);
-
-        // border parts
-        BorderGlyphs glyphs = table.border().get().processed_glyphs();
-
-        if (table.border().get().style() != old_style)
-          table.border().set().style(old_style);
-
-        /* Starting printing */
-        const auto& rows = table.rows;
-
-        bool is_first = true, is_last = (rows.size() == 1) ? true : false;
-        bool separated_rows = table.get().separated_rows();
-        size_t width = table.get().width();
-
-        auto it = rows.begin();
-        formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
-
-        is_first = false;
-        for (it = rows.begin(); it != rows.end(); ++it) {
-          const Row& row = *it;
-
-          formatted_table += detail::printer::print_row(row, glyphs, width);
-
-          if ((it + 1) == rows.end())
-            is_last = true;
-
-          if (separated_rows)
-            formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
+            formatted_table += detail::printer::print_border(it, glyphs,
+                                                             is_first, is_last, width);
         }
 
         // appending last new line
@@ -2261,13 +2259,16 @@ public:
     } // namespace printer
   } // namespace detail
 
-  inline void print(Table& table, STD std = STD::OUT) {
+  inline void print(Table& table, STD stream = STD::Out) {
     bool multi_byte_characters_flag = false;
 
-    std::string formatted_table = detail::printer::format_table(table, table.get().disabled_styles(),
-                                                                multi_byte_characters_flag, std);
+    FILE* file_stream = stream == STD::Out ? stdout : stderr;
 
-    detail::printer::handle_output(formatted_table, multi_byte_characters_flag, std);
+    std::string formatted_table =
+        detail::printer::format_table(table, table.get().disabled_styles(),
+                                      multi_byte_characters_flag, file_stream);
+
+    detail::printer::handle_output(formatted_table, multi_byte_characters_flag, stream);
   }
 
   inline void print(Table& table, FILE* file) {
@@ -2275,25 +2276,14 @@ public:
       return;
 
     bool multi_byte_characters_flag = false;
-    bool disabled_styles = false;
 
-    int fd = 0;
-
-    // clang-format off
-    #if defined(WINDOWS)
-      if (!_isatty((fd = _fileno(file))))
-        disabled_styles = true;
-    #elif defined(UNIX_LIKE)
-      if (!isatty((fd = fileno(file))))
-        disabled_styles = true;
-    #endif
-    // clang-format on
-
-    std::string formatted_table = detail::printer::format_table(table, disabled_styles,
-                                                                multi_byte_characters_flag);
+    std::string formatted_table =
+        detail::printer::format_table(table, table.get().disabled_styles(),
+                                      multi_byte_characters_flag, file);
 
     // clang-format off
     #if defined(WINDOWS)
+      int fd = _fileno(file);
       HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
       DWORD written;
 

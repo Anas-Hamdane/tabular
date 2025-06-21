@@ -11,18 +11,14 @@
 
 */
 
-#ifndef TABULAR_COLUMN_LINES_HPP
-#define TABULAR_COLUMN_LINES_HPP
-
-#include <string>
+#ifndef TABULAR_STDS_HPP
+#define TABULAR_STDS_HPP
 
 namespace tabular {
-  struct ColumnLines {
-    std::string line;
-    size_t display_width;
-
-    ColumnLines(std::string line, size_t width) : line(std::move(line)), display_width(width) {}
+  enum class STD {
+    Out,
+    Error
   };
 } // namespace tabular
 
-#endif // !TABULAR_COLUMN_LINES_HPP
+#endif // !TABULAR_STDS_HPP

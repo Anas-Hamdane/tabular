@@ -13,7 +13,6 @@
 
 #include <vector>
 
-// this include all headers
 #include <tabular/border.hpp>
 
 namespace tabular {
@@ -21,7 +20,10 @@ namespace tabular {
     Border table_border;
 
     unsigned int width;
-    unsigned int non_tui_width;
+
+    // used when the output stream is not
+    // a valid TTY
+    unsigned int non_tty_width;
 
     // columns number to track Regularity
     unsigned int columns_number;
@@ -48,7 +50,8 @@ namespace tabular {
         return *this;
       }
 
-      // percent should be between 1 and 100
+      // Sets the table width as a percentage of the total width of the terminal.
+      // Values outside the 1–100 range are ignored.
       Setters& width_percent(int percent) {
         if (percent > 0 && percent <= 100)
           table.width_percent = static_cast<uint8_t>(percent);
@@ -56,7 +59,8 @@ namespace tabular {
         return *this;
       }
 
-      // percent should be between 1 and 100
+      // Sets the wrap threshold as a percentage of the total width.
+      // Values outside the 1–100 range are ignored.
       Setters& back_limit_percent(int percent) {
         if (percent > 0 && percent <= 100)
           table.back_limit_percent = static_cast<uint8_t>(percent);
@@ -64,13 +68,15 @@ namespace tabular {
         return *this;
       }
 
-      Setters& non_tui_width(int width) {
+      // Sets the table width for invalid output streams.
+      Setters& non_tty_width(int width) {
         if (width > 0)
-          table.non_tui_width = static_cast<unsigned int>(width);
+          table.non_tty_width = static_cast<unsigned int>(width);
 
         return *this;
       }
 
+      // multi-byte strings support
       Setters& multi_byte_characters(bool is_multi_byte) {
         for (Row& row : table.rows)
           for (Column& column : row.columns)
@@ -79,11 +85,14 @@ namespace tabular {
         return *this;
       }
 
+      // border between rows
       Setters& separated_rows(bool is_separated) {
         table.separated_rows = is_separated;
         return *this;
       }
 
+      // disable the whole table styles.
+      // useful when dealing with non-tty streams
       Setters& disabled_styles(bool is_disabled) {
         table.disabled_styles = is_disabled;
         return *this;
@@ -102,7 +111,7 @@ namespace tabular {
 
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
 
-      unsigned int non_tui_width() const { return table.non_tui_width; }
+      unsigned int non_tui_width() const { return table.non_tty_width; }
 
       bool disabled_styles() const { return table.disabled_styles; }
 
@@ -114,7 +123,15 @@ namespace tabular {
 public:
     std::vector<Row> rows;
 
-    Table() : width(0), width_percent(60), non_tui_width(60), columns_number(0), back_limit_percent(30), separated_rows(true), disabled_styles(false), regular(true) {}
+    Table()
+        : width(0),
+          width_percent(60),
+          non_tty_width(60),
+          columns_number(0),
+          back_limit_percent(30),
+          separated_rows(true),
+          disabled_styles(false),
+          regular(true) {}
 
     Border& border() { return table_border; }
 
@@ -139,7 +156,6 @@ public:
       }
 
       this->rows.emplace_back(std::move(columns));
-
       return *this;
     }
 

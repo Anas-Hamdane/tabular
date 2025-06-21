@@ -21,11 +21,17 @@
 #include <tabular/alignment.hpp>
 #include <tabular/attributes.hpp>
 #include <tabular/colors.hpp>
-#include <tabular/column_line.hpp>
 #include <tabular/global.hpp>
 #include <tabular/rgb.hpp>
 
 namespace tabular {
+  struct ColumnLines {
+    std::string line;
+    size_t display_width;
+
+    ColumnLines(std::string line, size_t width) : line(std::move(line)), display_width(width) {}
+  };
+
   class Column {
     // styles applied to the column content
     // If empty, start with ANSI CSI + style + ";",
