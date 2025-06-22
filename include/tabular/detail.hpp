@@ -670,17 +670,18 @@ namespace tabular {
 
       inline std::string format_table(Table& table, bool disabled_styles,
                                       bool& multi_byte_characters_flag, FILE* stream) {
-        // result
-        std::string formatted_table;
-
         if (table.rows.empty())
           return "";
+
+        // result
+        std::string formatted_table;
 
         if (table.get().width() == 0) {
           unsigned short terminal_width = detail::utils::get_terminal_width(stream);
 
           // setting the width via the percent
-          table.set().width((terminal_width * table.get().width_percent()) / 100);
+          if (terminal_width != 0)
+            table.set().width((terminal_width * table.get().width_percent()) / 100);
         }
 
         // return code

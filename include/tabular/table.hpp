@@ -124,11 +124,11 @@ public:
     std::vector<Row> rows;
 
     Table()
-        : width(0),
-          width_percent(60),
-          non_tty_width(60),
+        : width(50),
+          width_percent(50),
+          non_tty_width(50),
           columns_number(0),
-          back_limit_percent(30),
+          back_limit_percent(25),
           separated_rows(true),
           disabled_styles(false),
           regular(true) {}

@@ -19,7 +19,7 @@
 #include <vector>
 
 #include <tabular/alignment.hpp>
-#include <tabular/attributes.hpp>
+#include <tabular/attribute.hpp>
 #include <tabular/colors.hpp>
 #include <tabular/global.hpp>
 #include <tabular/rgb.hpp>
