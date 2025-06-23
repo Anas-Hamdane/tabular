@@ -387,7 +387,7 @@ namespace tabular {
         size_t result = 0;
         for (const Column& column : row.columns) {
           size_t splitted_content_size = column.get().lines().size();
-          result = std::max(result, splitted_content_size);
+          result = (std::max)(result, splitted_content_size);
         }
 
         return result;
