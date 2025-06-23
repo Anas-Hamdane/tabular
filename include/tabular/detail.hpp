@@ -387,7 +387,7 @@ namespace tabular {
         size_t result = 0;
         for (const Column& column : row.columns) {
           size_t splitted_content_size = column.get().lines().size();
-          result = std::max(result, splitted_content_size);
+          result = (std::max)(result, splitted_content_size);
         }
 
         return result;
@@ -618,7 +618,7 @@ namespace tabular {
         // clang-format off
         #if defined(WINDOWS)
           HANDLE handle;
-          if (std == STD::Out)
+          if (stream == STD::Out)
             handle = GetStdHandle(STD_OUTPUT_HANDLE);
           else
             handle = GetStdHandle(STD_ERROR_HANDLE);
