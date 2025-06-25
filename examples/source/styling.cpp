@@ -37,6 +37,8 @@ int main(int argc, char* argv[]) {
     table[row][0].config().width(9).alignment(Alignment::center);
     table[row][1].config().width(16).alignment(Alignment::center);
     table[row][2].config().width(16).alignment(Alignment::center);
+    table[row][3].config().width(10).alignment(Alignment::center);
+    table[row][4].config().width(13).alignment(Alignment::center);
   }
 
   for (int row = 1; row <= 5; ++row) {
@@ -46,7 +48,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Status Colors
-  std::vector<RGB> status_colors = {
+  const std::vector<RGB> status_colors = {
       RGB(34, 197, 94),  // In Progress
       RGB(59, 130, 246), // Completed
       RGB(249, 115, 22), // Testing
@@ -59,7 +61,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Priority Colors
-  std::vector<RGB> priority_colors = {
+  const std::vector<RGB> priority_colors = {
       RGB(255, 20, 50),  // High
       RGB(170, 100, 25), // Medium
       RGB(255, 20, 50),  // High

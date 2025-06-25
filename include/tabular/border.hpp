@@ -50,18 +50,17 @@ namespace tabular {
     BorderGlyphs colors;
     BorderGlyphs background_colors;
 
-    bool is_multi_byte;
     bool disabled_styles;
 
     mutable BorderGlyphs cached_glyphs;
     mutable bool valid_cache;
 
-    static std::string solve_color(Color color, bool is_background) {
-      int code = static_cast<int>(color) + (is_background ? 10 : 0);
+    static std::string solve_color(Color color, const bool is_background) {
+      const int code = static_cast<int>(color) + (is_background ? 10 : 0);
       return ansi::CSI + std::to_string(code) + ansi::suffix;
     }
 
-    static std::string solve_color(RGB rgb, bool is_background) {
+    static std::string solve_color(const RGB rgb, const bool is_background) {
       std::string result;
       result.reserve(20);
 
@@ -75,7 +74,7 @@ namespace tabular {
       return result;
     }
 
-    void invalidate_cache() {
+    void invalidate_cache() const {
       if (this->valid_cache)
         this->valid_cache = false;
     }
@@ -84,7 +83,7 @@ namespace tabular {
       Border& border;
 
   public:
-      Getters(Border& border) : border(border) {}
+      explicit Getters(Border& border) : border(border) {}
 
       static const BorderGlyphs& style_templates(BorderStyle style) {
 
@@ -249,16 +248,16 @@ namespace tabular {
       }
 
   public:
-      Parts(Border& border) : border(border) {}
+      explicit Parts(Border& border) : border(border) {}
 
       /*
        * Note: It is the user's responsibility to ensure that each border glyph is a single
        * terminal column wide. If a string with a visual width > 1 is provided, the table
        * layout may break.
        *
-       * Using str.length() is unreliable for multi-byte characters,
-       * and calling utils::mbswidth() on every assignment would
-       * introduce unnecessary performance overhead.
+       * Using str.length() is unreliable for multibyte characters,
+       * and calling custom display width functions on every
+       * assignment would introduce unnecessary performance overhead.
        *
        * — Anas Hamdane, 2025-06-14
        */
@@ -312,15 +311,15 @@ namespace tabular {
       Border& border;
 
   public:
-      Setters(Border& border) : border(border) {}
+      explicit Setters(Border& border) : border(border) {}
 
-      Setters& disabled_styles(bool is_disabled) {
+      Setters& disabled_styles(const bool is_disabled) {
         border.disabled_styles = is_disabled;
         border.invalidate_cache();
         return *this;
       }
 
-      Setters& style(BorderStyle style) {
+      Setters& style(const BorderStyle style) {
         border.style = style;
         border.invalidate_cache();
         return *this;
@@ -331,17 +330,17 @@ namespace tabular {
       Border& border;
 
   public:
-      Coloring(Border& border) : border(border) {}
+      explicit Coloring(Border& border) : border(border) {}
 
       /* ------------------ full ------------------------ */
-      Coloring& full(Color color) {
+      Coloring& full(const Color color) {
         horizontal(color);
         vertical(color);
 
         return *this;
       }
 
-      Coloring& full(RGB rgb) {
+      Coloring& full(const RGB rgb) {
         horizontal(rgb);
         vertical(rgb);
 
@@ -349,8 +348,8 @@ namespace tabular {
       }
 
       /* ------------------ horizontal ------------------------ */
-      Coloring& horizontal(Color color) {
-        border.colors.horizontal = border.solve_color(color, false);
+      Coloring& horizontal(const Color color) {
+        border.colors.horizontal = tabular::Border::solve_color(color, false);
 
         top_connector(color);
         bottom_connector(color);
@@ -361,8 +360,8 @@ namespace tabular {
         return *this;
       }
 
-      Coloring& horizontal(RGB rgb) {
-        border.colors.horizontal = border.solve_color(rgb, false);
+      Coloring& horizontal(const RGB rgb) {
+        border.colors.horizontal = tabular::Border::solve_color(rgb, false);
 
         top_connector(rgb);
         bottom_connector(rgb);
@@ -373,37 +372,37 @@ namespace tabular {
         return *this;
       }
 
-      Coloring& bottom_connector(Color color) {
-        border.colors.bottom_connector = border.solve_color(color, false);
+      Coloring& bottom_connector(const Color color) {
+        border.colors.bottom_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_connector(RGB rgb) {
-        border.colors.bottom_connector = border.solve_color(rgb, false);
+      Coloring& bottom_connector(const RGB rgb) {
+        border.colors.bottom_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_connector(Color color) {
-        border.colors.top_connector = border.solve_color(color, false);
+      Coloring& top_connector(const Color color) {
+        border.colors.top_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_connector(RGB rgb) {
-        border.colors.top_connector = border.solve_color(rgb, false);
+      Coloring& top_connector(const RGB rgb) {
+        border.colors.top_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ vertical ------------------------ */
-      Coloring& vertical(Color color) {
-        border.colors.vertical = border.solve_color(color, false);
+      Coloring& vertical(const Color color) {
+        border.colors.vertical = tabular::Border::solve_color(color, false);
 
         left_connector(color);
         right_connector(color);
@@ -414,8 +413,8 @@ namespace tabular {
         return *this;
       }
 
-      Coloring& vertical(RGB rgb) {
-        border.colors.vertical = border.solve_color(rgb, false);
+      Coloring& vertical(const RGB rgb) {
+        border.colors.vertical = tabular::Border::solve_color(rgb, false);
 
         left_connector(rgb);
         right_connector(rgb);
@@ -426,36 +425,36 @@ namespace tabular {
         return *this;
       }
 
-      Coloring& left_connector(Color color) {
-        border.colors.left_connector = border.solve_color(color, false);
+      Coloring& left_connector(const Color color) {
+        border.colors.left_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& left_connector(RGB rgb) {
-        border.colors.left_connector = border.solve_color(rgb, false);
+      Coloring& left_connector(const RGB rgb) {
+        border.colors.left_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& right_connector(Color color) {
-        border.colors.right_connector = border.solve_color(color, false);
+      Coloring& right_connector(const Color color) {
+        border.colors.right_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& right_connector(RGB rgb) {
-        border.colors.right_connector = border.solve_color(rgb, false);
+      Coloring& right_connector(const RGB rgb) {
+        border.colors.right_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ corners ------------------------ */
-      Coloring& corners(Color color) {
+      Coloring& corners(const Color color) {
         top_left_corner(color);
         top_right_corner(color);
 
@@ -465,7 +464,7 @@ namespace tabular {
         return *this;
       }
 
-      Coloring& corners(RGB rgb) {
+      Coloring& corners(const RGB rgb) {
         top_left_corner(rgb);
         top_right_corner(rgb);
 
@@ -475,72 +474,72 @@ namespace tabular {
         return *this;
       }
 
-      Coloring& top_left_corner(Color color) {
-        border.colors.top_left_corner = border.solve_color(color, false);
+      Coloring& top_left_corner(const Color color) {
+        border.colors.top_left_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_left_corner(RGB rgb) {
-        border.colors.top_left_corner = border.solve_color(rgb, false);
+      Coloring& top_left_corner(const RGB rgb) {
+        border.colors.top_left_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_right_corner(Color color) {
-        border.colors.top_right_corner = border.solve_color(color, false);
+      Coloring& top_right_corner(const Color color) {
+        border.colors.top_right_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_right_corner(RGB rgb) {
-        border.colors.top_right_corner = border.solve_color(rgb, false);
+      Coloring& top_right_corner(const RGB rgb) {
+        border.colors.top_right_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_left_corner(Color color) {
-        border.colors.bottom_left_corner = border.solve_color(color, false);
+      Coloring& bottom_left_corner(const Color color) {
+        border.colors.bottom_left_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_left_corner(RGB rgb) {
-        border.colors.bottom_left_corner = border.solve_color(rgb, false);
+      Coloring& bottom_left_corner(const RGB rgb) {
+        border.colors.bottom_left_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_right_corner(Color color) {
-        border.colors.bottom_right_corner = border.solve_color(color, false);
+      Coloring& bottom_right_corner(const Color color) {
+        border.colors.bottom_right_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_right_corner(RGB rgb) {
-        border.colors.bottom_right_corner = border.solve_color(rgb, false);
+      Coloring& bottom_right_corner(const RGB rgb) {
+        border.colors.bottom_right_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ intersection point ------------------------ */
-      Coloring& intersection(Color color) {
-        border.colors.intersection = border.solve_color(color, false);
+      Coloring& intersection(const Color color) {
+        border.colors.intersection = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& intersection(RGB rgb) {
-        border.colors.intersection = border.solve_color(rgb, false);
+      Coloring& intersection(const RGB rgb) {
+        border.colors.intersection = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
@@ -550,23 +549,18 @@ namespace tabular {
     class BackgroundColoring {
       Border& border;
 
-      void invalidate_cache() {
-        if (border.valid_cache)
-          border.valid_cache = false;
-      }
-
   public:
-      BackgroundColoring(Border& border) : border(border) {}
+      explicit BackgroundColoring(Border& border) : border(border) {}
 
       /* ------------------ full ------------------------ */
-      BackgroundColoring& full(Color color) {
+      BackgroundColoring& full(const Color color) {
         horizontal(color);
         vertical(color);
 
         return *this;
       }
 
-      BackgroundColoring& full(RGB rgb) {
+      BackgroundColoring& full(const RGB rgb) {
         horizontal(rgb);
         vertical(rgb);
 
@@ -574,8 +568,8 @@ namespace tabular {
       }
 
       /* ------------------ horizontal ------------------------ */
-      BackgroundColoring& horizontal(Color color) {
-        border.background_colors.horizontal = border.solve_color(color, true);
+      BackgroundColoring& horizontal(const Color color) {
+        border.background_colors.horizontal = tabular::Border::solve_color(color, true);
 
         top_connector(color);
         bottom_connector(color);
@@ -586,8 +580,8 @@ namespace tabular {
         return *this;
       }
 
-      BackgroundColoring& horizontal(RGB rgb) {
-        border.background_colors.horizontal = border.solve_color(rgb, true);
+      BackgroundColoring& horizontal(const RGB rgb) {
+        border.background_colors.horizontal = tabular::Border::solve_color(rgb, true);
 
         top_connector(rgb);
         bottom_connector(rgb);
@@ -598,37 +592,37 @@ namespace tabular {
         return *this;
       }
 
-      BackgroundColoring& bottom_connector(Color color) {
-        border.background_colors.bottom_connector = border.solve_color(color, true);
+      BackgroundColoring& bottom_connector(const Color color) {
+        border.background_colors.bottom_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_connector(RGB rgb) {
-        border.background_colors.bottom_connector = border.solve_color(rgb, true);
+      BackgroundColoring& bottom_connector(const RGB rgb) {
+        border.background_colors.bottom_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_connector(Color color) {
-        border.background_colors.top_connector = border.solve_color(color, true);
+      BackgroundColoring& top_connector(const Color color) {
+        border.background_colors.top_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_connector(RGB rgb) {
-        border.background_colors.top_connector = border.solve_color(rgb, true);
+      BackgroundColoring& top_connector(const RGB rgb) {
+        border.background_colors.top_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ vertical ------------------------ */
-      BackgroundColoring& vertical(Color color) {
-        border.background_colors.vertical = border.solve_color(color, true);
+      BackgroundColoring& vertical(const Color color) {
+        border.background_colors.vertical = tabular::Border::solve_color(color, true);
 
         left_connector(color);
         right_connector(color);
@@ -639,8 +633,8 @@ namespace tabular {
         return *this;
       }
 
-      BackgroundColoring& vertical(RGB rgb) {
-        border.background_colors.vertical = border.solve_color(rgb, true);
+      BackgroundColoring& vertical(const RGB rgb) {
+        border.background_colors.vertical = tabular::Border::solve_color(rgb, true);
 
         left_connector(rgb);
         right_connector(rgb);
@@ -651,36 +645,36 @@ namespace tabular {
         return *this;
       }
 
-      BackgroundColoring& left_connector(Color color) {
-        border.background_colors.left_connector = border.solve_color(color, true);
+      BackgroundColoring& left_connector(const Color color) {
+        border.background_colors.left_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& left_connector(RGB rgb) {
-        border.background_colors.left_connector = border.solve_color(rgb, true);
+      BackgroundColoring& left_connector(const RGB rgb) {
+        border.background_colors.left_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& right_connector(Color color) {
-        border.background_colors.right_connector = border.solve_color(color, true);
+      BackgroundColoring& right_connector(const Color color) {
+        border.background_colors.right_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& right_connector(RGB rgb) {
-        border.background_colors.right_connector = border.solve_color(rgb, true);
+      BackgroundColoring& right_connector(const RGB rgb) {
+        border.background_colors.right_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ corners ------------------------ */
-      BackgroundColoring& corners(Color color) {
+      BackgroundColoring& corners(const Color color) {
         top_left_corner(color);
         top_right_corner(color);
 
@@ -690,7 +684,7 @@ namespace tabular {
         return *this;
       }
 
-      BackgroundColoring& corners(RGB rgb) {
+      BackgroundColoring& corners(const RGB rgb) {
         top_left_corner(rgb);
         top_right_corner(rgb);
 
@@ -700,72 +694,72 @@ namespace tabular {
         return *this;
       }
 
-      BackgroundColoring& top_left_corner(Color color) {
-        border.background_colors.top_left_corner = border.solve_color(color, true);
+      BackgroundColoring& top_left_corner(const Color color) {
+        border.background_colors.top_left_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_left_corner(RGB rgb) {
-        border.background_colors.top_left_corner = border.solve_color(rgb, true);
+      BackgroundColoring& top_left_corner(const RGB rgb) {
+        border.background_colors.top_left_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_right_corner(Color color) {
-        border.background_colors.top_right_corner = border.solve_color(color, true);
+      BackgroundColoring& top_right_corner(const Color color) {
+        border.background_colors.top_right_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_right_corner(RGB rgb) {
-        border.background_colors.top_right_corner = border.solve_color(rgb, true);
+      BackgroundColoring& top_right_corner(const RGB rgb) {
+        border.background_colors.top_right_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_left_corner(Color color) {
-        border.background_colors.bottom_left_corner = border.solve_color(color, true);
+      BackgroundColoring& bottom_left_corner(const Color color) {
+        border.background_colors.bottom_left_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_left_corner(RGB rgb) {
-        border.background_colors.bottom_left_corner = border.solve_color(rgb, true);
+      BackgroundColoring& bottom_left_corner(const RGB rgb) {
+        border.background_colors.bottom_left_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_right_corner(Color color) {
-        border.background_colors.bottom_right_corner = border.solve_color(color, true);
+      BackgroundColoring& bottom_right_corner(const Color color) {
+        border.background_colors.bottom_right_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_right_corner(RGB rgb) {
-        border.background_colors.bottom_right_corner = border.solve_color(rgb, true);
+      BackgroundColoring& bottom_right_corner(const RGB rgb) {
+        border.background_colors.bottom_right_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ intersection point ------------------------ */
-      BackgroundColoring& intersection(Color color) {
-        border.background_colors.intersection = border.solve_color(color, true);
+      BackgroundColoring& intersection(const Color color) {
+        border.background_colors.intersection = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& intersection(RGB rgb) {
-        border.background_colors.intersection = border.solve_color(rgb, true);
+      BackgroundColoring& intersection(const RGB rgb) {
+        border.background_colors.intersection = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;

@@ -117,30 +117,30 @@ namespace tabular {
   struct RGB {
     uint8_t r, g, b;
 
-    RGB(uint8_t r, uint8_t g, uint8_t b) : r(r), g(g), b(b) {}
+    RGB(const uint8_t r, const uint8_t g, const uint8_t b) : r(r), g(g), b(b) {}
   };
 
   struct ColumnLines {
     std::string line;
     size_t display_width;
 
-    ColumnLines(std::string line, size_t width) : line(std::move(line)), display_width(width) {}
+    ColumnLines(std::string line, const size_t width) : line(std::move(line)), display_width(width) {}
   };
 
   namespace ansi {
     // table ANSI printing
-    constexpr const char* TABLE_MODE = "\x1b(0";
-    constexpr const char* RESET_TABLE_MODE = "\x1B(B";
+    constexpr auto TABLE_MODE = "\x1b(0";
+    constexpr auto RESET_TABLE_MODE = "\x1B(B";
 
     // Control sequence introducer (for font styles and colors)
-    constexpr const char* CSI = "\x1b[";
-    constexpr const char* RESET = "\x1b[0m";
+    constexpr auto CSI = "\x1b[";
+    constexpr auto RESET = "\x1b[0m";
 
     // end of an ansi sequence
-    constexpr const char suffix = 'm';
+    constexpr char suffix = 'm';
 
-    constexpr const char* FG_COLOR_RESET = "\x1b[39m";
-    constexpr const char* BG_COLOR_RESET = "\x1b[49m";
+    constexpr auto FG_COLOR_RESET = "\x1b[39m";
+    constexpr auto BG_COLOR_RESET = "\x1b[49m";
   } // namespace ansi
 
   class Column {
@@ -175,9 +175,9 @@ namespace tabular {
       Column& column;
 
   public:
-      Config(Column& column) : column(column) {}
+      explicit Config(Column& column) : column(column) {}
 
-      Config& alignment(Alignment align) {
+      Config& alignment(const Alignment align) {
         column.alignment = align;
 
         return *this;
@@ -192,30 +192,34 @@ namespace tabular {
         return *this;
       }
 
-      Config& padding(int padd) {
-        if (padd <= 0)
-          padd = 0;
+      Config& padding(const int pad) {
+        if (pad <= 0) {
+          column.top_padding = 0;
+          column.bottom_padding = 0;
+        }
 
-        column.top_padding = padd;
-        column.bottom_padding = padd;
+        else {
+          column.top_padding = static_cast<unsigned int>(pad);
+          column.bottom_padding = static_cast<unsigned int>(pad);
+        }
 
         return *this;
       }
 
-      Config& top_padding(int padd) {
-        if (padd <= 0)
+      Config& top_padding(const int pad) {
+        if (pad <= 0)
           column.top_padding = 0;
         else
-          column.top_padding = static_cast<unsigned int>(padd);
+          column.top_padding = static_cast<unsigned int>(pad);
 
         return *this;
       }
 
-      Config& bottom_padding(int padd) {
-        if (padd <= 0)
+      Config& bottom_padding(const int pad) {
+        if (pad <= 0)
           column.bottom_padding = 0;
         else
-          column.bottom_padding = static_cast<unsigned int>(padd);
+          column.bottom_padding = static_cast<unsigned int>(pad);
 
         return *this;
       }
@@ -225,7 +229,7 @@ namespace tabular {
       Column& column;
 
   public:
-      Style(Column& column) : column(column) {}
+      explicit Style(Column& column) : column(column) {}
 
       Style& text_attribute(const Attribute& attribute) {
         if (column.text_attribute.empty())
@@ -298,7 +302,7 @@ namespace tabular {
       Column& column;
 
   public:
-      Setters(Column& column) : column(column) {}
+      explicit Setters(Column& column) : column(column) {}
 
       Setters& lines(const std::vector<ColumnLines>& lines) {
         column.lines = lines;
@@ -318,14 +322,14 @@ namespace tabular {
         return *this;
       }
 
-      // multi byte characters support
+      // multibyte characters support
       // (locale-independent but only utf8 encoding is supported)
-      Setters& multi_byte_characters(bool is_multi_byte) {
+      Setters& multi_byte_characters(const bool is_multi_byte) {
         column.multi_byte_characters = is_multi_byte;
         return *this;
       }
 
-      Setters& disabled_styles(bool is_disabled) {
+      Setters& disabled_styles(const bool is_disabled) {
         column.disabled_styles = is_disabled;
         return *this;
       }
@@ -335,7 +339,7 @@ namespace tabular {
       const Column& column;
 
   public:
-      Getters(const Column& column) : column(column) {}
+      explicit Getters(const Column& column) : column(column) {}
 
       Alignment alignment() const { return column.alignment; }
 
@@ -365,14 +369,14 @@ namespace tabular {
 public:
     std::string content;
 
-    Column(std::string content)
-        : content(std::move(content)),
-          alignment(Alignment::left),
+    explicit Column(std::string content)
+        : alignment(Alignment::left),
           width(0),
           top_padding(0),
           bottom_padding(0),
           multi_byte_characters(false),
-          disabled_styles(false) {}
+          disabled_styles(false),
+          content(std::move(content)) {}
 
     Config config() { return Config(*this); }
 
@@ -385,13 +389,13 @@ public:
 
   class Row {
 
-public:
+  public:
     std::vector<Column> columns;
 
-    Row(std::vector<Column>&& columns)
+    explicit Row(std::vector<Column>&& columns)
         : columns(std::move(columns)) {}
 
-    Column& operator[](int index) {
+    Column& operator[](const int index) {
       return this->columns.at(index);
     }
   };
@@ -403,18 +407,17 @@ public:
     BorderGlyphs colors;
     BorderGlyphs background_colors;
 
-    bool is_multi_byte;
     bool disabled_styles;
 
     mutable BorderGlyphs cached_glyphs;
     mutable bool valid_cache;
 
-    static std::string solve_color(Color color, bool is_background) {
-      int code = static_cast<int>(color) + (is_background ? 10 : 0);
+    static std::string solve_color(Color color, const bool is_background) {
+      const int code = static_cast<int>(color) + (is_background ? 10 : 0);
       return ansi::CSI + std::to_string(code) + ansi::suffix;
     }
 
-    static std::string solve_color(RGB rgb, bool is_background) {
+    static std::string solve_color(const RGB rgb, const bool is_background) {
       std::string result;
       result.reserve(20);
 
@@ -428,7 +431,7 @@ public:
       return result;
     }
 
-    void invalidate_cache() {
+    void invalidate_cache() const {
       if (this->valid_cache)
         this->valid_cache = false;
     }
@@ -437,7 +440,7 @@ public:
       Border& border;
 
   public:
-      Getters(Border& border) : border(border) {}
+      explicit Getters(Border& border) : border(border) {}
 
       static const BorderGlyphs& style_templates(BorderStyle style) {
 
@@ -602,16 +605,16 @@ public:
       }
 
   public:
-      Parts(Border& border) : border(border) {}
+      explicit Parts(Border& border) : border(border) {}
 
       /*
        * Note: It is the user's responsibility to ensure that each border glyph is a single
        * terminal column wide. If a string with a visual width > 1 is provided, the table
        * layout may break.
        *
-       * Using str.length() is unreliable for multi-byte characters,
-       * and calling utils::mbswidth() on every assignment would
-       * introduce unnecessary performance overhead.
+       * Using str.length() is unreliable for multibyte characters,
+       * and calling custom display width functions on every
+       * assignment would introduce unnecessary performance overhead.
        *
        * — Anas Hamdane, 2025-06-14
        */
@@ -665,15 +668,15 @@ public:
       Border& border;
 
   public:
-      Setters(Border& border) : border(border) {}
+      explicit Setters(Border& border) : border(border) {}
 
-      Setters& disabled_styles(bool is_disabled) {
+      Setters& disabled_styles(const bool is_disabled) {
         border.disabled_styles = is_disabled;
         border.invalidate_cache();
         return *this;
       }
 
-      Setters& style(BorderStyle style) {
+      Setters& style(const BorderStyle style) {
         border.style = style;
         border.invalidate_cache();
         return *this;
@@ -684,17 +687,17 @@ public:
       Border& border;
 
   public:
-      Coloring(Border& border) : border(border) {}
+      explicit Coloring(Border& border) : border(border) {}
 
       /* ------------------ full ------------------------ */
-      Coloring& full(Color color) {
+      Coloring& full(const Color color) {
         horizontal(color);
         vertical(color);
 
         return *this;
       }
 
-      Coloring& full(RGB rgb) {
+      Coloring& full(const RGB rgb) {
         horizontal(rgb);
         vertical(rgb);
 
@@ -702,8 +705,8 @@ public:
       }
 
       /* ------------------ horizontal ------------------------ */
-      Coloring& horizontal(Color color) {
-        border.colors.horizontal = border.solve_color(color, false);
+      Coloring& horizontal(const Color color) {
+        border.colors.horizontal = tabular::Border::solve_color(color, false);
 
         top_connector(color);
         bottom_connector(color);
@@ -714,8 +717,8 @@ public:
         return *this;
       }
 
-      Coloring& horizontal(RGB rgb) {
-        border.colors.horizontal = border.solve_color(rgb, false);
+      Coloring& horizontal(const RGB rgb) {
+        border.colors.horizontal = tabular::Border::solve_color(rgb, false);
 
         top_connector(rgb);
         bottom_connector(rgb);
@@ -726,37 +729,37 @@ public:
         return *this;
       }
 
-      Coloring& bottom_connector(Color color) {
-        border.colors.bottom_connector = border.solve_color(color, false);
+      Coloring& bottom_connector(const Color color) {
+        border.colors.bottom_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_connector(RGB rgb) {
-        border.colors.bottom_connector = border.solve_color(rgb, false);
+      Coloring& bottom_connector(const RGB rgb) {
+        border.colors.bottom_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_connector(Color color) {
-        border.colors.top_connector = border.solve_color(color, false);
+      Coloring& top_connector(const Color color) {
+        border.colors.top_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_connector(RGB rgb) {
-        border.colors.top_connector = border.solve_color(rgb, false);
+      Coloring& top_connector(const RGB rgb) {
+        border.colors.top_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ vertical ------------------------ */
-      Coloring& vertical(Color color) {
-        border.colors.vertical = border.solve_color(color, false);
+      Coloring& vertical(const Color color) {
+        border.colors.vertical = tabular::Border::solve_color(color, false);
 
         left_connector(color);
         right_connector(color);
@@ -767,8 +770,8 @@ public:
         return *this;
       }
 
-      Coloring& vertical(RGB rgb) {
-        border.colors.vertical = border.solve_color(rgb, false);
+      Coloring& vertical(const RGB rgb) {
+        border.colors.vertical = tabular::Border::solve_color(rgb, false);
 
         left_connector(rgb);
         right_connector(rgb);
@@ -779,36 +782,36 @@ public:
         return *this;
       }
 
-      Coloring& left_connector(Color color) {
-        border.colors.left_connector = border.solve_color(color, false);
+      Coloring& left_connector(const Color color) {
+        border.colors.left_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& left_connector(RGB rgb) {
-        border.colors.left_connector = border.solve_color(rgb, false);
+      Coloring& left_connector(const RGB rgb) {
+        border.colors.left_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& right_connector(Color color) {
-        border.colors.right_connector = border.solve_color(color, false);
+      Coloring& right_connector(const Color color) {
+        border.colors.right_connector = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& right_connector(RGB rgb) {
-        border.colors.right_connector = border.solve_color(rgb, false);
+      Coloring& right_connector(const RGB rgb) {
+        border.colors.right_connector = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ corners ------------------------ */
-      Coloring& corners(Color color) {
+      Coloring& corners(const Color color) {
         top_left_corner(color);
         top_right_corner(color);
 
@@ -818,7 +821,7 @@ public:
         return *this;
       }
 
-      Coloring& corners(RGB rgb) {
+      Coloring& corners(const RGB rgb) {
         top_left_corner(rgb);
         top_right_corner(rgb);
 
@@ -828,72 +831,72 @@ public:
         return *this;
       }
 
-      Coloring& top_left_corner(Color color) {
-        border.colors.top_left_corner = border.solve_color(color, false);
+      Coloring& top_left_corner(const Color color) {
+        border.colors.top_left_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_left_corner(RGB rgb) {
-        border.colors.top_left_corner = border.solve_color(rgb, false);
+      Coloring& top_left_corner(const RGB rgb) {
+        border.colors.top_left_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_right_corner(Color color) {
-        border.colors.top_right_corner = border.solve_color(color, false);
+      Coloring& top_right_corner(const Color color) {
+        border.colors.top_right_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& top_right_corner(RGB rgb) {
-        border.colors.top_right_corner = border.solve_color(rgb, false);
+      Coloring& top_right_corner(const RGB rgb) {
+        border.colors.top_right_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_left_corner(Color color) {
-        border.colors.bottom_left_corner = border.solve_color(color, false);
+      Coloring& bottom_left_corner(const Color color) {
+        border.colors.bottom_left_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_left_corner(RGB rgb) {
-        border.colors.bottom_left_corner = border.solve_color(rgb, false);
+      Coloring& bottom_left_corner(const RGB rgb) {
+        border.colors.bottom_left_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_right_corner(Color color) {
-        border.colors.bottom_right_corner = border.solve_color(color, false);
+      Coloring& bottom_right_corner(const Color color) {
+        border.colors.bottom_right_corner = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& bottom_right_corner(RGB rgb) {
-        border.colors.bottom_right_corner = border.solve_color(rgb, false);
+      Coloring& bottom_right_corner(const RGB rgb) {
+        border.colors.bottom_right_corner = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ intersection point ------------------------ */
-      Coloring& intersection(Color color) {
-        border.colors.intersection = border.solve_color(color, false);
+      Coloring& intersection(const Color color) {
+        border.colors.intersection = tabular::Border::solve_color(color, false);
 
         border.invalidate_cache();
         return *this;
       }
 
-      Coloring& intersection(RGB rgb) {
-        border.colors.intersection = border.solve_color(rgb, false);
+      Coloring& intersection(const RGB rgb) {
+        border.colors.intersection = tabular::Border::solve_color(rgb, false);
 
         border.invalidate_cache();
         return *this;
@@ -903,23 +906,18 @@ public:
     class BackgroundColoring {
       Border& border;
 
-      void invalidate_cache() {
-        if (border.valid_cache)
-          border.valid_cache = false;
-      }
-
   public:
-      BackgroundColoring(Border& border) : border(border) {}
+      explicit BackgroundColoring(Border& border) : border(border) {}
 
       /* ------------------ full ------------------------ */
-      BackgroundColoring& full(Color color) {
+      BackgroundColoring& full(const Color color) {
         horizontal(color);
         vertical(color);
 
         return *this;
       }
 
-      BackgroundColoring& full(RGB rgb) {
+      BackgroundColoring& full(const RGB rgb) {
         horizontal(rgb);
         vertical(rgb);
 
@@ -927,8 +925,8 @@ public:
       }
 
       /* ------------------ horizontal ------------------------ */
-      BackgroundColoring& horizontal(Color color) {
-        border.background_colors.horizontal = border.solve_color(color, true);
+      BackgroundColoring& horizontal(const Color color) {
+        border.background_colors.horizontal = tabular::Border::solve_color(color, true);
 
         top_connector(color);
         bottom_connector(color);
@@ -939,8 +937,8 @@ public:
         return *this;
       }
 
-      BackgroundColoring& horizontal(RGB rgb) {
-        border.background_colors.horizontal = border.solve_color(rgb, true);
+      BackgroundColoring& horizontal(const RGB rgb) {
+        border.background_colors.horizontal = tabular::Border::solve_color(rgb, true);
 
         top_connector(rgb);
         bottom_connector(rgb);
@@ -951,37 +949,37 @@ public:
         return *this;
       }
 
-      BackgroundColoring& bottom_connector(Color color) {
-        border.background_colors.bottom_connector = border.solve_color(color, true);
+      BackgroundColoring& bottom_connector(const Color color) {
+        border.background_colors.bottom_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_connector(RGB rgb) {
-        border.background_colors.bottom_connector = border.solve_color(rgb, true);
+      BackgroundColoring& bottom_connector(const RGB rgb) {
+        border.background_colors.bottom_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_connector(Color color) {
-        border.background_colors.top_connector = border.solve_color(color, true);
+      BackgroundColoring& top_connector(const Color color) {
+        border.background_colors.top_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_connector(RGB rgb) {
-        border.background_colors.top_connector = border.solve_color(rgb, true);
+      BackgroundColoring& top_connector(const RGB rgb) {
+        border.background_colors.top_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ vertical ------------------------ */
-      BackgroundColoring& vertical(Color color) {
-        border.background_colors.vertical = border.solve_color(color, true);
+      BackgroundColoring& vertical(const Color color) {
+        border.background_colors.vertical = tabular::Border::solve_color(color, true);
 
         left_connector(color);
         right_connector(color);
@@ -992,8 +990,8 @@ public:
         return *this;
       }
 
-      BackgroundColoring& vertical(RGB rgb) {
-        border.background_colors.vertical = border.solve_color(rgb, true);
+      BackgroundColoring& vertical(const RGB rgb) {
+        border.background_colors.vertical = tabular::Border::solve_color(rgb, true);
 
         left_connector(rgb);
         right_connector(rgb);
@@ -1004,36 +1002,36 @@ public:
         return *this;
       }
 
-      BackgroundColoring& left_connector(Color color) {
-        border.background_colors.left_connector = border.solve_color(color, true);
+      BackgroundColoring& left_connector(const Color color) {
+        border.background_colors.left_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& left_connector(RGB rgb) {
-        border.background_colors.left_connector = border.solve_color(rgb, true);
+      BackgroundColoring& left_connector(const RGB rgb) {
+        border.background_colors.left_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& right_connector(Color color) {
-        border.background_colors.right_connector = border.solve_color(color, true);
+      BackgroundColoring& right_connector(const Color color) {
+        border.background_colors.right_connector = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& right_connector(RGB rgb) {
-        border.background_colors.right_connector = border.solve_color(rgb, true);
+      BackgroundColoring& right_connector(const RGB rgb) {
+        border.background_colors.right_connector = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ corners ------------------------ */
-      BackgroundColoring& corners(Color color) {
+      BackgroundColoring& corners(const Color color) {
         top_left_corner(color);
         top_right_corner(color);
 
@@ -1043,7 +1041,7 @@ public:
         return *this;
       }
 
-      BackgroundColoring& corners(RGB rgb) {
+      BackgroundColoring& corners(const RGB rgb) {
         top_left_corner(rgb);
         top_right_corner(rgb);
 
@@ -1053,72 +1051,72 @@ public:
         return *this;
       }
 
-      BackgroundColoring& top_left_corner(Color color) {
-        border.background_colors.top_left_corner = border.solve_color(color, true);
+      BackgroundColoring& top_left_corner(const Color color) {
+        border.background_colors.top_left_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_left_corner(RGB rgb) {
-        border.background_colors.top_left_corner = border.solve_color(rgb, true);
+      BackgroundColoring& top_left_corner(const RGB rgb) {
+        border.background_colors.top_left_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_right_corner(Color color) {
-        border.background_colors.top_right_corner = border.solve_color(color, true);
+      BackgroundColoring& top_right_corner(const Color color) {
+        border.background_colors.top_right_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& top_right_corner(RGB rgb) {
-        border.background_colors.top_right_corner = border.solve_color(rgb, true);
+      BackgroundColoring& top_right_corner(const RGB rgb) {
+        border.background_colors.top_right_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_left_corner(Color color) {
-        border.background_colors.bottom_left_corner = border.solve_color(color, true);
+      BackgroundColoring& bottom_left_corner(const Color color) {
+        border.background_colors.bottom_left_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_left_corner(RGB rgb) {
-        border.background_colors.bottom_left_corner = border.solve_color(rgb, true);
+      BackgroundColoring& bottom_left_corner(const RGB rgb) {
+        border.background_colors.bottom_left_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_right_corner(Color color) {
-        border.background_colors.bottom_right_corner = border.solve_color(color, true);
+      BackgroundColoring& bottom_right_corner(const Color color) {
+        border.background_colors.bottom_right_corner = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& bottom_right_corner(RGB rgb) {
-        border.background_colors.bottom_right_corner = border.solve_color(rgb, true);
+      BackgroundColoring& bottom_right_corner(const RGB rgb) {
+        border.background_colors.bottom_right_corner = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
       }
 
       /* ------------------ intersection point ------------------------ */
-      BackgroundColoring& intersection(Color color) {
-        border.background_colors.intersection = border.solve_color(color, true);
+      BackgroundColoring& intersection(const Color color) {
+        border.background_colors.intersection = tabular::Border::solve_color(color, true);
 
         border.invalidate_cache();
         return *this;
       }
 
-      BackgroundColoring& intersection(RGB rgb) {
-        border.background_colors.intersection = border.solve_color(rgb, true);
+      BackgroundColoring& intersection(const RGB rgb) {
+        border.background_colors.intersection = tabular::Border::solve_color(rgb, true);
 
         border.invalidate_cache();
         return *this;
@@ -1162,9 +1160,9 @@ public:
       Table& table;
 
   public:
-      Setters(Table& table) : table(table) {}
+      explicit Setters(Table& table) : table(table) {}
 
-      Setters& width(int width) {
+      Setters& width(const int width) {
         if (width > 0)
           table.width = static_cast<unsigned int>(width);
         else
@@ -1175,7 +1173,7 @@ public:
 
       // Sets the table width as a percentage of the total width of the terminal.
       // Values outside the 1–100 range are ignored.
-      Setters& width_percent(int percent) {
+      Setters& width_percent(const int percent) {
         if (percent > 0 && percent <= 100)
           table.width_percent = static_cast<uint8_t>(percent);
 
@@ -1184,7 +1182,7 @@ public:
 
       // Sets the wrap threshold as a percentage of the total width.
       // Values outside the 1–100 range are ignored.
-      Setters& back_limit_percent(int percent) {
+      Setters& back_limit_percent(const int percent) {
         if (percent > 0 && percent <= 100)
           table.back_limit_percent = static_cast<uint8_t>(percent);
 
@@ -1192,15 +1190,15 @@ public:
       }
 
       // Sets the table width for invalid output streams.
-      Setters& non_tty_width(int width) {
+      Setters& non_tty_width(const int width) {
         if (width > 0)
           table.non_tty_width = static_cast<unsigned int>(width);
 
         return *this;
       }
 
-      // multi-byte strings support
-      Setters& multi_byte_characters(bool is_multi_byte) {
+      // multibyte strings support
+      Setters& multi_byte_characters(const bool is_multi_byte) {
         for (Row& row : table.rows)
           for (Column& column : row.columns)
             column.set().multi_byte_characters(is_multi_byte);
@@ -1209,14 +1207,14 @@ public:
       }
 
       // border between rows
-      Setters& separated_rows(bool is_separated) {
+      Setters& separated_rows(const bool is_separated) {
         table.separated_rows = is_separated;
         return *this;
       }
 
       // disable the whole table styles.
       // useful when dealing with non-tty streams
-      Setters& disabled_styles(bool is_disabled) {
+      Setters& disabled_styles(const bool is_disabled) {
         table.disabled_styles = is_disabled;
         return *this;
       }
@@ -1226,7 +1224,7 @@ public:
       const Table& table;
 
   public:
-      Getters(const Table& table) : table(table) {}
+      explicit Getters(const Table& table) : table(table) {}
 
       unsigned int width() const { return table.width; }
 
@@ -1248,9 +1246,9 @@ public:
 
     Table()
         : width(50),
-          width_percent(50),
           non_tty_width(50),
           columns_number(0),
+          width_percent(50),
           back_limit_percent(25),
           separated_rows(true),
           disabled_styles(false),
@@ -1282,7 +1280,7 @@ public:
       return *this;
     }
 
-    Row& operator[](int index) {
+    Row& operator[](const int index) {
       return this->rows.at(index);
     }
   };
@@ -1364,7 +1362,7 @@ public:
           4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
       // binary search in `wide` array of `interval`s
-      inline bool wide_bisearch(uint32_t cp) noexcept {
+      inline bool wide_bisearch(const uint32_t cp) noexcept {
         if (cp < wide[0].first || cp > wide[wide_size - 1].last) {
           return false;
         }
@@ -1390,8 +1388,8 @@ public:
 
       /* Decode UTF-8 to code point */
       inline bool utf8_decode(const char* s, uint32_t& codepoint, int& consumed) {
-        const unsigned char* u = reinterpret_cast<const unsigned char*>(s);
-        unsigned char c = u[0];
+        auto* u = reinterpret_cast<const unsigned char*>(s);
+        const unsigned char c = u[0];
         consumed = utf8_len[c];
         if (consumed == 0) return false;
 
@@ -1412,11 +1410,12 @@ public:
             codepoint = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) |
                         ((u[2] & 0x3F) << 6) | (u[3] & 0x3F);
             return codepoint >= 0x10000 && codepoint <= 0x10FFFF;
+          default:
+            return false;
         }
-        return false;
       }
 
-      inline size_t wcwidth(uint32_t cp) noexcept {
+      inline size_t wcwidth(const uint32_t cp) noexcept {
         if (cp == 0) return 0;
 
         // custom check for tabular project
@@ -1427,10 +1426,10 @@ public:
 
       inline size_t utf8dw(const char* s) noexcept {
         size_t width = 0;
-        const unsigned char* p = reinterpret_cast<const unsigned char*>(s);
+        auto* p = reinterpret_cast<const unsigned char*>(s);
 
         while (*p) {
-          const unsigned char c = static_cast<unsigned char>(*p);
+          const auto c = static_cast<unsigned char>(*p);
 
           // ASCII chars
           if (c < 0x80) {
@@ -1466,7 +1465,7 @@ public:
       }
 
       /*
-       * Read a the next UTF-8 character (which may be 1-4 bytes long)
+       * Read the next UTF-8 character (which may be 1-4 bytes long)
        * starting at the specified position `pos` and copies it into
        * a provided buffer `buffer`.
        *
@@ -1480,9 +1479,9 @@ public:
        *               it returns false.
        *
        */
-      inline bool next_utf8_sequence(const std::string& str, char buffer[5], size_t pos,
+      inline bool next_utf8_sequence(const std::string& str, char buffer[5], const size_t pos,
                                      size_t& len) {
-        const unsigned char first_byte = static_cast<unsigned char>(str[pos]);
+        const auto first_byte = static_cast<unsigned char>(str[pos]);
 
         // the first byte MUST indicate the start of a UTF-8 sequence
         if ((first_byte & 0xC0) == 0x80 || pos >= str.length()) {
@@ -1529,7 +1528,7 @@ public:
     } // namespace codec
 
     namespace string_utils {
-      inline size_t display_width(const std::string& str, bool is_multi_byte) {
+      inline size_t display_width(const std::string& str, const bool is_multi_byte) {
         return is_multi_byte ? codec::utf8dw(str.c_str()) : str.length();
       }
 
@@ -1564,12 +1563,12 @@ public:
       // to align PPDirectives
       // clang-format off
       inline unsigned short get_terminal_width(FILE* stream) {
-        // in case of stdout we could check the environnement variable
+        // in case of stdout we could check the environment variable
         if (stream == stdout) {
           const char* columns_env = std::getenv("COLUMNS");
           if (columns_env != nullptr) {
             try {
-              int width_int = std::stoi(columns_env);
+              const int width_int = std::stoi(columns_env);
               if (width_int > 0 && width_int <= USHRT_MAX)
                 return static_cast<unsigned short>(width_int);
             } catch (...) {}
@@ -1582,7 +1581,7 @@ public:
           int fd = fileno(stream);
           if (!isatty(fd)) return 0; // Note a terminal
 
-          struct winsize ws;
+          winsize ws{};
           if (ioctl(fd, TIOCGWINSZ, &ws) == 0)
             width = ws.ws_col;
 
@@ -1590,7 +1589,7 @@ public:
           int fd = _fileno(stream);
           if (!_isatty(fd)) return 0; // Not a terminal
 
-          HANDLE hConsole = reinterpret_cast<HANDLE>(_get_osfhandle(fd)); 
+          HANDLE hConsole = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
           CONSOLE_SCREEN_BUFFER_INFO csbi;
 
           if (hConsole != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(hConsole, &csbi))
@@ -1603,12 +1602,12 @@ public:
       /*
        * return value:
        *  1: when everything is fine (success)
-       *  2: can't enable VTP for windows 
+       *  2: can't enable VTP for Windows
        *  3: `stream` is not a valid tty
        */
       inline int enable_ansi_support(FILE* stream) {
         /*
-         * for windows we should enable VTP mode
+         * for windows, we should enable VTP mode
          * to ensure that ansi escape sequences
          * will be displayed correctly.
          */
@@ -1648,11 +1647,11 @@ public:
     namespace printer {
       // returns the processed line
       inline void append_column_line(std::string& line, size_t& line_width,
-                                     size_t max_width, Column& column,
+                                     const size_t max_width, const Column& column,
                                      std::vector<ColumnLines>& result,
-                                     bool disabled_styles) {
+                                     const bool disabled_styles) {
         std::string formatted_line;
-        Alignment align = column.get().alignment();
+        const Alignment align = column.get().alignment();
 
         std::string styles;
 
@@ -1676,7 +1675,7 @@ public:
           start = 0;
 
         // calculating line size
-        size_t line_len = start + styles.size() +
+        const size_t line_len = start + styles.size() +
                           line.size() + (styles.empty() ? 0 : strlen(ansi::RESET));
         formatted_line.reserve(line_len);
 
@@ -1702,10 +1701,10 @@ public:
 
       inline void process_word(const std::string& word, size_t& word_width,
                                std::string& line, size_t& line_width,
-                               size_t max_width, size_t back_limit,
+                               const size_t max_width, const size_t back_limit,
                                std::vector<ColumnLines>& result, Column& column,
-                               bool disabled_styles) {
-        bool multi_byte_characters = column.get().multi_byte_characters();
+                               const bool disabled_styles) {
+        const bool multi_byte_characters = column.get().multi_byte_characters();
 
         if (line.empty() && word == " ")
           return;
@@ -1730,7 +1729,7 @@ public:
          */
 
         // space left
-        size_t remaining_space = max_width - line_width;
+        const size_t remaining_space = max_width - line_width;
 
         // append the line, and leave the current word for the next line,
         // since the remaining_space doesn't exceed the back_limit
@@ -1753,9 +1752,9 @@ public:
          * the first parts should fill int this line, with a hyphen
          * ONLY if multi_byte_characters = false, otherwise we will not,
          * since other languages like Japanese doesn't need (actually they shouldn't have)
-         * a hyphen at the end of a splitted word.
+         * a hyphen at the end of a split word.
          *
-         * The hardest part is handling multi-byte strings splitting.
+         * The hardest part is handling multibyte strings splitting.
          */
 
         // word parts
@@ -1764,7 +1763,7 @@ public:
 
         size_t first_part_width = 0;
 
-        // no multi-byte strings, basic case
+        // no multibyte strings, basic case
         if (!multi_byte_characters) {
           // -1 for the hyphen
           first_part = word.substr(0, remaining_space - 1) + '-';
@@ -1822,8 +1821,8 @@ public:
                      max_width, back_limit, result, column, disabled_styles);
       }
 
-      inline void format_column(Column& column, uint8_t back_limit_percent,
-                                bool disabled_styles, bool& multi_byte_characters_flag) {
+      inline void format_column(Column& column, const uint8_t back_limit_percent,
+                                const bool disabled_styles, bool& multi_byte_characters_flag) {
         const std::string& content = column.content;
         const bool multi_byte_characters = column.get().multi_byte_characters();
 
@@ -1835,8 +1834,8 @@ public:
           return;
         }
 
-        unsigned int top_padding = column.get().top_padding();
-        unsigned int bottom_padding = column.get().bottom_padding();
+        const unsigned int top_padding = column.get().top_padding();
+        const unsigned int bottom_padding = column.get().bottom_padding();
 
         // to avoid empty columns
         if (column.get().width() <= 2)
@@ -1850,7 +1849,7 @@ public:
         result.reserve(content.length() / max_width);
 
         // split the content into words to easily manipulate it
-        auto words = string_utils::split_text(content);
+        const auto words = string_utils::split_text(content);
 
         // TOP padding
         result.insert(result.end(), top_padding, ColumnLines("", 0));
@@ -1863,9 +1862,7 @@ public:
 
         std::string line;
         size_t line_width = 0;
-        for (auto it = words.begin(); it != words.end(); ++it) {
-          const std::string& word = *it;
-
+        for (auto & word : words) {
           // we need split
           size_t word_width = string_utils::display_width(word, multi_byte_characters);
 
@@ -1883,12 +1880,12 @@ public:
         column.set().lines(result);
       }
 
-      // return the size of the tallest splitted_content vector
+      // return the size of the tallest lines vector
       inline size_t tallest_cell(const Row& row) {
         size_t result = 0;
         for (const Column& column : row.columns) {
-          size_t splitted_content_size = column.get().lines().size();
-          result = std::max(result, splitted_content_size);
+          size_t lines_size = column.get().lines().size();
+          result = (std::max)(result, lines_size);
         }
 
         return result;
@@ -1916,7 +1913,7 @@ public:
           bool forced = false;
 
           for (Column& column : row.columns) {
-            unsigned int col_width = column.get().width();
+            const unsigned int col_width = column.get().width();
             if (col_width != 0) {
               table_usable_width -= col_width;
               columns_width += col_width;
@@ -1950,10 +1947,10 @@ public:
           if (columns_num == 0 && !forced)
             continue;
 
-          int indiv_column_width = 0;
+          int column_width = 0;
           int rest = 0;
           if (columns_num != 0) {
-            indiv_column_width = table_usable_width / columns_num;
+            column_width = table_usable_width / columns_num;
             rest = table_usable_width % columns_num;
           }
 
@@ -1961,7 +1958,7 @@ public:
             unsigned int width = column.get().width();
 
             if (width == 0 || forced) {
-              width = indiv_column_width + (rest > 0 ? 1 : 0);
+              width = column_width + (rest > 0 ? 1 : 0);
               if (rest > 0) rest--;
               column.set().width(width);
             }
@@ -1986,7 +1983,7 @@ public:
       inline void resolve_border(const std::string*& left_corner, const std::string*& right_corner,
                                  const std::string*& intersection, const std::string*& top_connector,
                                  const std::string*& bottom_connector, const BorderGlyphs& glyphs,
-                                 bool first, bool last) {
+                                 const bool first, const bool last) {
 
         if (first) {
           left_corner = &glyphs.top_left_corner;
@@ -2013,10 +2010,10 @@ public:
         }
       }
 
-      inline std::string print_border(std::vector<Row>::const_iterator& it,
+      inline std::string print_border(const std::vector<Row>::const_iterator& it,
                                       const BorderGlyphs& glyphs,
-                                      bool first, bool last,
-                                      size_t width) {
+                                      const bool first, const bool last,
+                                      const size_t width) {
         // result
         std::string border;
         border.reserve(width);
@@ -2070,7 +2067,7 @@ public:
         return border;
       }
 
-      inline std::string print_row(const Row& row, const BorderGlyphs& glyphs, size_t width) {
+      inline std::string print_row(const Row& row, const BorderGlyphs& glyphs, const size_t width) {
         std::string result;
 
         const std::string& vertical = glyphs.vertical;
@@ -2093,7 +2090,6 @@ public:
             if (lines_size > i) {
               const std::string& current_line = lines[i].line;
               const size_t current_line_size = lines[i].display_width;
-              const bool multi_byte_characters = column.get().multi_byte_characters();
 
               // appending the column
               result += column_background_color + current_line;
@@ -2119,7 +2115,7 @@ public:
         // clang-format off
         #if defined(WINDOWS)
           HANDLE handle;
-          if (std == STD::Out)
+          if (stream == STD::Out)
             handle = GetStdHandle(STD_OUTPUT_HANDLE);
           else
             handle = GetStdHandle(STD_ERROR_HANDLE);
@@ -2178,7 +2174,7 @@ public:
         std::string formatted_table;
 
         if (table.get().width() == 0) {
-          unsigned short terminal_width = detail::utils::get_terminal_width(stream);
+          const unsigned short terminal_width = detail::utils::get_terminal_width(stream);
 
           // setting the width via the percent
           if (terminal_width != 0)
@@ -2186,7 +2182,7 @@ public:
         }
 
         // return code
-        int rc = detail::utils::enable_ansi_support(stream);
+        const int rc = detail::utils::enable_ansi_support(stream);
 
         /*
          * In case enabling ansi escape sequences fail, or the `stream`
@@ -2201,14 +2197,14 @@ public:
           // in case it is not a TTY (for example the output stream is a file)
           // we will be applying the non_tui_width to prevent infinity loops
           // due to the large value of table.width because non-tty streams
-          // most of the times, don't have a limited columns number.
+          // most of the time, don't have a limited columns number.
           if (rc == 3)
             table.set().width(table.get().non_tty_width());
         }
 
         detail::printer::adjust_width(table);
 
-        uint8_t back_limit_percent = table.get().back_limit_percent();
+        const uint8_t back_limit_percent = table.get().back_limit_percent();
 
         for (Row& row : table.rows) {
           for (Column& column : row.columns) {
@@ -2223,7 +2219,7 @@ public:
           table.border().set().style(BorderStyle::standard);
 
         // border parts
-        BorderGlyphs glyphs = table.border().get().processed_glyphs();
+        const BorderGlyphs glyphs = table.border().get().processed_glyphs();
 
         if (table.border().get().style() != old_style)
           table.border().set().style(old_style);
@@ -2232,8 +2228,8 @@ public:
         const auto& rows = table.rows;
 
         bool is_first = true, is_last = (rows.size() == 1) ? true : false;
-        bool separated_rows = table.get().separated_rows();
-        size_t width = table.get().width();
+        const bool separated_rows = table.get().separated_rows();
+        const size_t width = table.get().width();
 
         auto it = rows.begin();
         formatted_table += detail::printer::print_border(it, glyphs, is_first, is_last, width);
@@ -2260,12 +2256,12 @@ public:
     } // namespace printer
   } // namespace detail
 
-  inline void print(Table& table, STD stream = STD::Out) {
+  inline void print(Table& table, const STD& stream = STD::Out) {
     bool multi_byte_characters_flag = false;
 
     FILE* file_stream = stream == STD::Out ? stdout : stderr;
 
-    std::string formatted_table =
+    const std::string formatted_table =
         detail::printer::format_table(table, table.get().disabled_styles(),
                                       multi_byte_characters_flag, file_stream);
 
@@ -2283,20 +2279,20 @@ public:
                                       multi_byte_characters_flag, file);
 
     // clang-format off
-    #if defined(WINDOWS)
-      int fd = _fileno(file);
-      HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
-      DWORD written;
+#if defined(WINDOWS)
+    int fd = _fileno(file);
+    HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+    DWORD written;
 
-      if (handle != INVALID_HANDLE_VALUE) {
-        WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
-        return;
-      }
-    #elif defined (UNIX_LIKE)
-      fwrite(formatted_table.c_str(), 1, formatted_table.length(), file);
-      fflush(file);
+    if (handle != INVALID_HANDLE_VALUE) {
+      WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
       return;
-    #endif
+    }
+#elif defined (UNIX_LIKE)
+    fwrite(formatted_table.c_str(), 1, formatted_table.length(), file);
+    fflush(file);
+    return;
+#endif
     // clang-format on
 
     // fallback

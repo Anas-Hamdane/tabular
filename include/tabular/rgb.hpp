@@ -20,7 +20,7 @@ namespace tabular {
   typedef struct RGB {
     uint8_t r, g, b;
 
-    RGB(uint8_t r, uint8_t g, uint8_t b) : r(r), g(g), b(b) {}
+    RGB(const uint8_t r, const uint8_t g, const uint8_t b) : r(r), g(g), b(b) {}
   } RGB;
 } // namespace tabular
 

@@ -22,10 +22,10 @@ namespace tabular {
 public:
     std::vector<Column> columns;
 
-    Row(std::vector<Column>&& columns)
+    explicit Row(std::vector<Column>&& columns)
         : columns(std::move(columns)) {}
 
-    Column& operator[](int index) {
+    Column& operator[](const int index) {
       return this->columns.at(index);
     }
   };

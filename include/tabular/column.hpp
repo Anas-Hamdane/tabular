@@ -29,7 +29,7 @@ namespace tabular {
     std::string line;
     size_t display_width;
 
-    ColumnLines(std::string line, size_t width) : line(std::move(line)), display_width(width) {}
+    ColumnLines(std::string line, const size_t width) : line(std::move(line)), display_width(width) {}
   };
 
   class Column {
@@ -64,9 +64,9 @@ namespace tabular {
       Column& column;
 
   public:
-      Config(Column& column) : column(column) {}
+      explicit Config(Column& column) : column(column) {}
 
-      Config& alignment(Alignment align) {
+      Config& alignment(const Alignment align) {
         column.alignment = align;
 
         return *this;
@@ -81,30 +81,34 @@ namespace tabular {
         return *this;
       }
 
-      Config& padding(int padd) {
-        if (padd <= 0)
-          padd = 0;
+      Config& padding(const int pad) {
+        if (pad <= 0) {
+          column.top_padding = 0;
+          column.bottom_padding = 0;
+        }
 
-        column.top_padding = padd;
-        column.bottom_padding = padd;
+        else {
+          column.top_padding = static_cast<unsigned int>(pad);
+          column.bottom_padding = static_cast<unsigned int>(pad);
+        }
 
         return *this;
       }
 
-      Config& top_padding(int padd) {
-        if (padd <= 0)
+      Config& top_padding(const int pad) {
+        if (pad <= 0)
           column.top_padding = 0;
         else
-          column.top_padding = static_cast<unsigned int>(padd);
+          column.top_padding = static_cast<unsigned int>(pad);
 
         return *this;
       }
 
-      Config& bottom_padding(int padd) {
-        if (padd <= 0)
+      Config& bottom_padding(const int pad) {
+        if (pad <= 0)
           column.bottom_padding = 0;
         else
-          column.bottom_padding = static_cast<unsigned int>(padd);
+          column.bottom_padding = static_cast<unsigned int>(pad);
 
         return *this;
       }
@@ -114,7 +118,7 @@ namespace tabular {
       Column& column;
 
   public:
-      Style(Column& column) : column(column) {}
+      explicit Style(Column& column) : column(column) {}
 
       Style& text_attribute(const Attribute& attribute) {
         if (column.text_attribute.empty())
@@ -187,7 +191,7 @@ namespace tabular {
       Column& column;
 
   public:
-      Setters(Column& column) : column(column) {}
+      explicit Setters(Column& column) : column(column) {}
 
       Setters& lines(const std::vector<ColumnLines>& lines) {
         column.lines = lines;
@@ -207,14 +211,14 @@ namespace tabular {
         return *this;
       }
 
-      // multi byte characters support
+      // multibyte characters support
       // (locale-independent but only utf8 encoding is supported)
-      Setters& multi_byte_characters(bool is_multi_byte) {
+      Setters& multi_byte_characters(const bool is_multi_byte) {
         column.multi_byte_characters = is_multi_byte;
         return *this;
       }
 
-      Setters& disabled_styles(bool is_disabled) {
+      Setters& disabled_styles(const bool is_disabled) {
         column.disabled_styles = is_disabled;
         return *this;
       }
@@ -224,7 +228,7 @@ namespace tabular {
       const Column& column;
 
   public:
-      Getters(const Column& column) : column(column) {}
+      explicit Getters(const Column& column) : column(column) {}
 
       Alignment alignment() const { return column.alignment; }
 
@@ -254,14 +258,14 @@ namespace tabular {
 public:
     std::string content;
 
-    Column(std::string content)
-        : content(std::move(content)),
-          alignment(Alignment::left),
+    explicit Column(std::string content)
+        : alignment(Alignment::left),
           width(0),
           top_padding(0),
           bottom_padding(0),
           multi_byte_characters(false),
-          disabled_styles(false) {}
+          disabled_styles(false),
+          content(std::move(content)) {}
 
     Config config() { return Config(*this); }
 

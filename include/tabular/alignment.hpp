@@ -20,6 +20,6 @@ namespace tabular {
     center,
     right
   };
-}
+} // namespace tabular
 
 #endif // TABULAR_ALIGNMENT_HPP

@@ -1,8 +1,6 @@
-// move utf8conv and display width stuff here
 #ifndef TABULAR_CODEC_HPP
 #define TABULAR_CODEC_HPP
 
-#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -84,7 +82,7 @@ namespace tabular {
           4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
       // binary search in `wide` array of `interval`s
-      inline bool wide_bisearch(uint32_t cp) noexcept {
+      inline bool wide_bisearch(const uint32_t cp) noexcept {
         if (cp < wide[0].first || cp > wide[wide_size - 1].last) {
           return false;
         }
@@ -110,8 +108,8 @@ namespace tabular {
 
       /* Decode UTF-8 to code point */
       inline bool utf8_decode(const char* s, uint32_t& codepoint, int& consumed) {
-        const unsigned char* u = reinterpret_cast<const unsigned char*>(s);
-        unsigned char c = u[0];
+        auto* u = reinterpret_cast<const unsigned char*>(s);
+        const unsigned char c = u[0];
         consumed = utf8_len[c];
         if (consumed == 0) return false;
 
@@ -132,11 +130,12 @@ namespace tabular {
             codepoint = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) |
                         ((u[2] & 0x3F) << 6) | (u[3] & 0x3F);
             return codepoint >= 0x10000 && codepoint <= 0x10FFFF;
+          default:
+            return false;
         }
-        return false;
       }
 
-      inline size_t wcwidth(uint32_t cp) noexcept {
+      inline size_t wcwidth(const uint32_t cp) noexcept {
         if (cp == 0) return 0;
 
         // custom check for tabular project
@@ -147,10 +146,10 @@ namespace tabular {
 
       inline size_t utf8dw(const char* s) noexcept {
         size_t width = 0;
-        const unsigned char* p = reinterpret_cast<const unsigned char*>(s);
+        auto* p = reinterpret_cast<const unsigned char*>(s);
 
         while (*p) {
-          const unsigned char c = static_cast<unsigned char>(*p);
+          const auto c = static_cast<unsigned char>(*p);
 
           // ASCII chars
           if (c < 0x80) {
@@ -186,7 +185,7 @@ namespace tabular {
       }
 
       /*
-       * Read a the next UTF-8 character (which may be 1-4 bytes long)
+       * Read the next UTF-8 character (which may be 1-4 bytes long)
        * starting at the specified position `pos` and copies it into
        * a provided buffer `buffer`.
        *
@@ -200,9 +199,9 @@ namespace tabular {
        *               it returns false.
        *
        */
-      inline bool next_utf8_sequence(const std::string& str, char buffer[5], size_t pos,
+      inline bool next_utf8_sequence(const std::string& str, char buffer[5], const size_t pos,
                                      size_t& len) {
-        const unsigned char first_byte = static_cast<unsigned char>(str[pos]);
+        const auto first_byte = static_cast<unsigned char>(str[pos]);
 
         // the first byte MUST indicate the start of a UTF-8 sequence
         if ((first_byte & 0xC0) == 0x80 || pos >= str.length()) {

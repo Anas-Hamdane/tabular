@@ -17,12 +17,12 @@
 #include <tabular/detail.hpp>
 
 namespace tabular {
-  inline void print(Table& table, STD stream = STD::Out) {
+  inline void print(Table& table, const STD& stream = STD::Out) {
     bool multi_byte_characters_flag = false;
 
     FILE* file_stream = stream == STD::Out ? stdout : stderr;
 
-    std::string formatted_table =
+    const std::string formatted_table =
         detail::printer::format_table(table, table.get().disabled_styles(),
                                       multi_byte_characters_flag, file_stream);
 

@@ -1,7 +1,10 @@
 notes.txt
 .vscode
+.idea
 build
 compile_commands.json
 .clangd
 .cache
 notes.txt
+cmake-build-debug
+cmake-build-release

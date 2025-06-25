@@ -37,18 +37,18 @@
 namespace tabular {
   namespace ansi {
     // table ANSI printing
-    constexpr const char* TABLE_MODE = "\x1b(0";
-    constexpr const char* RESET_TABLE_MODE = "\x1B(B";
+    constexpr auto TABLE_MODE = "\x1b(0";
+    constexpr auto RESET_TABLE_MODE = "\x1B(B";
 
     // Control sequence introducer (for font styles and colors)
-    constexpr const char* CSI = "\x1b[";
-    constexpr const char* RESET = "\x1b[0m";
+    constexpr auto CSI = "\x1b[";
+    constexpr auto RESET = "\x1b[0m";
 
     // end of an ansi sequence
-    constexpr const char suffix = 'm';
+    constexpr char suffix = 'm';
 
-    constexpr const char* FG_COLOR_RESET = "\x1b[39m";
-    constexpr const char* BG_COLOR_RESET = "\x1b[49m";
+    constexpr auto FG_COLOR_RESET = "\x1b[39m";
+    constexpr auto BG_COLOR_RESET = "\x1b[49m";
   } // namespace ansi
 } // namespace tabular
 
