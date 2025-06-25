@@ -1766,8 +1766,14 @@ public:
         // no multibyte strings, basic case
         if (!multi_byte_characters) {
           // -1 for the hyphen
-          first_part = word.substr(0, remaining_space - 1) + '-';
-          remainder = word.substr(remaining_space - 1);
+          if (max_width > 5) {
+            first_part = word.substr(0, remaining_space - 1) + '-';
+            remainder = word.substr(remaining_space - 1);
+          }
+          else {
+            first_part = word.substr(0, remaining_space);
+            remainder = word.substr(remaining_space);
+          }
 
           first_part_width = first_part.length();
         }
@@ -1816,7 +1822,8 @@ public:
 
         append_column_line(line, line_width, max_width, column, result, disabled_styles);
 
-        size_t remainder_width = word_width - first_part_width + ((multi_byte_characters) ? 0 : 1);
+        size_t remainder_width = word_width - first_part_width + ((multi_byte_characters) ? 0
+          : (max_width > 5) ? 1 : 0);
         process_word(remainder, remainder_width, line, line_width,
                      max_width, back_limit, result, column, disabled_styles);
       }
