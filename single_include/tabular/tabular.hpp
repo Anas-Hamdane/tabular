@@ -378,7 +378,6 @@ public:
   };
 
   class Row {
-
 public:
     std::vector<Column> columns;
 
@@ -1143,8 +1142,6 @@ public:
 
     // columns number to track Regularity
     unsigned int columns_number;
-
-    uint8_t width_percent;
     uint8_t back_limit_percent;
 
     // FLAGS
@@ -1164,15 +1161,6 @@ public:
           table.width = static_cast<unsigned int>(width);
         else
           table.width = 0;
-
-        return *this;
-      }
-
-      // Sets the table width as a percentage of the total width of the terminal.
-      // Values outside the 1–100 range are ignored.
-      Setters& width_percent(const int percent) {
-        if (percent > 0 && percent <= 100)
-          table.width_percent = static_cast<uint8_t>(percent);
 
         return *this;
       }
@@ -1229,8 +1217,6 @@ public:
 
       unsigned int width() const { return table.width; }
 
-      uint8_t width_percent() const { return table.width_percent; }
-
       uint8_t back_limit_percent() const { return table.back_limit_percent; }
 
       bool disable_styles() const { return table.disable_styles; }
@@ -1248,7 +1234,6 @@ public:
     Table()
         : width(50),
           columns_number(0),
-          width_percent(50),
           back_limit_percent(25),
           separate_rows(true),
           disable_styles(false),

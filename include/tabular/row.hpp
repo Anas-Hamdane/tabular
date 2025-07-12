@@ -18,7 +18,6 @@
 
 namespace tabular {
   class Row {
-
 public:
     std::vector<Column> columns;
 
