@@ -8,7 +8,7 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
-
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #ifndef TABULAR_COLUMN_HPP
@@ -58,7 +58,7 @@ namespace tabular {
     unsigned int bottom_padding;
 
     bool multi_byte_characters;
-    bool disabled_styles;
+    bool disable_styles;
 
     class Config {
       Column& column;
@@ -218,8 +218,8 @@ namespace tabular {
         return *this;
       }
 
-      Setters& disabled_styles(const bool is_disabled) {
-        column.disabled_styles = is_disabled;
+      Setters& disable_styles(const bool disabled) {
+        column.disable_styles = disabled;
         return *this;
       }
     };
@@ -252,7 +252,7 @@ namespace tabular {
 
       bool multi_byte_characters() const { return column.multi_byte_characters; }
 
-      bool disabled_styles() const { return column.disabled_styles; }
+      bool disable_styles() const { return column.disable_styles; }
     };
 
 public:
@@ -264,7 +264,7 @@ public:
           top_padding(0),
           bottom_padding(0),
           multi_byte_characters(false),
-          disabled_styles(false),
+          disable_styles(false),
           content(std::move(content)) {}
 
     Config config() { return Config(*this); }

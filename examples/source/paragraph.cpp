@@ -8,10 +8,10 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #include <tabular/tabular.hpp>
-// #include <tabular/tabular.hpp>
 
 int main() {
   using namespace tabular;
@@ -33,8 +33,7 @@ int main() {
       });
 
   // !IMPORTANT
-  table.set().multi_byte_characters(true).width_percent(100); // 100% of the terminal width
-
+  table.set().multi_byte_characters(true).width(100);
   table.border().set().style(BorderStyle::ansi);
 
   print(table);

@@ -8,10 +8,10 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #include <tabular/tabular.hpp>
-// #include <tabular/tabular.hpp>
 
 int main(int argc, char* argv[]) {
   using namespace tabular;
@@ -20,9 +20,9 @@ int main(int argc, char* argv[]) {
 
   // Add Rows
   table.add_row({"Item", "Quantity", "Unit Price"})
-    .add_row({"Apple",  "4",  "$0.50"})
-    .add_row({"Banana", "12", "$0.15"})
-    .add_row({"Cherry", "100","$0.02"});
+      .add_row({"Apple", "4", "$0.50"})
+      .add_row({"Banana", "12", "$0.15"})
+      .add_row({"Cherry", "100", "$0.02"});
 
   table[0][0].config().top_padding(1).alignment(Alignment::center);
   table[0][1].config().top_padding(1).alignment(Alignment::center);

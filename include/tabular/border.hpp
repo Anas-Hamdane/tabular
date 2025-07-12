@@ -8,7 +8,7 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
-
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #ifndef TABULAR_BORDER_HPP
@@ -16,6 +16,8 @@
 
 #include <array>
 #include <string>
+
+// includes everything we need
 #include <tabular/row.hpp>
 
 namespace tabular {
@@ -50,7 +52,7 @@ namespace tabular {
     BorderGlyphs colors;
     BorderGlyphs background_colors;
 
-    bool disabled_styles;
+    bool disable_styles;
 
     mutable BorderGlyphs cached_glyphs;
     mutable bool valid_cache;
@@ -86,7 +88,6 @@ namespace tabular {
       explicit Getters(Border& border) : border(border) {}
 
       static const BorderGlyphs& style_templates(BorderStyle style) {
-
         // clang-format off
         static const std::array<BorderGlyphs, 4> templates = {{
           {"", "", "", "", "", "", "", "", "", "", ""},
@@ -112,20 +113,30 @@ namespace tabular {
 
       BorderStyle style() const { return border.style; }
 
-      BorderGlyphs processed_glyphs() const {
+      BorderGlyphs process_glyphs() const {
         if (border.valid_cache)
           return border.cached_glyphs;
 
         const BorderGlyphs& def = style_templates(border.style);
+
+        // no need to build the glyphs
+        if (border.disable_styles) {
+          border.cached_glyphs = std::move(def);
+          border.valid_cache = true;
+          return def;
+        }
+
         BorderGlyphs result;
 
+        // help chosing the default glyph or a custom one
         auto pick = [](const std::string& val, const std::string& fallback) -> std::string {
           return val.empty() ? fallback : val;
         };
 
+        // help constructing the string
         auto wrap = [](const std::string& fg, const std::string& bg,
                        const std::string& val, const Border& border) -> std::string {
-          if ((fg.empty() && bg.empty()) || border.disabled_styles) return val;
+          if ((fg.empty() && bg.empty()) || border.disable_styles) return val;
           return fg + bg + val + ansi::RESET;
         };
 
@@ -234,7 +245,7 @@ namespace tabular {
 
       std::string bottom_connector() const { return border.glyphs.bottom_connector; }
 
-      bool disabled_styles() const { return border.disabled_styles; }
+      bool disable_styles() const { return border.disable_styles; }
     };
 
     class Parts {
@@ -313,8 +324,8 @@ namespace tabular {
   public:
       explicit Setters(Border& border) : border(border) {}
 
-      Setters& disabled_styles(const bool is_disabled) {
-        border.disabled_styles = is_disabled;
+      Setters& disable_styles(const bool disable) {
+        border.disable_styles = disable;
         border.invalidate_cache();
         return *this;
       }
@@ -767,7 +778,7 @@ namespace tabular {
     };
 
 public:
-    Border() : style(BorderStyle::standard), disabled_styles(false), valid_cache(false) {}
+    Border() : style(BorderStyle::standard), disable_styles(false), valid_cache(false) {}
 
     Getters get() { return Getters(*this); }
 

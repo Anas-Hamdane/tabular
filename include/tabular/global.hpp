@@ -8,30 +8,22 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
-
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #ifndef TABULAR_GLOBAL_HPP
 #define TABULAR_GLOBAL_HPP
 
 #define TABULAR_VERSION_MAJOR 1
-#define TABULAR_VERSION_MINOR 0
-#define TABULAR_VERSION_PATCH 1
-#define TABULAR_VERSION "1.0.1"
+#define TABULAR_VERSION_MINOR 1
+#define TABULAR_VERSION_PATCH 0
+#define TABULAR_VERSION "1.1.0"
 
 #if defined(_WIN32) || defined(_WIN64)
-#define WINDOWS
-#include <windows.h>
-#include <io.h> // for _isatty
+#include <windows.h> // for table rendering
+#include <io.h>
 #undef RGB
 
-#elif defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__linux__)
-#define UNIX_LIKE
-#include <sys/ioctl.h>
-#include <unistd.h>
-
-#else
-#error unsupported platform
 #endif
 
 namespace tabular {

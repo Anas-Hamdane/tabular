@@ -13,7 +13,7 @@
 
 cmake_minimum_required(VERSION 3.15)
 project(tabular
-  VERSION 1.0.1
+  VERSION 1.1.0
   DESCRIPTION "lightweight, header-only C++ library for creating well-formatted, fully-customizable CLI tables."
   LANGUAGES CXX)
 

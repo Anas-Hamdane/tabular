@@ -8,6 +8,7 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #include <tabular/tabular.hpp>

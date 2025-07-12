@@ -90,7 +90,9 @@ fclose(file);
 ```
 
 > [!NOTE]
-> if the output `FILE*` or `STD` is not a valid TTY, styles will be disabled.
+> in version v1.1.0+ the library doesn't care anymore whether the output stream
+> is a valid TTY or not, also for Windows, it doesn't enable VTP mode anymore,
+> you could do these steps yourself and disable/enable styles depending on your needs.
 
 **Result:**
 ![Basic Table Example](../img/basic_table.png)
@@ -229,7 +231,7 @@ table[0][2].style().text_attribute({Attribute::bold, Attribute::underline});
 
 > [!IMPORTANT]
 > Column configuration and styling must be done individually for each cell.
-There are no bulk helper methods provided.
+> There are no bulk helper methods provided.
 
 ## Border Control
 
@@ -318,6 +320,11 @@ Enable multi-byte support when your table contains:
 - Asian languages (Chinese, Japanese, Korean)
 - Special symbols and mathematical notation
 - Any non-ASCII text content
+
+> [!NOTE]
+> When multi-byte characters is enabled, the library assumes that every characters is either wide,
+> with a display width of 2, or a normal character, with a display width of 1, control characters
+> or invalid sequences are not handled, they are all treated as normal characters.
 
 ### Example
 ```cpp

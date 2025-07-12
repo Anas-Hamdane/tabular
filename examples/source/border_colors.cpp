@@ -8,10 +8,10 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #include <tabular/tabular.hpp>
-// #include <tabular/tabular.hpp>
 
 int main() {
   using namespace tabular;
@@ -45,7 +45,6 @@ int main() {
   table[0][0].style().content_color(fg);
   table[0][0].style().text_attribute(Attribute::bold);
 
-  table.set().width(50);
   print(table);
   return 0;
 }

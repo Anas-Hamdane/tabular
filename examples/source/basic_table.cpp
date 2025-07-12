@@ -8,10 +8,10 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #include <tabular/tabular.hpp>
-// #include <tabular/tabular.hpp>
 
 int main() {
   using namespace tabular;
@@ -24,7 +24,6 @@ int main() {
       .add_row({"Japan", "Tokyo"})
       .add_row({"India", "New Delhi"});
 
-  table.set().width(50);
   print(table);
   return 0;
 }

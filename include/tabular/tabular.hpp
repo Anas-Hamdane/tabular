@@ -8,7 +8,7 @@
 
     *  Author: Anas Hamdane
     *  Github: https://github.com/Anas-Hamdane
-
+    *  LICENSE: https://github.com/Anas-Hamdane/tabular/blob/main/LICENSE
 */
 
 #ifndef TABULAR_HPP
@@ -17,47 +17,19 @@
 #include <tabular/detail.hpp>
 
 namespace tabular {
-  inline void print(Table& table, const STD& stream = STD::Out) {
-    bool multi_byte_characters_flag = false;
-
+  inline bool print(Table& table, const STD& stream = STD::Out) {
     FILE* file_stream = stream == STD::Out ? stdout : stderr;
 
-    const std::string formatted_table =
-        detail::printer::format_table(table, table.get().disabled_styles(),
-                                      multi_byte_characters_flag, file_stream);
-
-    detail::printer::handle_output(formatted_table, multi_byte_characters_flag, stream);
+    const std::string formatted_table = detail::printer::format_table(table, file_stream);
+    return detail::printer::render_table(formatted_table, table.get().multi_byte_characters(), file_stream);
   }
 
-  inline void print(Table& table, FILE* file) {
+  inline bool print(Table& table, FILE* file) {
     if (!file)
-      return;
+      return false;
 
-    bool multi_byte_characters_flag = false;
-
-    std::string formatted_table =
-        detail::printer::format_table(table, table.get().disabled_styles(),
-                                      multi_byte_characters_flag, file);
-
-    // clang-format off
-    #if defined(WINDOWS)
-      int fd = _fileno(file);
-      HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
-      DWORD written;
-
-      if (handle != INVALID_HANDLE_VALUE) {
-        WriteFile(handle, formatted_table.c_str(), formatted_table.length(), &written, nullptr);
-        return;
-      }
-    #elif defined (UNIX_LIKE)
-      fwrite(formatted_table.c_str(), 1, formatted_table.length(), file);
-      fflush(file);
-      return;
-    #endif
-    // clang-format on
-
-    // fallback
-    fprintf(file, "%s", formatted_table.c_str());
+    const std::string formatted_table = detail::printer::format_table(table, file);
+    return detail::printer::render_table(formatted_table, table.get().multi_byte_characters(), file);
   }
 } // namespace tabular
 
