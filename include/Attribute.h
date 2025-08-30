@@ -47,9 +47,11 @@ namespace tabular {
       void setRange(std::pair<size_t, size_t> range);
       void setTarget(std::string target);
 
-      std::vector<Knd> getAttrs();
-      std::pair<size_t, size_t> getRange();
-      std::string getTarget();
+      std::vector<Knd> getAttrs() const;
+      std::pair<size_t, size_t> getRange() const;
+      std::string getTarget() const;
+
+      std::string toString() const;
 
     private:
       // the indicator

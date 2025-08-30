@@ -43,14 +43,16 @@ namespace tabular {
       void setRange(std::pair<size_t, size_t> range);
       void setTarget(std::string target);
 
-      Builtin getBuiltin();
-      RGB getRGB();
+      Builtin getBuiltin() const;
+      RGB getRGB() const;
 
       std::pair<size_t, size_t>& getRange();
       std::string& getTarget();
 
       const std::pair<size_t, size_t>& getRange() const;
       const std::string& getTarget() const;
+
+      std::string toString(size_t offset = 0) const;
 
     private:
       enum class Knd { Builtin, RGB } dataKnd;

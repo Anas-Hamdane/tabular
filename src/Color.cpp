@@ -146,11 +146,11 @@ namespace tabular {
     this->optKnd = OptKnd::Target;
   }
 
-  Color::Builtin Color::getBuiltin()
+  Color::Builtin Color::getBuiltin() const
   {
     return this->data.color;
   }
-  Color::RGB Color::getRGB()
+  Color::RGB Color::getRGB() const
   {
     return this->data.rgb;
   }
@@ -171,6 +171,27 @@ namespace tabular {
   const std::string& Color::getTarget() const
   {
     return this->opt.target;
+  }
+
+  std::string Color::toString(size_t offset) const
+  {
+    std::string format = "\033[";
+
+    switch (this->dataKnd)
+    {
+      case Knd::Builtin:
+        format += std::to_string(static_cast<int>(this->data.color) + offset);
+        break;
+      case Knd::RGB:
+        format += std::to_string(38 + offset) + ";2;";
+        format += std::to_string(this->data.rgb.r) + ";";
+        format += std::to_string(this->data.rgb.g) + ";";
+        format += std::to_string(this->data.rgb.b);
+        break;
+    }
+
+    format += 'm';
+    return format;
   }
 
   void Color::destroyOptions()

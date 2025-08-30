@@ -57,17 +57,32 @@ namespace tabular {
     new(&this->data.target) std::string(std::move(target));
   }
 
-  std::vector<Attribute::Knd> Attribute::getAttrs()
+  std::vector<Attribute::Knd> Attribute::getAttrs() const
   {
     return this->attrs;
   }
-  std::pair<size_t, size_t> Attribute::getRange()
+  std::pair<size_t, size_t> Attribute::getRange() const
   {
     return this->data.range;
   }
-  std::string Attribute::getTarget()
+  std::string Attribute::getTarget() const
   {
     return this->data.target;
+  }
+
+  std::string Attribute::toString() const
+  {
+    std::string format = "\033[";
+    for (size_t i = 0; i < this->attrs.size(); ++i)
+    {
+      if (i > 0)
+        format += ';';
+
+      format += std::to_string(static_cast<int>(this->attrs[0]));
+    }
+
+    format += 'm';
+    return format;
   }
 
   void Attribute::destroyUnion()

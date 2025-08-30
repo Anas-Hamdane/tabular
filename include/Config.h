@@ -16,14 +16,14 @@ namespace tabular {
     public:
       Config();
 
-      std::vector<Attribute> getAttrs();
-      std::vector<Color> getColors();
-      std::vector<Color> getBackColors();
+      std::vector<Attribute> getAttrs() const;
+      std::vector<Color> getColors() const;
+      std::vector<Color> getBackColors() const;
 
-      Color getBaseColor();
-      Alignment getAlign();
-      Padding getPadd();
-      size_t getWidth();
+      Color getBaseColor() const;
+      Alignment getAlign() const;
+      Padding getPadd() const;
+      int getWidth() const;
 
       void addAttr(Attribute attr);
       void addColor(Color color);
@@ -36,7 +36,7 @@ namespace tabular {
       void setBaseColor(Color base);
       void setAlign(Alignment alignment);
       void setPadd(Padding padd);
-      void setWidth(size_t width);
+      void setWidth(int width);
 
     private:
       std::vector<Attribute> attrs;
@@ -45,6 +45,6 @@ namespace tabular {
       Color base;
       Alignment alignment;
       Padding padding;
-      size_t width;
+      int width = -1;
   };
 }
