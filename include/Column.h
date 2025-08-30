@@ -2,6 +2,7 @@
 
 #include <string>
 #include "Config.h"
+#include "String.h"
 
 namespace tabular {
   class Column {
@@ -17,7 +18,7 @@ namespace tabular {
       void setContent(std::string name);
       void setConfig(Config config);
 
-      std::string toString();
+      String toString();
 
     private:
       Config config;
