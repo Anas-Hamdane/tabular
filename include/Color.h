@@ -4,73 +4,73 @@
 #include <string>
 
 namespace tabular {
-  class color {
+  class Color {
     public:
-      enum class builtin : int {
-        black = 30,
-        red,
-        green,
-        yellow,
-        blue,
-        magenta,
-        cyan,
-        white,
-        normal = 39,
+      enum class Builtin : int {
+        Black = 30,
+        Red,
+        Green,
+        Yellow,
+        Blue,
+        Magenta,
+        Cyan,
+        White,
+        Normal = 39,
       };
-      struct rgb {
+      struct RGB {
         uint8_t r, g, b;
-        rgb(uint8_t r, uint8_t g, uint8_t b);
+        RGB(uint8_t r, uint8_t g, uint8_t b);
       };
 
-      color();
-      ~color();
+      Color();
+      ~Color();
 
-      color(builtin color);
-      color(rgb rgb);
+      Color(Builtin color);
+      Color(RGB rgb);
 
-      color(builtin color, std::pair<size_t, size_t> range);
-      color(rgb rgb, std::pair<size_t, size_t> range);
+      Color(Builtin color, std::pair<size_t, size_t> range);
+      Color(RGB rgb, std::pair<size_t, size_t> range);
 
-      color(builtin color, std::string target);
-      color(rgb rgb, std::string target);
+      Color(Builtin color, std::string target);
+      Color(RGB rgb, std::string target);
 
-      color(const color& other);
-      color& operator=(const color& other);
+      Color(const Color& other);
+      Color& operator=(const Color& other);
 
-      void setcolor(builtin color);
-      void setcolor(rgb rgb);
+      void setColor(Builtin color);
+      void setColor(RGB rgb);
 
-      void setrange(std::pair<size_t, size_t> range);
-      void settarget(std::string target);
+      void setRange(std::pair<size_t, size_t> range);
+      void setTarget(std::string target);
 
-      builtin getbuiltin();
-      rgb getrgb();
+      Builtin getBuiltin();
+      RGB getRGB();
 
-      std::pair<size_t, size_t>& getrange();
-      std::string& gettarget();
+      std::pair<size_t, size_t>& getRange();
+      std::string& getTarget();
 
-      const std::pair<size_t, size_t>& getrange() const;
-      const std::string& gettarget() const;
+      const std::pair<size_t, size_t>& getRange() const;
+      const std::string& getTarget() const;
 
     private:
-      enum class knd { builtin, rgb } dataknd;
-      union data {
-        builtin color;
-        rgb rgb;
+      enum class Knd { Builtin, RGB } dataKnd;
+      union Data {
+        Builtin color;
+        RGB rgb;
 
-        data() {}
-        ~data() {}
+        Data() {}
+        ~Data() {}
       } data;
 
-      enum class optknd { global, range, target } optknd;
-      union option {
+      enum class OptKnd { Global, Range, Target } optKnd;
+      union Option {
         std::pair<size_t, size_t> range;
         std::string target;
 
-        option() {}
-        ~option() {}
+        Option() {}
+        ~Option() {}
       } opt;
 
-      void destroyoptions();
+      void destroyOptions();
   };
 }
