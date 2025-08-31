@@ -18,16 +18,15 @@ namespace tabular {
       void setContent(std::string name);
       void setConfig(Config config);
 
-      String toString() const;
+      std::vector<String> toString() const;
 
     private:
       Config config;
       std::string content;
 
-      void applyAttributes();
-      void applyColors();
-      void applyBackColors();
-      void applyBase();
-      void applyPadding();
+      std::vector<uint8_t> getAttrsCodes() const;
+      std::vector<uint8_t> getFGCode() const;
+      std::vector<uint8_t> getBGCode() const;
+      std::string getBaseFormat() const;
   };
 }

@@ -47,16 +47,14 @@ namespace tabular {
 
       Builtin getBuiltin() const;
       rgb getRGB() const;
+      int getIndex() const;
 
       std::vector<uint8_t> getCode() const;
       std::vector<uint8_t> getBackCode() const;
 
-      std::vector<uint8_t> getResetCode() const;
-      std::vector<uint8_t> getBackResetCode() const;
-
     private:
       // using `std::variant` will break c++11 support
-      enum class Knd { Builtin, RGB } dataKnd;
+      enum class Knd : int { Builtin = 0, RGB } dataKnd;
       union Data {
         Builtin color;
         rgb rgb;

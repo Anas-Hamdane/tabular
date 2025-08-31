@@ -1,11 +1,24 @@
 #pragma once
 
 #include <cstdint>
-#include "Attribute.h"
 #include "Color.h"
 
 namespace tabular {
   enum class Alignment { Left, Right, Center };
+  enum class Attribute : uint8_t {
+    Bold = 1,
+    Dim = 2,
+    Italic = 3,
+
+    Underline = 4,
+    DoubleUnderline = 21, // not popular
+
+    Blink = 5, // rarely supported
+    FastBlink = 6, // rarely supported
+    Reverse = 7,
+    Concealed = 8,
+    Crossed = 9,
+  };
   struct Padding {
     uint8_t top, bottom;
     Padding();

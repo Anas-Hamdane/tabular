@@ -72,6 +72,10 @@ namespace tabular {
   {
     return this->data.rgb;
   }
+  int Color::getIndex() const
+  {
+    return static_cast<int>(this->dataKnd);
+  }
 
   std::vector<uint8_t> Color::getCode() const
   {
