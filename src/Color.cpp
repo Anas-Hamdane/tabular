@@ -1,82 +1,28 @@
 #include "../include/Color.h"
 
 namespace tabular {
-  Color::RGB::RGB(uint8_t r, uint8_t g, uint8_t b)
+  Color::rgb::rgb(uint8_t r, uint8_t g, uint8_t b)
     : r(r), g(g), b(b) {}
 
   Color::Color()
   {
     this->dataKnd = Knd::Builtin;
-    this->optKnd = OptKnd::Global;
     this->data.color = Builtin::Normal;
-  }
-  Color::~Color()
-  {
-    destroyOptions();
   }
 
   Color::Color(Builtin color)
   {
     this->data.color = color;
     this->dataKnd = Knd::Builtin;
-    this->optKnd = OptKnd::Global;
   }
-  Color::Color(RGB rgb)
+  Color::Color(rgb rgb)
   {
     this->data.rgb = rgb;
     this->dataKnd = Knd::RGB;
-    this->optKnd = OptKnd::Global;
-  }
-
-  Color::Color(Builtin color, std::pair<size_t, size_t> range)
-  {
-    this->data.color = color;
-    this->dataKnd = Knd::Builtin;
-
-    new(&opt.range) std::pair<size_t, size_t>(std::move(range));
-    this->optKnd = OptKnd::Range;
-  }
-  Color::Color(RGB rgb, std::pair<size_t, size_t> range)
-  {
-    this->data.rgb = rgb;
-    this->dataKnd = Knd::RGB;
-
-    new(&opt.range) std::pair<size_t, size_t>(std::move(range));
-    this->optKnd = OptKnd::Range;
-  }
-
-  Color::Color(Builtin color, std::string target)
-  {
-    this->data.color = color;
-    this->dataKnd = Knd::Builtin;
-
-    new(&opt.target) std::string(std::move(target));
-    this->optKnd = OptKnd::Target;
-  }
-  Color::Color(RGB rgb, std::string target)
-  {
-    this->data.rgb = rgb;
-    this->dataKnd = Knd::RGB;
-
-    new(&opt.target) std::string(std::move(target));
-    this->optKnd = OptKnd::Target;
   }
 
   Color::Color(const Color& other)
   {
-    this->optKnd = other.optKnd;
-    switch (optKnd)
-    {
-      case OptKnd::Range:
-        this->opt.range = other.opt.range;
-        break;
-      case OptKnd::Target:
-        this->opt.target = other.opt.target;
-        break;
-      default:
-        break;
-    };
-
     this->dataKnd = other.dataKnd;
     switch (dataKnd)
     {
@@ -92,21 +38,6 @@ namespace tabular {
   {
     if (this == &other)
       return *this;
-
-    destroyOptions();
-
-    this->optKnd = other.optKnd;
-    switch (optKnd)
-    {
-      case OptKnd::Range:
-        this->opt.range = other.opt.range;
-        break;
-      case OptKnd::Target:
-        this->opt.target = other.opt.target;
-        break;
-      default:
-        break;
-    };
 
     this->dataKnd = other.dataKnd;
     switch (dataKnd)
@@ -127,85 +58,65 @@ namespace tabular {
     this->data.color = color;
     this->dataKnd = Knd::Builtin;
   }
-  void Color::setColor(RGB rgb)
+  void Color::setColor(rgb rgb)
   {
     this->data.rgb = rgb;
     this->dataKnd = Knd::RGB;
-  }
-
-  void Color::setRange(std::pair<size_t, size_t> range)
-  {
-    destroyOptions();
-    this->opt.range = std::move(range);
-    this->optKnd = OptKnd::Range;
-  }
-  void Color::setTarget(std::string target)
-  {
-    destroyOptions();
-    this->opt.target = std::move(target);
-    this->optKnd = OptKnd::Target;
   }
 
   Color::Builtin Color::getBuiltin() const
   {
     return this->data.color;
   }
-  Color::RGB Color::getRGB() const
+  Color::rgb Color::getRGB() const
   {
     return this->data.rgb;
   }
 
-  std::pair<size_t, size_t>& Color::getRange()
+  std::vector<uint8_t> Color::getCode() const
   {
-    return this->opt.range;
-  }
-  std::string& Color::getTarget()
-  {
-    return this->opt.target;
-  }
-
-  const std::pair<size_t, size_t>& Color::getRange() const
-  {
-    return this->opt.range;
-  }
-  const std::string& Color::getTarget() const
-  {
-    return this->opt.target;
-  }
-
-  std::string Color::toString(size_t offset) const
-  {
-    std::string format = "\033[";
+    std::vector<uint8_t> result;
 
     switch (this->dataKnd)
     {
       case Knd::Builtin:
-        format += std::to_string(static_cast<int>(this->data.color) + offset);
+        result.push_back(static_cast<uint8_t>(this->data.color));
         break;
       case Knd::RGB:
-        format += std::to_string(38 + offset) + ";2;";
-        format += std::to_string(this->data.rgb.r) + ";";
-        format += std::to_string(this->data.rgb.g) + ";";
-        format += std::to_string(this->data.rgb.b);
+        result.reserve(5);
+        result.push_back(38); // FG
+        result.push_back(2);
+
+        // rgb
+        result.push_back(this->data.rgb.r);
+        result.push_back(this->data.rgb.g);
+        result.push_back(this->data.rgb.b);
         break;
     }
 
-    format += 'm';
-    return format;
+    return result;
   }
-
-  void Color::destroyOptions()
+  std::vector<uint8_t> Color::getBackCode() const
   {
-    switch (this->optKnd)
+    std::vector<uint8_t> result;
+
+    switch (this->dataKnd)
     {
-      case OptKnd::Target:
-        this->opt.target.~basic_string();
+      case Knd::Builtin:
+        result.push_back(static_cast<uint8_t>(this->data.color) + 10);
         break;
-      case OptKnd::Range:
-        this->opt.range.~pair();
-        break;
-      default:
+      case Knd::RGB:
+        result.reserve(5);
+        result.push_back(48); // BG
+        result.push_back(2);
+
+        // rgb
+        result.push_back(this->data.rgb.r);
+        result.push_back(this->data.rgb.g);
+        result.push_back(this->data.rgb.b);
         break;
     }
+
+    return result;
   }
 }

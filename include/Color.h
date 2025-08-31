@@ -1,12 +1,14 @@
 #pragma once
 
+
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace tabular {
   class Color {
     public:
-      enum class Builtin : int {
+      enum class Builtin : uint8_t {
         Black = 30,
         Red,
         Green,
@@ -15,64 +17,52 @@ namespace tabular {
         Magenta,
         Cyan,
         White,
+
+        BrightBlack = 90,
+        BrightRed,
+        BrightGreen,
+        BrightYellow,
+        BrightBlue,
+        BrightMagenta,
+        BrightCyan,
+        BrightWhite,
+
         Normal = 39,
       };
-      struct RGB {
+      struct rgb { // to avoid collapsing with windows.h RGB macro
         uint8_t r, g, b;
-        RGB(uint8_t r, uint8_t g, uint8_t b);
+        rgb(uint8_t r, uint8_t g, uint8_t b);
       };
 
       Color();
-      ~Color();
 
       Color(Builtin color);
-      Color(RGB rgb);
-
-      Color(Builtin color, std::pair<size_t, size_t> range);
-      Color(RGB rgb, std::pair<size_t, size_t> range);
-
-      Color(Builtin color, std::string target);
-      Color(RGB rgb, std::string target);
+      Color(rgb rgb);
 
       Color(const Color& other);
       Color& operator=(const Color& other);
 
       void setColor(Builtin color);
-      void setColor(RGB rgb);
-
-      void setRange(std::pair<size_t, size_t> range);
-      void setTarget(std::string target);
+      void setColor(rgb rgb);
 
       Builtin getBuiltin() const;
-      RGB getRGB() const;
+      rgb getRGB() const;
 
-      std::pair<size_t, size_t>& getRange();
-      std::string& getTarget();
+      std::vector<uint8_t> getCode() const;
+      std::vector<uint8_t> getBackCode() const;
 
-      const std::pair<size_t, size_t>& getRange() const;
-      const std::string& getTarget() const;
-
-      std::string toString(size_t offset = 0) const;
+      std::vector<uint8_t> getResetCode() const;
+      std::vector<uint8_t> getBackResetCode() const;
 
     private:
+      // using `std::variant` will break c++11 support
       enum class Knd { Builtin, RGB } dataKnd;
       union Data {
         Builtin color;
-        RGB rgb;
+        rgb rgb;
 
         Data() {}
         ~Data() {}
       } data;
-
-      enum class OptKnd { Global, Range, Target } optKnd;
-      union Option {
-        std::pair<size_t, size_t> range;
-        std::string target;
-
-        Option() {}
-        ~Option() {}
-      } opt;
-
-      void destroyOptions();
   };
 }
