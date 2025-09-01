@@ -5,6 +5,7 @@ cmake-build-debug
 cmake-build-release
 
 build
+garbage
 .clangd
 .cache
 
@@ -12,4 +13,5 @@ compile_commands.json
 
 *.o
 *.a
-*.sa
+*.so
+*.out

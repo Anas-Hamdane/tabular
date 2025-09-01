@@ -1,14 +1,14 @@
-TARGET     := libtabular
-STATIC     := $(TARGET).a
-DYNAMIC    := $(TARGET).so
+TARGET     := tabular
+STATIC     := lib$(TARGET).a
+DYNAMIC    := lib$(TARGET).so
 
 SRC        := ./src
 INCLUDE    := ./include
 BUILD      := ./build
 
-CXX        := clang++
+CXX        := g++
 AR         := ar
-CXXFLAGS   := -std=c++11 -Wall -Wextra -g
+CXXFLAGS   := -std=c++11 -Wall -Wextra -g -fpic -I./include/
 
 RSS        := $(SRC)/Color.cpp                \
 							$(SRC)/Column.cpp               \
@@ -24,10 +24,10 @@ static: $(STATIC)
 dynamic: $(DYNAMIC)
 
 $(STATIC): $(OBJS) | $(BUILD)
-	$(AR) rcs $(TARGET).a $(OBJS)
+	$(AR) rcs $@ $(OBJS)
 
 $(DYNAMIC): $(OBJS) | $(BUILD)
-	$(CXX) -shared -o $(TARGET).so $(OBJS)
+	$(CXX) -shared -o $@ $(OBJS)
 
 $(BUILD)/%.o: $(SRC)/%.cpp $(BUILD)
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
