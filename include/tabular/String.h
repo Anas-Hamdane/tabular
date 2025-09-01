@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 namespace tabular {
   class String {
     public:

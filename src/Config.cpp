@@ -1,4 +1,4 @@
-#include "../include/Config.h"
+#include "tabular/Config.h"
 
 namespace tabular {
   Padding::Padding() : top(0), bottom(0) {}

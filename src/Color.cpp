@@ -1,7 +1,7 @@
-#include "../include/Color.h"
+#include "tabular/Color.h"
 
 namespace tabular {
-  Color::rgb::rgb(uint8_t r, uint8_t g, uint8_t b)
+  Color::Rgb::Rgb(uint8_t r, uint8_t g, uint8_t b)
     : r(r), g(g), b(b) {}
 
   Color::Color()
@@ -15,7 +15,7 @@ namespace tabular {
     this->data.color = color;
     this->dataKnd = Knd::Builtin;
   }
-  Color::Color(rgb rgb)
+  Color::Color(Rgb rgb)
   {
     this->data.rgb = rgb;
     this->dataKnd = Knd::RGB;
@@ -58,7 +58,7 @@ namespace tabular {
     this->data.color = color;
     this->dataKnd = Knd::Builtin;
   }
-  void Color::setColor(rgb rgb)
+  void Color::setColor(Rgb rgb)
   {
     this->data.rgb = rgb;
     this->dataKnd = Knd::RGB;
@@ -68,7 +68,7 @@ namespace tabular {
   {
     return this->data.color;
   }
-  Color::rgb Color::getRGB() const
+  Color::Rgb Color::getRGB() const
   {
     return this->data.rgb;
   }

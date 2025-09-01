@@ -1,8 +1,6 @@
 #pragma once
 
-
 #include <cstdint>
-#include <string>
 #include <vector>
 
 namespace tabular {
@@ -29,24 +27,24 @@ namespace tabular {
 
         Normal = 39,
       };
-      struct rgb { // to avoid collapsing with windows.h RGB macro
+      struct Rgb { // to avoid collapsing with windows.h RGB macro
         uint8_t r, g, b;
-        rgb(uint8_t r, uint8_t g, uint8_t b);
+        Rgb(uint8_t r, uint8_t g, uint8_t b);
       };
 
       Color();
 
       Color(Builtin color);
-      Color(rgb rgb);
+      Color(Rgb rgb);
 
       Color(const Color& other);
       Color& operator=(const Color& other);
 
       void setColor(Builtin color);
-      void setColor(rgb rgb);
+      void setColor(Rgb rgb);
 
       Builtin getBuiltin() const;
-      rgb getRGB() const;
+      Rgb getRGB() const;
       int getIndex() const;
 
       std::vector<uint8_t> getCode() const;
@@ -57,7 +55,7 @@ namespace tabular {
       enum class Knd : int { Builtin = 0, RGB } dataKnd;
       union Data {
         Builtin color;
-        rgb rgb;
+        Rgb rgb;
 
         Data() {}
         ~Data() {}
