@@ -184,7 +184,8 @@ namespace tabular {
     4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   };
 
-  String::String() = default;
+  String::String()
+    : visibleWidth(0), recalculate(false) {}
   String::String(std::string content)
     : content(std::move(content)), visibleWidth(0), recalculate(true) {}
   String::String(std::string content, size_t visibleWidth)
@@ -195,6 +196,54 @@ namespace tabular {
     this->recalculate = true;
     this->visibleWidth = 0;
     return *this;
+  }
+  String& String::operator+=(const String& other)
+  {
+    // calculate this string visible width if it needs to
+    if (this->recalculate)
+      this->visibleWidth = calculateVisibleWidth(this->content);
+
+    this->content += other.content;
+
+    // calculate the other string visible width if it needs to
+    // and add it to this string visible width
+    if (other.recalculate)
+      this->visibleWidth += other.getVisibleWidth();
+    else
+      this->visibleWidth += other.visibleWidth;
+
+    return *this;
+  }
+  String& String::operator+=(const std::string& other)
+  {
+    // calculate this string visible width if it needs to
+    if (this->recalculate)
+      this->visibleWidth = calculateVisibleWidth(this->content);
+
+    this->content += other;
+    this->visibleWidth += calculateVisibleWidth(other);
+
+    return *this;
+  }
+  bool String::operator==(const std::string& other)
+  {
+    return this->content == other;
+  }
+  bool String::operator==(const String& other)
+  {
+    return this->content == other.content;
+  }
+  bool String::operator!=(const std::string& other)
+  {
+    return this->content != other;
+  }
+  bool String::operator!=(const String& other)
+  {
+    return this->content != other.content;
+  }
+  char String::operator[](int index)
+  {
+    return this->content[index];
   }
 
   std::string String::getContent() const { return this->content; }
@@ -346,5 +395,24 @@ namespace tabular {
       return 2;
 
     return 1;
+  }
+
+  size_t String::len() const { return this->content.length(); }
+  bool String::empty() const { return this->content.empty(); }
+  void String::reserve(size_t n) { this->content.reserve(n); }
+  void String::clear()
+  {
+    this->content.clear();
+    this->visibleWidth = 0;
+    this->recalculate = false;
+  }
+  void String::insert(size_t pos, std::string s)
+  {
+    this->content.insert(pos, s);
+
+    if (!this->recalculate)
+    {
+      this->visibleWidth += calculateVisibleWidth(s);
+    }
   }
 }
