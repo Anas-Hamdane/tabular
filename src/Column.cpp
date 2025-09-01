@@ -2,14 +2,16 @@
 #include <stdexcept>
 
 namespace tabular {
+  static bool isspace(char c)
+  {
+      return c == ' ' || c == '\n' || c == '\t' ||
+            c == '\v' || c == '\f' || c == '\r';
+  }
+  // split a string into an array of words, treating space characters
+  // as separated words
   static std::vector<std::string> split(const std::string content)
   {
     std::vector<std::string> result;
-
-    auto isspace = [](char c) {
-      return c == ' ' || c == '\n' || c == '\t' ||
-            c == '\v' || c == '\f' || c == '\r';
-    };
 
     size_t start = 0;
     size_t len = content.length();
@@ -37,6 +39,40 @@ namespace tabular {
 
     return result;
   }
+  // read the ne utf8 character into a std::string of bytes, starting from
+  // the specified position `pos`
+  static std::string readUtf8Char(const std::string& str, size_t pos)
+  {
+    if (pos >= str.length()) return "";
+
+    unsigned char first_byte = static_cast<unsigned char>(str[pos]);
+
+    // if it's a continuation byte then it's invalid
+    if ((first_byte & 0xC0) == 0x80) return "";
+
+    // find the length of the sequence from the start byte
+    size_t len;
+    if ((first_byte & 0x80) == 0) len = 1;
+    else if ((first_byte & 0xE0) == 0xC0) len = 2;
+    else if ((first_byte & 0xF0) == 0xE0) len = 3;
+    else if ((first_byte & 0xF8) == 0xF0) len = 4;
+    else return "";
+
+    // not enough bytes
+    if (pos + len > str.length())
+      return "";
+
+    // validate
+    for (size_t i = 1; i < len; ++i)
+    {
+      if ((static_cast<unsigned char>(str[pos + i]) & 0xC0) != 0x80)
+      {
+        return "";
+      }
+    }
+
+    return str.substr(pos, len);
+  }
 
   Column::Column(std::string content)
     : content(std::move(content)) {}
@@ -60,6 +96,7 @@ namespace tabular {
     std::string content = this->content;
 
     // handling attributes, fg, bg stuff
+    std::string styles;
     {
       std::vector<uint8_t> codes;
       auto temp = getAttrsCodes();
@@ -70,9 +107,10 @@ namespace tabular {
 
       temp = getBGCode();
       codes.insert(codes.end(), temp.begin(), temp.end());
+
       if (!codes.empty())
       {
-        std::string styles = "\033[";
+        styles = "\033[";
         for (size_t i = 0; i < codes.size(); ++i)
         {
           if (i != 0)
@@ -81,19 +119,61 @@ namespace tabular {
           styles += std::to_string(codes[i]);
         }
         styles += 'm';
-
-        content.insert(0, styles);
-        content += "\033[0m"; // reset them
       }
     }
+    std::string reset = styles.empty() ? "" : "\033[0m";
 
+    size_t width = getConfig().getWidth();
+    Padding padd = getConfig().getPadd();
     std::vector<std::string> words = split(content);
 
     // the result
     std::vector<String> lines;
+    lines.reserve(this->content.size() / width);
 
+    // the base must be applied to the padding
+    String empty(std::string(width, ' '));
+    empty.insert(0, getBaseFormat());
 
+    // top padding
+    lines.insert(lines.end(), padd.top, empty);
 
+    // the main logic
+    size_t pos = 0;
+    String next("");
+    while (pos < words.size())
+    {
+      String line = processLine(words, pos, next);
+
+      // the rest are empty spaces
+      if (line.getVisibleWidth() < width)
+      {
+        size_t spaces = width - line.getVisibleWidth();
+        Alignment align = getConfig().getAlign();
+        if (align == Alignment::Center)
+        {
+          size_t left = spaces / 2;
+          line.insert(0, std::string(spaces / 2, ' '));
+          line += std::string(spaces - left, ' ');
+        }
+        else if (align == Alignment::Right)
+        {
+          line.insert(0, std::string(spaces, ' '));
+        }
+        else
+        {
+          line += std::string(spaces, ' ');
+        }
+      }
+
+      line.insert(0, styles);
+      line += reset;
+
+      lines.push_back(std::move(line));
+    }
+
+    // bottom padding
+    lines.insert(lines.end(), padd.bottom, empty);
     return lines;
   }
 
@@ -149,5 +229,98 @@ namespace tabular {
 
     format += 'm';
     return format;
+  }
+  String Column::processLine(std::vector<std::string>& words, size_t& pos, String& next) const
+  {
+    size_t width = getConfig().getWidth();
+
+    String line;
+    line.reserve(width);
+
+    size_t i = pos;
+    while (i < words.size())
+    {
+      String word(words[i]);
+      if (!next.empty())
+      {
+        word = next; // process this word instead
+        next = "";
+      }
+      size_t len = word.getVisibleWidth();
+
+      if (word == "\n")
+      {
+        next = "";
+        pos = i;
+        return line;
+      }
+
+      // ignore spaces at the start of a new line
+      if (line.empty() && word == " ")
+      {
+        ++i; continue;
+      }
+
+      // other spacing characters rather than '\n' and ' '
+      // are ignored
+      if (len == 1 && isspace(word[0]) && word != " " && word != "\n")
+      {
+        ++i; continue;
+      }
+
+      // the word fits in the line
+      if (len + line.getVisibleWidth() <= width)
+      {
+        line += word;
+        ++i; continue;
+      }
+
+      // the word doesn't fit in the line
+      else // if (len + line.getVisibleWidth() > width)
+      {
+        size_t freeSpace = width - line.getVisibleWidth();
+
+        // push the current line and append the word
+        // on the next line
+        if (freeSpace <= (width * 0.25))
+        {
+          pos = i;
+          next = word;
+          return line;
+        }
+
+        // we need to force cut the word
+        else // if (len + freeSpace > (width * 0.25))
+        {
+          String delimiter = getConfig().getDelimiter();
+          size_t limit = freeSpace - delimiter.getVisibleWidth();
+
+          String firstPart;
+          size_t j = 0;
+          while (firstPart.getVisibleWidth() < limit)
+          {
+            String buff(readUtf8Char(word.getContent(), j));
+
+            // if it will exceed the free space
+            if (buff.getVisibleWidth() + firstPart.getVisibleWidth() > limit)
+              break;
+
+            firstPart += buff;
+            j += buff.len();
+          }
+
+          line += firstPart;
+          line += delimiter;
+
+          String secondPart(word.getContent().substr(j));
+          pos = i;
+          next = secondPart;
+          return line;
+        }
+      }
+    }
+
+    pos = i;
+    return line;
   }
 }

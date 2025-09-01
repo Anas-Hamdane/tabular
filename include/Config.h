@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include "Color.h"
+#include "String.h"
 
 namespace tabular {
   enum class Alignment { Left, Right, Center };
@@ -38,6 +39,7 @@ namespace tabular {
       Alignment getAlign() const;
       Padding getPadd() const;
       int getWidth() const;
+      String getDelimiter() const;
 
       void addAttr(Attribute attr);
       void setAttrs(std::vector<Attribute> attrs);
@@ -50,6 +52,8 @@ namespace tabular {
       void setPadd(Padding padd);
       void setWidth(int width);
 
+      void setDelimiter(String delimiter);
+
     private:
       std::vector<Attribute> attrs;
 
@@ -60,5 +64,7 @@ namespace tabular {
       Alignment alignment;
       Padding padding;
       int width = -1;
+
+      String delimiter;
   };
 }

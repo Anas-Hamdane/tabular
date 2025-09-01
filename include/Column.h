@@ -28,5 +28,7 @@ namespace tabular {
       std::vector<uint8_t> getFGCode() const;
       std::vector<uint8_t> getBGCode() const;
       std::string getBaseFormat() const;
+      void processWord(std::vector<String>& lines, String& line, String& word) const;
+      String processLine(std::vector<std::string>& words, size_t& pos, String& next) const;
   };
 }
