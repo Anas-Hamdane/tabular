@@ -96,7 +96,8 @@ namespace tabular {
     std::string content = this->content;
 
     // handling attributes, fg, bg stuff
-    std::string styles;
+    std::string base = getBaseFormat();
+    std::string styles = base;
     {
       std::vector<uint8_t> codes;
       auto temp = getAttrsCodes();
@@ -110,7 +111,7 @@ namespace tabular {
 
       if (!codes.empty())
       {
-        styles = "\033[";
+        styles += "\033[";
         for (size_t i = 0; i < codes.size(); ++i)
         {
           if (i != 0)
@@ -133,7 +134,11 @@ namespace tabular {
 
     // the base must be applied to the padding
     String empty(std::string(width, ' '));
-    empty.insert(0, getBaseFormat());
+    if (!base.empty())
+    {
+      empty.insert(0, getBaseFormat());
+      empty += "\033[0m";
+    }
 
     // top padding
     lines.insert(lines.end(), padd.top, empty);
@@ -217,7 +222,7 @@ namespace tabular {
       return "";
 
     std::string format = "\033[";
-    const auto codes = base.getCode();
+    const auto codes = base.getBackCode();
 
     for (size_t i = 0; i < codes.size(); ++i)
     {
