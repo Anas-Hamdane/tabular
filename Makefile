@@ -1,12 +1,12 @@
 TARGET     := tabular
 STATIC     := lib$(TARGET).a
-DYNAMIC    := lib$(TARGET).so
+SHARED     := lib$(TARGET).so
 
 SRC        := ./src
 INCLUDE    := ./include
 BUILD      := ./build
 
-CXX        := g++
+CXX        := clang++
 AR         := ar
 CXXFLAGS   := -std=c++11 -Wall -Wextra -g -fpic -I./include/
 
@@ -19,14 +19,14 @@ OBJS := $(RSS:$(SRC)/%.cpp=$(BUILD)/%.o)
 
 .PHONY: static shared all clean
 
-all: static dynamic
+all: static shared
 static: $(STATIC)
-dynamic: $(DYNAMIC)
+shared: $(SHARED)
 
 $(STATIC): $(OBJS) | $(BUILD)
 	$(AR) rcs $@ $(OBJS)
 
-$(DYNAMIC): $(OBJS) | $(BUILD)
+$(SHARED): $(OBJS) | $(BUILD)
 	$(CXX) -shared -o $@ $(OBJS)
 
 $(BUILD)/%.o: $(SRC)/%.cpp $(BUILD)
@@ -38,4 +38,4 @@ $(BUILD):
 clean:
 	rm -rf $(BUILD)
 	rm -rf $(STATIC)
-	rm -rf $(DYNAMIC)
+	rm -rf $(SHARED)

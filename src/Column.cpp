@@ -73,6 +73,41 @@ namespace tabular {
 
     return str.substr(pos, len);
   }
+  static std::string activeEscSeq(const std::string& line)
+  {
+    std::string active;
+
+    auto isAscii = [](const char c)
+    {
+      return static_cast<unsigned char>(c) <= 127;
+    };
+    auto isAlpha = [](const char c)
+    {
+      return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    };
+
+    size_t len = line.length();
+    for (size_t i = 0; i < len; ++i)
+    {
+      if (line[i] != '\x1b') continue;
+
+      std::string current;
+      current += line[i++];
+
+      while (i < len && isAscii(line[i]) && !isAlpha(line[i]))
+        current += line[i++];
+
+      if (i < len && line[i] == 'm')
+      {
+        current += 'm';
+        if (current == "\x1b[0m") active.clear();
+        if (current.compare(current.length() - 3, 3, ";0m") == 0) active.clear();
+        else active += current;
+      }
+    }
+
+    return active;
+  }
 
   Column::Column(std::string content)
     : content(std::move(content)) {}
@@ -92,6 +127,7 @@ namespace tabular {
     if (this->config.getWidth() == -1)
       throw std::logic_error("Internal error: uninitialized column width");
 
+    static constexpr const char* reset = "\x1b[0m";
     // make sure it is a copy
     std::string content = this->content;
 
@@ -122,7 +158,6 @@ namespace tabular {
         styles += 'm';
       }
     }
-    std::string reset = styles.empty() ? "" : "\033[0m";
 
     size_t width = getConfig().getWidth();
     Padding padd = getConfig().getPadd();
@@ -137,7 +172,7 @@ namespace tabular {
     if (!base.empty())
     {
       empty.insert(0, getBaseFormat());
-      empty += "\033[0m";
+      empty += "\x1b[0m";
     }
 
     // top padding
@@ -145,10 +180,16 @@ namespace tabular {
 
     // the main logic
     size_t pos = 0;
-    String next("");
+    String next;
+    std::string next_esc;
     while (pos < words.size())
     {
       String line = processLine(words, pos, next);
+
+      bool mustReset = false;
+      if (!next_esc.empty()) line.insert(0, next_esc);
+      next_esc = activeEscSeq(line.getContent());
+      if (!next_esc.empty()) mustReset = true;
 
       // the rest are empty spaces
       if (line.getVisibleWidth() < width)
@@ -172,8 +213,9 @@ namespace tabular {
       }
 
       line.insert(0, styles);
-      line += reset;
+      if (!styles.empty()) mustReset = true;
 
+      if (mustReset) line += reset;
       lines.push_back(std::move(line));
     }
 

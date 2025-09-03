@@ -24,6 +24,13 @@ namespace tabular {
       Config config;
       std::string content;
 
+      // @form indicates the word itself
+      // @escs indecate the escape sequences found inside the word
+      struct Word {
+        String form;
+        std::vector<std::string> escs;
+      };
+
       std::vector<uint8_t> getAttrsCodes() const;
       std::vector<uint8_t> getFGCode() const;
       std::vector<uint8_t> getBGCode() const;

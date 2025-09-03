@@ -225,6 +225,17 @@ namespace tabular {
 
     return *this;
   }
+  String& String::operator+=(const char c)
+  {
+    // calculate this string visible width if it needs to
+    if (this->recalculate)
+      this->visibleWidth = calculateVisibleWidth(this->content);
+
+    this->content += c;
+    this->visibleWidth += wcwidth(c);
+
+    return *this;
+  }
   bool String::operator==(const std::string& other)
   {
     return this->content == other;
@@ -281,7 +292,7 @@ namespace tabular {
     // helpers
     auto isAscii = [](const char c)
     {
-      return static_cast<const unsigned char>(c) <= 127;
+      return static_cast<unsigned char>(c) <= 127;
     };
     auto isAlpha = [](const char c)
     {
@@ -290,7 +301,7 @@ namespace tabular {
 
     while (*ptr) {
       // skip ansi escape sequences
-      if (*ptr == '\033') {
+      if (*ptr == '\x1b') {
         ++ptr;
 
         // skip every ascii character until a non-ascii one
@@ -370,15 +381,16 @@ namespace tabular {
     auto bisearch = [](wchar_t ucs, const std::pair<uint32_t, uint32_t>* interval, int max) {
       int min = 0;
       int mid;
+      uint32_t ucsu = static_cast<uint32_t>(ucs);
 
-      if (ucs < interval[0].first || ucs > interval[max].second)
+      if (ucsu < interval[0].first || ucsu > interval[max].second)
         return false;
 
       while (max >= min)
       {
         mid = (min + max) / 2;
-        if      (ucs > interval[mid].second) min = mid + 1;
-        else if (ucs < interval[mid].first)  max = mid - 1;
+        if      (ucsu > interval[mid].second) min = mid + 1;
+        else if (ucsu < interval[mid].first)  max = mid - 1;
         else    return true;
       }
 

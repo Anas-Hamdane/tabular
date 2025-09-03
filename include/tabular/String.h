@@ -15,6 +15,7 @@ namespace tabular {
       bool operator!=(const String& other);
       String& operator+=(const String& other);
       String& operator+=(const std::string& other);
+      String& operator+=(const char c);
       char operator[](int index);
 
       std::string getContent() const;
