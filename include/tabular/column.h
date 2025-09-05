@@ -77,38 +77,6 @@ inline std::string readUtf8Char(const std::string& str, size_t pos)
 
   return str.substr(pos, len);
 }
-inline std::string activeEscSeq(const std::string& line)
-{
-  std::string active;
-
-  size_t len = line.length();
-  for (size_t i = 0; i < len; ++i)
-  {
-    if (line[i] != '\x1b')
-      continue;
-
-    std::string current;
-    current += line[i++];
-
-    // break at the first ascii letter
-    while (i < len && isAscii(line[i]) && !isAlpha(line[i]))
-      current += line[i++];
-
-    // if it's 'm' register it
-    if (i < len && line[i] == 'm')
-    {
-      current += 'm';
-      if (current == "\x1b[0m")
-        active.clear();
-      if (current.compare(current.length() - 3, 3, ";0m") == 0)
-        active.clear();
-      else
-        active += current;
-    }
-  }
-
-  return active;
-}
 
 // for colors
 constexpr bool isColorSet(uint32_t colorValue) { return colorValue != 0; }
@@ -179,6 +147,11 @@ public:
     Style& attrs(Attribute attr)
     {
       this->attrs_ |= static_cast<uint16_t>(attr);
+      return *this;
+    }
+    Style& attrs(const Style& attr)
+    {
+      this->attrs_ |= attr.attrs_;
       return *this;
     }
 
@@ -296,6 +269,7 @@ public:
 
       if (word == "\n")
       {
+        formatLine(line, activeEscs, styles);
         lines.emplace_back(std::move(line));
         line.clear();
         continue;
@@ -331,7 +305,8 @@ public:
       // exceeds the line width
       while (len > width)
       {
-        size_t limit = width - line.dw();
+        size_t limit = width - delimiter.dw() - line.dw();
+
         String firstPart;
         firstPart.reserve(limit);
 
@@ -347,7 +322,9 @@ public:
           pos += buff.len();
         }
 
+        firstPart += delimiter;
         line += firstPart;
+
         formatLine(line, activeEscs, styles);
         lines.emplace_back(std::move(line));
         line.clear();
@@ -444,6 +421,48 @@ private:
       base.back() = 'm';
     return base;
   }
+  std::string activeEscSeqs(String& line, const std::string& styles) const
+  {
+    using namespace detail;
+    std::string active;
+
+    // helper function
+    auto endsWith = [](const std::string& str, const std::string& with) {
+      return str.compare(str.length() - with.length(), with.length(), with);
+    };
+
+    size_t len = line.len();
+    for (size_t i = 0; i < len; ++i)
+    {
+      if (line[i] != '\x1b')
+        continue;
+
+      std::string current;
+      current += line[i++];
+
+      // break at the first ascii letter
+      while (i < len && isAscii(line[i]) && !isAlpha(line[i]))
+        current += line[i++];
+
+      // if it's 'm' register it
+      if (i < len && line[i] == 'm')
+      {
+        current += line[i++];
+        if (current == "\x1b[0m" ||
+            (current.length() >= 3 && endsWith(current, ";0m")))
+        {
+          // insert the styles to avoid reseting them
+          if (!styles.empty()) line.insert(i, styles);
+          active.clear();
+          continue;
+        }
+
+        active += current;
+      }
+    }
+
+    return active;
+  }
   void formatLine(String& line, std::string& activeEscs,
                   const std::string& styles) const
   {
@@ -451,7 +470,7 @@ private:
     if (!activeEscs.empty())
       line.insert(0, activeEscs);
 
-    activeEscs = detail::activeEscSeq(line.toStr());
+    activeEscs = activeEscSeqs(line, styles);
     if (!activeEscs.empty())
       shouldReset = true;
 
