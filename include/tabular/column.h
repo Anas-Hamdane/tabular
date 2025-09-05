@@ -1,9 +1,8 @@
 #pragma once
 
 #include <vector>
-#include "color.h"
+#include "style.h"
 #include "config.h"
-#include "global.h"
 
 namespace tabular {
   namespace detail {
@@ -98,6 +97,29 @@ namespace tabular {
 
       return active;
     }
+
+    // for colors
+    constexpr bool isColorSet(uint32_t colorValue)
+    {
+      return colorValue != 0;
+    }
+    constexpr bool isColor(uint32_t colorValue)
+    {
+      return isColorSet(colorValue) && (colorValue & (1u << 24)) == 0;
+    }
+    constexpr bool isRgb(uint32_t colorValue)
+    {
+      return isColorSet(colorValue) && (colorValue & (1u << 24)) != 0;
+    }
+
+    constexpr Color getColor(uint32_t colorValue)
+    {
+      return static_cast<Color>(colorValue & 0xFFFFFF);
+    }
+    constexpr Rgb getRgb(uint32_t colorValue)
+    {
+      return Rgb(colorValue & 0xFFFFFF);
+    }
   }
   class Column {
     public:
@@ -111,8 +133,8 @@ namespace tabular {
       Config& config() { return this->config_;}
       const Config& config() const { return this->config_; }
 
-      ColStyle& style() { return this->style_; }
-      const ColStyle& style() const { return this->style_; }
+      Style& style() { return this->style_; }
+      const Style& style() const { return this->style_; }
 
       std::vector<String> toString() const
       {
@@ -129,7 +151,7 @@ namespace tabular {
         // empty line for the padding
         String emptyLine;
         emptyLine += base + std::string(width, ' ');
-        if (!base.empty()) emptyLine += global::RESC;
+        if (!base.empty()) emptyLine += RESET_ESC;
         lines.insert(lines.end(), padd.top, emptyLine);
 
         auto words = detail::split(this->content);
@@ -219,20 +241,21 @@ namespace tabular {
 
     private:
       Config config_;
-      ColStyle style_;
+      Style style_;
       std::string content;
 
-      void resolveColor(std::string& styles, ColorType colorty, bool back) const
+      void resolveColor(std::string& styles, uint32_t color, bool back) const
       {
-        if (colorty.isColor())
+        using namespace detail;
+        if (isColor(color))
         {
-          Color color = colorty.getColor();
-          styles += std::to_string(static_cast<uint8_t>(color) + (back ? 10 : 0)) + ';';
+          Color c = getColor(color);
+          styles += std::to_string(static_cast<uint8_t>(c) + (back ? 10 : 0)) + ';';
         }
 
-        else if (colorty.isRgb())
+        else if (isRgb(color))
         {
-          Rgb rgb = colorty.getRgb();
+          Rgb rgb = getRgb(color);
           styles += back ? "48;2;" : "38;2;";
           styles += std::to_string(static_cast<uint8_t>(rgb.r)) + ';';
           styles += std::to_string(static_cast<uint8_t>(rgb.g)) + ';';
@@ -290,7 +313,7 @@ namespace tabular {
         line.insert(0, styles);
         if (!styles.empty()) shouldReset = true;
 
-        if (shouldReset) line += global::RESC;
+        if (shouldReset) line += RESET_ESC;
       }
       void alignLine(String& line) const
       {
