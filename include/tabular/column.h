@@ -4,7 +4,6 @@
 #include "color.h"
 #include "config.h"
 #include "global.h"
-#include "String.h"
 
 namespace tabular {
   namespace detail {
@@ -75,15 +74,6 @@ namespace tabular {
     {
       std::string active;
 
-      auto isAscii = [](const char c)
-      {
-        return static_cast<unsigned char>(c) <= 127;
-      };
-      auto isAlpha = [](const char c)
-      {
-        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-      };
-
       size_t len = line.length();
       for (size_t i = 0; i < len; ++i)
       {
@@ -152,7 +142,7 @@ namespace tabular {
         for (size_t i = 0; i < words.size(); ++i)
         {
           String word = words[i];
-          size_t len = word.getVisibleWidth();
+          size_t len = word.dw();
 
           if (word == "\n")
           {
@@ -166,11 +156,11 @@ namespace tabular {
             continue;
 
           // ignore other space characters
-          if (len == 1 && detail::isspace(word[0]))
+          if (len == 1 && detail::isspace(word[0]) && word != " ")
             continue;
 
           // the word fits in the line
-          if (line.getVisibleWidth() + len <= width)
+          if (line.dw() + len <= width)
           {
             line += word;
             continue;
@@ -182,7 +172,7 @@ namespace tabular {
             formatLine(line, activeEscs, styles);
             lines.emplace_back(std::move(line));
             line.clear();
-            line += word;
+            if (word != " ") line += word;
             continue;
           }
 
@@ -190,16 +180,16 @@ namespace tabular {
           // exceeds the line width
           while (len > width)
           {
-            size_t limit = width - line.getVisibleWidth();
+            size_t limit = width - line.dw();
             String firstPart; firstPart.reserve(limit);
 
             size_t pos = 0;
-            while (firstPart.getVisibleWidth() < limit)
+            while (firstPart.dw() < limit)
             {
-              String buff = detail::readUtf8Char(word.getContent(), pos);
+              String buff = detail::readUtf8Char(word.toStr(), pos);
 
               // if it will exceed the limit
-              if (buff.getVisibleWidth() + firstPart.getVisibleWidth() > limit) break;
+              if (buff.dw() + firstPart.dw() > limit) break;
               firstPart += buff;
               pos += buff.len();
             }
@@ -209,15 +199,21 @@ namespace tabular {
             lines.emplace_back(std::move(line));
             line.clear();
 
-            word = word.getContent().substr(pos);
-            len = word.getVisibleWidth();
+            word = word.toStr().substr(pos);
+            len = word.dw();
           }
 
           line += word;
           continue;
         }
 
-        if (!line.empty()) lines.emplace_back(std::move(line));
+        if (!line.empty())
+        {
+          formatLine(line, activeEscs, styles);
+          lines.emplace_back(std::move(line));
+          line.clear();
+        }
+
         return lines;
       }
 
@@ -268,6 +264,7 @@ namespace tabular {
         resolveColor(styles, style().getBg(), true);
         resolveColor(styles, style().getBase(), true);
 
+        if (styles == "\x1b[") return ""; // empty
         if (styles.back() == ';') styles.back() = 'm';
         return styles;
       }
@@ -276,6 +273,7 @@ namespace tabular {
         std::string base = "\x1b[";
         resolveColor(base, style().getBase(), true);
 
+        if (base == "\x1b[") return ""; // empty
         if (base.back() == ';') base.back() = 'm';
         return base;
       }
@@ -284,7 +282,7 @@ namespace tabular {
         bool shouldReset = false;
         if (!activeEscs.empty()) line.insert(0, activeEscs);
 
-        activeEscs = detail::activeEscSeq(line.getContent());
+        activeEscs = detail::activeEscSeq(line.toStr());
         if (!activeEscs.empty()) shouldReset = true;
 
         alignLine(line);
@@ -299,7 +297,7 @@ namespace tabular {
         size_t width = config().width();
         Alignment align = config().align();
 
-        size_t freeSpace = width - line.getVisibleWidth();
+        size_t freeSpace = width - line.dw();
         if (freeSpace == 0) return;
 
         switch (align)

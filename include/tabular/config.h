@@ -1,19 +1,21 @@
 #pragma once
 
 #include <cstdint>
-#include "String.h"
+#include "string.h"
 
 namespace tabular {
   enum class Alignment { Left, Right, Center };
   struct Padding {
-    uint8_t top, bottom;
-    Padding();
-    Padding(uint8_t padd);
-    Padding(uint8_t top, uint8_t bottom);
+    uint8_t top = 0;
+    uint8_t bottom = 0;
+
+    constexpr Padding() = default;
+    constexpr Padding(uint8_t padd) : top(padd), bottom(padd) {}
+    constexpr Padding(uint8_t top, uint8_t bottom) : top(top), bottom(bottom) {}
   };
   class Config {
     public:
-      Config();
+      constexpr Config() = default;
 
       Alignment align() const { return this->align_; }
       Padding padd() const { return this->padd_; }
