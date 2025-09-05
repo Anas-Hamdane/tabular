@@ -1,1 +1,14 @@
-DisableFormat: true
+BasedOnStyle: LLVM
+BreakBeforeBraces: Custom
+PointerAlignment: Left
+ColumnLimit: 85
+BraceWrapping:
+  AfterFunction: true
+  AfterClass: false
+  AfterStruct: false
+  AfterEnum: false
+  AfterNamespace: false
+  AfterControlStatement: Always
+  BeforeElse: true
+  BeforeCatch: false
+  BeforeWhile: false
