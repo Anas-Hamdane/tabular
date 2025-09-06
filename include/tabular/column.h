@@ -24,11 +24,16 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
 
   // find the length of the sequence from the start byte
   size_t len;
-  if ((first_byte & 0x80) == 0) len = 1;
-  else if ((first_byte & 0xE0) == 0xC0) len = 2;
-  else if ((first_byte & 0xF0) == 0xE0) len = 3;
-  else if ((first_byte & 0xF8) == 0xF0) len = 4;
-  else return "";
+  if ((first_byte & 0x80) == 0)
+    len = 1;
+  else if ((first_byte & 0xE0) == 0xC0)
+    len = 2;
+  else if ((first_byte & 0xF0) == 0xE0)
+    len = 3;
+  else if ((first_byte & 0xF8) == 0xF0)
+    len = 4;
+  else
+    return "";
 
   // not enough bytes
   if (pos + len > str.length()) return "";
@@ -46,7 +51,10 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
 }
 
 // for colors
-constexpr bool isColorSet(const uint32_t colorValue) { return colorValue != 0; }
+constexpr bool isColorSet(const uint32_t colorValue)
+{
+  return colorValue != 0;
+}
 constexpr bool isColor(const uint32_t colorValue)
 {
   return isColorSet(colorValue) && (colorValue & (1u << 24)) == 0;
@@ -220,7 +228,8 @@ public:
 
     // wrap the words into lines that don't exceed
     // `width - padd.left - padd.right` to leave space for the padding
-    std::vector<String> lines = wrap(words, width - padd.left - padd.right, styles, delimiter);
+    std::vector<String> lines =
+        wrap(words, width - padd.left - padd.right, styles, delimiter);
 
     // format the lines handling padding, alignment and the base styles
     lines = format(lines, width, padd, align, base);
@@ -272,14 +281,11 @@ private:
   {
     std::string styles = "\x1b[";
 
-    if (style().hasAttrs())
-      handleAttrs(styles, style().getAttrs());
+    if (style().hasAttrs()) handleAttrs(styles, style().getAttrs());
 
-    if (style().hasFg())
-      handleColor(styles, style().getFg(), false);
+    if (style().hasFg()) handleColor(styles, style().getFg(), false);
 
-    if (style().hasBg())
-      handleColor(styles, style().getBg(), true);
+    if (style().hasBg()) handleColor(styles, style().getBg(), true);
 
     if (styles == "\x1b[") return ""; // empty
 
@@ -303,7 +309,8 @@ private:
     std::vector<String> words;
     words.reserve(len / WORD_LENGTH_AVERAGE); // average
 
-    String buffer; buffer.reserve(WORD_LENGTH_AVERAGE);
+    String buffer;
+    buffer.reserve(WORD_LENGTH_AVERAGE);
 
     size_t i = 0;
     while (i < len)
@@ -313,7 +320,8 @@ private:
         if (!buffer.empty()) words.emplace_back(std::move(buffer));
         buffer.clear();
 
-        while (i < len && detail::isAscii(content[i]) && !detail::isAlpha(content[i]))
+        while (i < len && detail::isAscii(content[i]) &&
+               !detail::isAlpha(content[i]))
           buffer += content[i++];
 
         if (i < len) buffer += content[i++];
@@ -338,7 +346,8 @@ private:
     return words;
   }
 
-  std::vector<String> wrap(const std::vector<String>& words, size_t width, const std::string& styles, const String& delimiter) const
+  std::vector<String> wrap(const std::vector<String>& words, size_t width,
+                           const std::string& styles, const String& delimiter) const
   {
     std::vector<String> lines;
     lines.reserve(this->content.length() / width);
@@ -353,15 +362,11 @@ private:
     std::string activeEscs;
 
     // helper lambdas to avoid repeating code
-    auto appendResetIfNeeded = [&](String& buf)
-    {
+    auto appendResetIfNeeded = [&](String& buf) {
       if (!(activeEscs.empty() && styles.empty()) && !buf.endsWith(RESET_ESC))
-      {
         buf += RESET_ESC;
-      }
     };
-    auto startNewLine = [&](std::vector<String>& lns, String& buf)
-    {
+    auto startNewLine = [&](std::vector<String>& lns, String& buf) {
       appendResetIfNeeded(buf);
       lns.emplace_back(std::move(buf));
       buf.clear();
@@ -396,17 +401,13 @@ private:
           activeEscs.clear();
           buffer += word;
 
-          if (nextWord && wordFits(nextWord))
-            buffer += styles;
-
+          if (nextWord && wordFits(nextWord)) buffer += styles;
           continue;
         }
 
         activeEscs += word.toStr();
 
-        if (nextWord && wordFits(nextWord))
-          buffer += word;
-
+        if (nextWord && wordFits(nextWord)) buffer += word;
         continue;
       }
 
@@ -437,11 +438,10 @@ private:
       /*
        * if we reach here that means the word's display width
        * exceeds the line width
-      */
+       */
 
       // no free space, append the current line and process the others
-      if (buffer.dw() >= width + delimiter.dw())
-        startNewLine(lines, buffer);
+      if (buffer.dw() >= width + delimiter.dw()) startNewLine(lines, buffer);
 
       while (word.dw() > width)
       {
@@ -482,7 +482,9 @@ private:
 
     return lines;
   }
-  static std::vector<String> format(std::vector<String>& lines, size_t width, Padding padd, Alignment align, const std::string& base)
+  static std::vector<String> format(std::vector<String>& lines, size_t width,
+                                    Padding padd, Alignment align,
+                                    const std::string& base)
   {
     std::vector<String> formated;
     formated.reserve(lines.size() + padd.top + padd.bottom);
@@ -515,8 +517,7 @@ private:
         buffer += std::string(padd.left, ' ');
         buffer += line;
 
-        if (line.endsWith("\x1b[0m"))
-          buffer += base;
+        if (line.endsWith("\x1b[0m")) buffer += base;
 
         buffer += std::string(padd.right, ' ');
         buffer += std::string(freeSpace, ' ');
@@ -529,8 +530,7 @@ private:
         buffer += std::string(padd.left, ' ');
         buffer += line;
 
-        if (line.endsWith("\x1b[0m"))
-          buffer += base;
+        if (line.endsWith("\x1b[0m")) buffer += base;
 
         buffer += std::string(padd.right, ' ');
 
@@ -543,8 +543,7 @@ private:
         buffer += std::string(padd.left, ' ');
         buffer += line;
 
-        if (line.endsWith("\x1b[0m"))
-          buffer += base;
+        if (line.endsWith("\x1b[0m")) buffer += base;
 
         buffer += std::string(padd.right, ' ');
         break;

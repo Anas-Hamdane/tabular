@@ -44,7 +44,9 @@ struct Rgb {
   constexpr Rgb() = default;
   constexpr Rgb(uint8_t r, uint8_t g, uint8_t b) : r(r), g(g), b(b) {}
   constexpr Rgb(uint32_t hex)
-      : r((hex >> 16) & 0xFF), g((hex >> 8) & 0xFF), b(hex & 0xFF) {}
+      : r((hex >> 16) & 0xFF), g((hex >> 8) & 0xFF), b(hex & 0xFF)
+  {
+  }
   constexpr uint32_t toHex() const
   {
     return (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) |
@@ -61,9 +63,13 @@ struct Padding {
 
   constexpr Padding() = default;
   constexpr Padding(uint8_t vertical, uint8_t horizontal)
-    : top(vertical), bottom(vertical), left(horizontal), right(horizontal) {}
+      : top(vertical), bottom(vertical), left(horizontal), right(horizontal)
+  {
+  }
   constexpr Padding(uint8_t top, uint8_t bottom, uint8_t left, uint8_t right)
-      : top(top), bottom(bottom), left(left), right(right) {}
+      : top(top), bottom(bottom), left(left), right(right)
+  {
+  }
 };
 
 constexpr auto RESET_ESC = "\x1b[0m";
