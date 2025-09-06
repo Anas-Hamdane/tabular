@@ -2,69 +2,36 @@
 
 #include "global.h"
 #include "string.h"
+#include <utility>
 #include <vector>
 
 namespace tabular {
 
 namespace detail {
 // for strings
-inline std::vector<std::string> split(const std::string& text)
-{
-  size_t len = text.length();
-
-  std::vector<std::string> words;
-  words.reserve(len / 5); // average
-
-  size_t start = 0;
-  for (size_t i = 0; i < len; ++i)
-  {
-    char c = text[i];
-    if (isspace(c))
-    {
-      if (start < i)
-        words.emplace_back(text.begin() + start, text.begin() + i);
-
-      words.emplace_back(1, c);
-      start = i + 1;
-    }
-  }
-
-  if (start < len)
-    words.emplace_back(text.begin() + start, text.end());
-
-  return words;
-}
-inline bool isspace(char c)
+inline bool isspace(const char c)
 {
   return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r';
 }
-inline std::string readUtf8Char(const std::string& str, size_t pos)
+inline std::string readUtf8Char(const std::string& str, const size_t pos)
 {
-  if (pos >= str.length())
-    return "";
+  if (pos >= str.length()) return "";
 
-  unsigned char first_byte = static_cast<unsigned char>(str[pos]);
+  const auto first_byte = static_cast<unsigned char>(str[pos]);
 
   // if it's a continuation byte then it's invalid
-  if ((first_byte & 0xC0) == 0x80)
-    return "";
+  if ((first_byte & 0xC0) == 0x80) return "";
 
   // find the length of the sequence from the start byte
   size_t len;
-  if ((first_byte & 0x80) == 0)
-    len = 1;
-  else if ((first_byte & 0xE0) == 0xC0)
-    len = 2;
-  else if ((first_byte & 0xF0) == 0xE0)
-    len = 3;
-  else if ((first_byte & 0xF8) == 0xF0)
-    len = 4;
-  else
-    return "";
+  if ((first_byte & 0x80) == 0) len = 1;
+  else if ((first_byte & 0xE0) == 0xC0) len = 2;
+  else if ((first_byte & 0xF0) == 0xE0) len = 3;
+  else if ((first_byte & 0xF8) == 0xF0) len = 4;
+  else return "";
 
   // not enough bytes
-  if (pos + len > str.length())
-    return "";
+  if (pos + len > str.length()) return "";
 
   // validate
   for (size_t i = 1; i < len; ++i)
@@ -79,21 +46,24 @@ inline std::string readUtf8Char(const std::string& str, size_t pos)
 }
 
 // for colors
-constexpr bool isColorSet(uint32_t colorValue) { return colorValue != 0; }
-constexpr bool isColor(uint32_t colorValue)
+constexpr bool isColorSet(const uint32_t colorValue) { return colorValue != 0; }
+constexpr bool isColor(const uint32_t colorValue)
 {
   return isColorSet(colorValue) && (colorValue & (1u << 24)) == 0;
 }
-constexpr bool isRgb(uint32_t colorValue)
+constexpr bool isRgb(const uint32_t colorValue)
 {
   return isColorSet(colorValue) && (colorValue & (1u << 24)) != 0;
 }
 
-constexpr Color getColor(uint32_t colorValue)
+constexpr Color getColor(const uint32_t colorValue)
 {
   return static_cast<Color>(colorValue & 0xFFFFFF);
 }
-constexpr Rgb getRgb(uint32_t colorValue) { return Rgb(colorValue & 0xFFFFFF); }
+constexpr Rgb getRgb(const uint32_t colorValue)
+{
+  return {colorValue & 0xFFFFFF};
+}
 } // namespace detail
 
 class Column {
@@ -101,7 +71,7 @@ public:
   class Style {
   public:
     constexpr Style() = default;
-    constexpr Style(Attribute attr) : attrs_(static_cast<uint16_t>(attr)) {}
+    constexpr explicit Style(Attribute attr) : attrs_(static_cast<uint16_t>(attr)) {}
 
     Style& operator|=(Attribute attr)
     {
@@ -212,19 +182,19 @@ public:
     }
     Config& delimiter(String delimiter)
     {
-      this->delimiter_ = delimiter;
+      this->delimiter_ = std::move(delimiter);
       return *this;
     }
 
   private:
     Alignment align_ = Alignment::Left;
-    Padding padd_ = Padding(0);
+    Padding padd_ = Padding();
     String delimiter_ = String("-");
     size_t width_ = 0;
   };
 
   Column() = default;
-  Column(std::string content) : content(std::move(content)) {}
+  explicit Column(std::string content) : content(std::move(content)) {}
 
   std::string getContent() const { return this->content; }
   void setContent(std::string content) { this->content = std::move(content); }
@@ -237,113 +207,23 @@ public:
 
   std::vector<String> toString() const
   {
-    std::string styles = resolveStyles();
-    std::string base = resolveBase();
+    const std::string base = resolveBase();
+    const std::string styles = resolveStyles();
 
-    size_t width = config().width();
-    Padding padd = config().padd();
-    String delimiter = config().delimiter();
+    const size_t width = config().width();
+    const Padding padd = config().padd();
+    const Alignment align = config().align();
+    const String delimiter = config().delimiter();
 
-    std::vector<String> lines;
-    lines.reserve(this->content.length() / width);
+    // split into words
+    const std::vector<String> words = split();
 
-    // empty line for the padding
-    String emptyLine;
-    emptyLine += base + std::string(width, ' ');
-    if (!base.empty())
-      emptyLine += RESET_ESC;
-    lines.insert(lines.end(), padd.top, emptyLine);
+    // wrap the words into lines that don't exceed
+    // `width - padd.left - padd.right` to leave space for the padding
+    std::vector<String> lines = wrap(words, width - padd.left - padd.right, styles, delimiter);
 
-    auto words = detail::split(this->content);
-    String line;
-    line.reserve(width);
-
-    // in case the line contains active escape sequences and they were NOT
-    // reseted (with '\x1b[0m'), we need to register them, reset them
-    // at the end of the line, and restore them in the next line.
-    std::string activeEscs;
-    for (size_t i = 0; i < words.size(); ++i)
-    {
-      String word = words[i];
-      size_t len = word.dw();
-
-      if (word == "\n")
-      {
-        formatLine(line, activeEscs, styles);
-        lines.emplace_back(std::move(line));
-        line.clear();
-        continue;
-      }
-
-      // skip spaces at the start of a new line
-      if (line.empty() && word == " ")
-        continue;
-
-      // ignore other space characters
-      if (len == 1 && detail::isspace(word[0]) && word != " ")
-        continue;
-
-      // the word fits in the line
-      if (line.dw() + len <= width)
-      {
-        line += word;
-        continue;
-      }
-
-      // the word fits in the next line
-      if (len <= width)
-      {
-        formatLine(line, activeEscs, styles);
-        lines.emplace_back(std::move(line));
-        line.clear();
-        if (word != " ")
-          line += word;
-        continue;
-      }
-
-      // if we reach here that means the word's display width
-      // exceeds the line width
-      while (len > width)
-      {
-        size_t limit = width - delimiter.dw() - line.dw();
-
-        String firstPart;
-        firstPart.reserve(limit);
-
-        size_t pos = 0;
-        while (firstPart.dw() < limit)
-        {
-          String buff = detail::readUtf8Char(word.toStr(), pos);
-
-          // if it will exceed the limit
-          if (buff.dw() + firstPart.dw() > limit)
-            break;
-          firstPart += buff;
-          pos += buff.len();
-        }
-
-        firstPart += delimiter;
-        line += firstPart;
-
-        formatLine(line, activeEscs, styles);
-        lines.emplace_back(std::move(line));
-        line.clear();
-
-        word = word.toStr().substr(pos);
-        len = word.dw();
-      }
-
-      line += word;
-      continue;
-    }
-
-    if (!line.empty())
-    {
-      formatLine(line, activeEscs, styles);
-      lines.emplace_back(std::move(line));
-      line.clear();
-    }
-
+    // format the lines handling padding, alignment and the base styles
+    lines = format(lines, width, padd, align, base);
     return lines;
   }
 
@@ -352,9 +232,10 @@ private:
   Style style_;
   std::string content;
 
-  void resolveColor(std::string& styles, uint32_t color, bool back) const
+  static void handleColor(std::string& styles, uint32_t color, bool back)
   {
     using namespace detail;
+
     if (isColor(color))
     {
       Color c = getColor(color);
@@ -365,148 +246,319 @@ private:
     {
       Rgb rgb = getRgb(color);
       styles += back ? "48;2;" : "38;2;";
-      styles += std::to_string(static_cast<uint8_t>(rgb.r)) + ';';
-      styles += std::to_string(static_cast<uint8_t>(rgb.g)) + ';';
-      styles += std::to_string(static_cast<uint8_t>(rgb.b)) + ';';
+      styles += std::to_string(rgb.r) + ';';
+      styles += std::to_string(rgb.g) + ';';
+      styles += std::to_string(rgb.b) + ';';
     }
+  }
+  static void handleAttrs(std::string& styles, Attribute attr)
+  {
+    auto hasAttr = [](Attribute attr, Attribute flag) -> bool {
+      return static_cast<uint16_t>(attr) & static_cast<uint16_t>(flag);
+    };
+
+    if (hasAttr(attr, Attribute::Bold)) styles += "1;";
+    if (hasAttr(attr, Attribute::Dim)) styles += "2;";
+    if (hasAttr(attr, Attribute::Italic)) styles += "3;";
+    if (hasAttr(attr, Attribute::Underline)) styles += "4;";
+    if (hasAttr(attr, Attribute::Dunderline)) styles += "21;";
+    if (hasAttr(attr, Attribute::Blink)) styles += "5;";
+    if (hasAttr(attr, Attribute::Flink)) styles += "6;";
+    if (hasAttr(attr, Attribute::Reverse)) styles += "7;";
+    if (hasAttr(attr, Attribute::Concealed)) styles += "8;";
+    if (hasAttr(attr, Attribute::Crossed)) styles += "9;";
   }
   std::string resolveStyles() const
   {
     std::string styles = "\x1b[";
 
-    auto hasAttr = [](Attribute attr, Attribute flag) -> bool {
-      return static_cast<uint16_t>(attr) & static_cast<uint16_t>(flag);
-    };
-    Attribute attr = style().getAttrs();
+    if (style().hasAttrs())
+      handleAttrs(styles, style().getAttrs());
 
-    if (hasAttr(attr, Attribute::Bold))
-      styles += "1;";
-    if (hasAttr(attr, Attribute::Dim))
-      styles += "2;";
-    if (hasAttr(attr, Attribute::Italic))
-      styles += "3;";
-    if (hasAttr(attr, Attribute::Underline))
-      styles += "4;";
-    if (hasAttr(attr, Attribute::Dunderline))
-      styles += "21;";
-    if (hasAttr(attr, Attribute::Blink))
-      styles += "5;";
-    if (hasAttr(attr, Attribute::Flink))
-      styles += "6;";
-    if (hasAttr(attr, Attribute::Reverse))
-      styles += "7;";
-    if (hasAttr(attr, Attribute::Concealed))
-      styles += "8;";
-    if (hasAttr(attr, Attribute::Crossed))
-      styles += "9;";
+    if (style().hasFg())
+      handleColor(styles, style().getFg(), false);
 
-    resolveColor(styles, style().getFg(), false);
-    resolveColor(styles, style().getBg(), true);
-    resolveColor(styles, style().getBase(), true);
+    if (style().hasBg())
+      handleColor(styles, style().getBg(), true);
 
-    if (styles == "\x1b[")
-      return ""; // empty
-    if (styles.back() == ';')
-      styles.back() = 'm';
+    if (styles == "\x1b[") return ""; // empty
+
+    if (styles.back() == ';') styles.back() = 'm';
     return styles;
   }
   std::string resolveBase() const
   {
     std::string base = "\x1b[";
-    resolveColor(base, style().getBase(), true);
+    handleColor(base, style().getBase(), true);
 
-    if (base == "\x1b[")
-      return ""; // empty
-    if (base.back() == ';')
-      base.back() = 'm';
+    if (base == "\x1b[") return ""; // empty
+
+    if (base.back() == ';') base.back() = 'm';
     return base;
   }
-  std::string activeEscSeqs(String& line, const std::string& styles) const
+  std::vector<String> split() const
   {
-    using namespace detail;
-    std::string active;
+    const size_t len = content.length();
 
-    // helper function
-    auto endsWith = [](const std::string& str, const std::string& with) {
-      return str.compare(str.length() - with.length(), with.length(), with);
+    std::vector<String> words;
+    words.reserve(len / WORD_LENGTH_AVERAGE); // average
+
+    String buffer; buffer.reserve(WORD_LENGTH_AVERAGE);
+
+    size_t i = 0;
+    while (i < len)
+    {
+      if (content[i] == '\x1b')
+      {
+        if (!buffer.empty()) words.emplace_back(std::move(buffer));
+        buffer.clear();
+
+        while (i < len && detail::isAscii(content[i]) && !detail::isAlpha(content[i]))
+          buffer += content[i++];
+
+        if (i < len) buffer += content[i++];
+        words.emplace_back(std::move(buffer));
+        buffer.clear();
+        continue;
+      }
+
+      if (detail::isspace(content[i]))
+      {
+        if (!buffer.empty()) words.emplace_back(std::move(buffer));
+        buffer.clear();
+
+        words.emplace_back(content[i++]);
+        continue;
+      }
+
+      buffer += content[i++];
+    }
+
+    if (!buffer.empty()) words.emplace_back(std::move(buffer));
+    return words;
+  }
+
+  std::vector<String> wrap(const std::vector<String>& words, size_t width, const std::string& styles, const String& delimiter) const
+  {
+    std::vector<String> lines;
+    lines.reserve(this->content.length() / width);
+
+    String buffer;
+    buffer.reserve(width);
+    if (!styles.empty()) buffer += styles;
+
+    // in case the line contains active escape sequences, and they were NOT
+    // reseted (with '\x1b[0m'), we need to register them, reset them
+    // at the end of the line, and restore them in the next line.
+    std::string activeEscs;
+
+    // helper lambdas to avoid repeating code
+    auto appendResetIfNeeded = [&](String& buf)
+    {
+      if (!(activeEscs.empty() && styles.empty()) && !buf.endsWith(RESET_ESC))
+      {
+        buf += RESET_ESC;
+      }
+    };
+    auto startNewLine = [&](std::vector<String>& lns, String& buf)
+    {
+      appendResetIfNeeded(buf);
+      lns.emplace_back(std::move(buf));
+      buf.clear();
+      if (!styles.empty()) buf += styles;
+      if (!activeEscs.empty()) buf += activeEscs;
+    };
+    auto wordFits = [&](const String* word) {
+      return word && word->dw() + buffer.dw() <= width;
     };
 
-    size_t len = line.len();
-    for (size_t i = 0; i < len; ++i)
+    for (size_t i = 0; i < words.size(); ++i)
     {
-      if (line[i] != '\x1b')
-        continue;
+      String word = words[i];
 
-      std::string current;
-      current += line[i++];
+      // SKIP empty strings
+      if (word.len() == 0) continue;
 
-      // break at the first ascii letter
-      while (i < len && isAscii(line[i]) && !isAlpha(line[i]))
-        current += line[i++];
+      // SKIP spaces at the start of a new line
+      if (buffer.empty() && word == " ") continue;
 
-      // if it's 'm' register it
-      if (i < len && line[i] == 'm')
+      // IGNORE other space characters
+      if (word.len() == 1 && detail::isspace(word[0]) && word != " ") continue;
+
+      // HANDLE escape sequences
+      if (word[0] == '\x1b')
       {
-        current += line[i++];
-        if (current == "\x1b[0m" ||
-            (current.length() >= 3 && endsWith(current, ";0m")))
+        if (word.back() != 'm') continue;
+
+        const String* nextWord = i + 1 < words.size() ? &words[i + 1] : nullptr;
+        if (word == "\x1b[0m")
         {
-          // insert the styles to avoid reseting them
-          if (!styles.empty()) line.insert(i, styles);
-          active.clear();
+          activeEscs.clear();
+          buffer += word;
+
+          if (nextWord && wordFits(nextWord))
+            buffer += styles;
+
           continue;
         }
 
-        active += current;
+        activeEscs += word.toStr();
+
+        if (nextWord && wordFits(nextWord))
+          buffer += word;
+
+        continue;
       }
+
+      // HANDLE new lines
+      if (word == "\n")
+      {
+        startNewLine(lines, buffer);
+        continue;
+      }
+
+      // the word fits in the line
+      if (wordFits(&word))
+      {
+        buffer += word;
+        continue;
+      }
+
+      // the word fits in the next line
+      if (word.dw() <= width)
+      {
+        startNewLine(lines, buffer);
+
+        // add the next word and avoid spaces
+        if (word != " ") buffer += word;
+        continue;
+      }
+
+      /*
+       * if we reach here that means the word's display width
+       * exceeds the line width
+      */
+
+      // no free space, append the current line and process the others
+      if (buffer.dw() >= width + delimiter.dw())
+        startNewLine(lines, buffer);
+
+      while (word.dw() > width)
+      {
+        size_t limit = width - delimiter.dw() - buffer.dw();
+
+        String firstPart;
+        firstPart.reserve(limit);
+
+        size_t pos = 0;
+        while (firstPart.dw() < limit)
+        {
+          String utf8char = detail::readUtf8Char(word.toStr(), pos);
+
+          // if it will exceed the limit don't append
+          if (utf8char.dw() + firstPart.dw() > limit) break;
+
+          // otherwise append this part
+          firstPart += utf8char;
+          pos += utf8char.len();
+        }
+
+        firstPart += delimiter;
+        buffer += firstPart;
+
+        startNewLine(lines, buffer);
+        word = word.toStr().substr(pos);
+      }
+
+      buffer += word;
     }
 
-    return active;
-  }
-  void formatLine(String& line, std::string& activeEscs,
-                  const std::string& styles) const
-  {
-    bool shouldReset = false;
-    if (!activeEscs.empty())
-      line.insert(0, activeEscs);
-
-    activeEscs = activeEscSeqs(line, styles);
-    if (!activeEscs.empty())
-      shouldReset = true;
-
-    alignLine(line);
-
-    line.insert(0, styles);
-    if (!styles.empty())
-      shouldReset = true;
-
-    if (shouldReset)
-      line += RESET_ESC;
-  }
-  void alignLine(String& line) const
-  {
-    size_t width = config().width();
-    Alignment align = config().align();
-
-    size_t freeSpace = width - line.dw();
-    if (freeSpace == 0)
-      return;
-
-    switch (align)
+    if (!buffer.empty())
     {
-    case Alignment::Left:
-      line += std::string(freeSpace, ' ');
-      break;
-    case Alignment::Center: {
-      size_t left = freeSpace / 2;
-      line.insert(0, std::string(left, ' '));
-      line += std::string(freeSpace - left, ' ');
-      break;
+      appendResetIfNeeded(buffer);
+      lines.emplace_back(std::move(buffer));
+      buffer.clear();
     }
-    case Alignment::Right:
-      line.insert(0, std::string(freeSpace, ' '));
-      break;
+
+    return lines;
+  }
+  static std::vector<String> format(std::vector<String>& lines, size_t width, Padding padd, Alignment align, const std::string& base)
+  {
+    std::vector<String> formated;
+    formated.reserve(lines.size() + padd.top + padd.bottom);
+
+    bool styled = !base.empty();
+
+    String emptyLine = base;
+    emptyLine += std::string(width, ' ');
+    if (styled) emptyLine += RESET_ESC;
+
+    formated.insert(formated.end(), padd.top, emptyLine);
+
+    // temporary buffer
+    String buffer;
+    buffer.reserve(width);
+
+    for (auto& line : lines)
+    {
+      // append the base styles
+      if (styled) buffer += base;
+
+      // calculate the total line width
+      size_t lineWidth = line.dw() + padd.left + padd.right;
+
+      // handle the alignment
+      size_t freeSpace = width - lineWidth;
+      switch (align)
+      {
+      case Alignment::Left:
+        buffer += std::string(padd.left, ' ');
+        buffer += line;
+
+        if (line.endsWith("\x1b[0m"))
+          buffer += base;
+
+        buffer += std::string(padd.right, ' ');
+        buffer += std::string(freeSpace, ' ');
+
+        break;
+      case Alignment::Center: {
+        size_t leftSpace = freeSpace / 2;
+        buffer += std::string(leftSpace, ' ');
+
+        buffer += std::string(padd.left, ' ');
+        buffer += line;
+
+        if (line.endsWith("\x1b[0m"))
+          buffer += base;
+
+        buffer += std::string(padd.right, ' ');
+
+        buffer += std::string(freeSpace - leftSpace, ' ');
+        break;
+      }
+      case Alignment::Right:
+        buffer += std::string(freeSpace, ' ');
+
+        buffer += std::string(padd.left, ' ');
+        buffer += line;
+
+        if (line.endsWith("\x1b[0m"))
+          buffer += base;
+
+        buffer += std::string(padd.right, ' ');
+        break;
+      }
+
+      // reset the base styles
+      if (styled) buffer += RESET_ESC;
+
+      formated.emplace_back(std::move(buffer));
+      buffer.clear();
     }
+
+    formated.insert(formated.end(), padd.bottom, emptyLine);
+    return formated;
   }
 };
 
