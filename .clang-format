@@ -2,6 +2,10 @@ BasedOnStyle: LLVM
 BreakBeforeBraces: Custom
 PointerAlignment: Left
 ColumnLimit: 85
+
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortFunctionsOnASingleLine: Inline
+
 BraceWrapping:
   AfterFunction: true
   AfterClass: false
