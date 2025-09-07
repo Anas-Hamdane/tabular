@@ -417,20 +417,20 @@ public:
   char& back() { return this->str.back(); }
 
   void reserve(size_t n) { this->str.reserve(n); }
-
   void insert(size_t pos, const std::string& s)
   {
     this->str.insert(pos, s);
 
     if (!this->recalculate) this->dw_ += dw(s.c_str());
   }
-
   void insert(size_t pos, const String& s)
   {
     this->str.insert(pos, s.str);
 
     if (!this->recalculate) this->dw_ += s.dw();
   }
+
+  void append(size_t n, char c) { this->str.append(n, c); }
 
   void clear()
   {
@@ -441,9 +441,10 @@ public:
 
   bool endsWith(const std::string& with) const
   {
-    if (with.length() > this->str.length()) return false;
-    return this->str.compare(this->str.length() - with.length(), with.length(),
-                             with) == 0;
+    const size_t len = with.size();
+    const size_t n = str.size();
+    if (n < len) return false;
+    return str.compare(n - len, len, with) == 0;
   }
 
 private:

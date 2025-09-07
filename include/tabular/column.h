@@ -1,7 +1,7 @@
 #pragma once
 
 #include "global.h"
-#include "string.h"
+#include "./string.h"
 #include <utility>
 #include <vector>
 
@@ -78,38 +78,31 @@ class Column {
 public:
   class Style {
   public:
-    constexpr Style() = default;
-    constexpr explicit Style(Attribute attr) : attrs_(static_cast<uint16_t>(attr)) {}
-
-    Style& operator|=(Attribute attr)
-    {
-      this->attrs_ |= static_cast<uint16_t>(attr);
-      return *this;
-    }
-    Style operator|(Attribute attr) const
-    {
-      Style result = *this;
-      return result |= attr;
-    }
+    explicit Style(Column& parent)
+      : parent(parent) {}
 
     Style& fg(Color color)
     {
       this->fg_ = static_cast<uint32_t>(color);
+      this->parent.regenerate_ = true;
       return *this;
     }
     Style& fg(Rgb rgb)
     {
       this->fg_ = rgb.toHex() | (1u << 24);
+      this->parent.regenerate_ = true;
       return *this;
     }
     Style& bg(Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
+      this->parent.regenerate_ = true;
       return *this;
     }
     Style& bg(Rgb rgb)
     {
       this->bg_ = rgb.toHex() | (1u << 24);
+      this->parent.regenerate_ = true;
       return *this;
     }
     Style& base(Color color)
@@ -120,16 +113,19 @@ public:
     Style& base(Rgb rgb)
     {
       this->base_ = rgb.toHex() | (1u << 24);
+      this->parent.regenerate_ = true;
       return *this;
     }
     Style& attrs(Attribute attr)
     {
       this->attrs_ |= static_cast<uint16_t>(attr);
+      this->parent.regenerate_ = true;
       return *this;
     }
     Style& attrs(const Style& attr)
     {
       this->attrs_ |= attr.attrs_;
+      this->parent.regenerate_ = true;
       return *this;
     }
 
@@ -138,24 +134,43 @@ public:
     constexpr bool hasBase() const { return this->base_ != 0; }
     constexpr bool hasAttrs() const { return this->attrs_ != 0; }
 
-    constexpr uint32_t getFg() const { return this->fg_; }
-    constexpr uint32_t getBg() const { return this->bg_; }
-    constexpr uint32_t getBase() const { return this->base_; }
-    constexpr Attribute getAttrs() const { return static_cast<Attribute>(attrs_); }
+    constexpr uint32_t fg() const { return this->fg_; }
+    constexpr uint32_t bg() const { return this->bg_; }
+    constexpr uint32_t base() const { return this->base_; }
+    constexpr Attribute attrs() const { return static_cast<Attribute>(attrs_); }
 
-    void resetFg() { this->fg_ = 0; }
-    void resetBg() { this->bg_ = 0; }
-    void resetBase() { this->base_ = 0; }
-    void resetAttrs() { this->attrs_ = 0; }
+    void resetFg()
+    {
+      this->fg_ = 0;
+      this->parent.regenerate_ = true;
+    }
+    void resetBg()
+    {
+      this->bg_ = 0;
+      this->parent.regenerate_ = true;
+    }
+    void resetBase()
+    {
+      this->base_ = 0;
+      this->parent.regenerate_ = true;
+    }
+    void resetAttrs()
+    {
+      this->attrs_ = 0;
+      this->parent.regenerate_ = true;
+    }
     void reset()
     {
       this->fg_ = 0;
       this->bg_ = 0;
       this->base_ = 0;
       this->attrs_ = 0;
+      this->parent.regenerate_ = true;
     }
 
   private:
+    Column& parent;
+
     // representing all the colors
     uint32_t fg_ = 0;
     uint32_t bg_ = 0;
@@ -166,7 +181,8 @@ public:
   };
   class Config {
   public:
-    constexpr Config() = default;
+    explicit Config(Column& parent)
+      : parent(parent) {}
 
     Alignment align() const { return this->align_; }
     Padding padd() const { return this->padd_; }
@@ -176,44 +192,68 @@ public:
     Config& align(Alignment alignment)
     {
       this->align_ = alignment;
+      this->parent.regenerate_ = true;
       return *this;
     }
     Config& padd(Padding padd)
     {
       this->padd_ = padd;
+      this->parent.regenerate_ = true;
       return *this;
     }
     Config& width(size_t width)
     {
       this->width_ = width;
+      this->parent.regenerate_ = true;
       return *this;
     }
     Config& delimiter(String delimiter)
     {
       this->delimiter_ = std::move(delimiter);
+      this->parent.regenerate_ = true;
       return *this;
     }
 
   private:
+    Column& parent;
+
     Alignment align_ = Alignment::Left;
     Padding padd_ = Padding();
     String delimiter_ = String("-");
     size_t width_ = 0;
   };
 
-  Column() = default;
-  explicit Column(std::string content) : content(std::move(content)) {}
+public:
+  constexpr Column() = default;
+  Column(std::string content)
+  : content_(std::move(content)), regenerate_(true) {}
 
-  std::string getContent() const { return this->content; }
-  void setContent(std::string content) { this->content = std::move(content); }
+  std::string content() const { return this->content_; }
+  void content(std::string content) { this->content_ = std::move(content); }
 
-  Config& config() { return this->config_; }
-  const Config& config() const { return this->config_; }
+  String genEmptyLine() const
+  {
+    const std::string base = resolveBase();
+    const size_t width = config().width();
 
-  Style& style() { return this->style_; }
-  const Style& style() const { return this->style_; }
+    String empty = base;
+    empty.reserve(width);
 
-  std::vector<String> toString() const
+    empty += std::string(width, ' ');
+    if (!base.empty()) empty += RESET_ESC;
+
+    return empty;
+  }
+  std::vector<String> lines() const
+  {
+    if (regenerate_) lines_ = reGenLines();
+    return lines_;
+  }
+
+  // regenerate the lines of a column.
+  // NOTE THAT THIS FUNCTION DOES NOT CACHE THE LINES GENERATED, IT IS
+  // HIGHLY RECOMMENDED TO USE `Column::lines()` WHEN DOING MULTIPLE CALLS
+  std::vector<String> reGenLines() const
   {
     const std::string base = resolveBase();
     const std::string styles = resolveStyles();
@@ -223,24 +263,34 @@ public:
     const Alignment align = config().align();
     const String delimiter = config().delimiter();
 
-    // split into words
-    const std::vector<String> words = split();
+    // split the content into words
+    const std::vector<String> words = split(this->content_);
 
-    // wrap the words into lines that don't exceed
-    // `width - padd.left - padd.right` to leave space for the padding
-    std::vector<String> lines =
-        wrap(words, width - padd.left - padd.right, styles, delimiter);
+    // wrap the words into lines
+    std::vector<String> lines = wrap(words);
 
     // format the lines handling padding, alignment and the base styles
-    lines = format(lines, width, padd, align, base);
+    lines = format(lines);
+
     return lines;
   }
 
-private:
-  Config config_;
-  Style style_;
-  std::string content;
+  Config& config() { return this->config_; }
+  const Config& config() const { return this->config_; }
 
+  Style& style() { return this->style_; }
+  const Style& style() const { return this->style_; }
+
+private:
+  Config config_ = Config(*this);
+  Style style_ = Style(*this);
+  std::string content_ = "";
+
+  // cached lines
+  mutable std::vector<String> lines_ = {};
+  mutable bool regenerate_ = false;
+
+private:
   static void handleColor(std::string& styles, uint32_t color, bool back)
   {
     using namespace detail;
@@ -277,15 +327,16 @@ private:
     if (hasAttr(attr, Attribute::Concealed)) styles += "8;";
     if (hasAttr(attr, Attribute::Crossed)) styles += "9;";
   }
+
   std::string resolveStyles() const
   {
     std::string styles = "\x1b[";
 
-    if (style().hasAttrs()) handleAttrs(styles, style().getAttrs());
+    if (style().hasAttrs()) handleAttrs(styles, style().attrs());
 
-    if (style().hasFg()) handleColor(styles, style().getFg(), false);
+    if (style().hasFg()) handleColor(styles, style().fg(), false);
 
-    if (style().hasBg()) handleColor(styles, style().getBg(), true);
+    if (style().hasBg()) handleColor(styles, style().bg(), true);
 
     if (styles == "\x1b[") return ""; // empty
 
@@ -295,16 +346,17 @@ private:
   std::string resolveBase() const
   {
     std::string base = "\x1b[";
-    handleColor(base, style().getBase(), true);
+    handleColor(base, style().base(), true);
 
     if (base == "\x1b[") return ""; // empty
 
     if (base.back() == ';') base.back() = 'm';
     return base;
   }
-  std::vector<String> split() const
+
+  std::vector<String> split(const std::string& str) const
   {
-    const size_t len = content.length();
+    const size_t len = str.length();
 
     std::vector<String> words;
     words.reserve(len / WORD_LENGTH_AVERAGE); // average
@@ -315,42 +367,46 @@ private:
     size_t i = 0;
     while (i < len)
     {
-      if (content[i] == '\x1b')
+      if (str[i] == '\x1b')
       {
         if (!buffer.empty()) words.emplace_back(std::move(buffer));
         buffer.clear();
 
-        while (i < len && detail::isAscii(content[i]) &&
-               !detail::isAlpha(content[i]))
-          buffer += content[i++];
+        while (i < len && detail::isAscii(str[i]) && !detail::isAlpha(str[i]))
+          buffer += str[i++];
 
-        if (i < len) buffer += content[i++];
+        if (i < len) buffer += str[i++];
         words.emplace_back(std::move(buffer));
         buffer.clear();
         continue;
       }
 
-      if (detail::isspace(content[i]))
+      if (detail::isspace(str[i]))
       {
         if (!buffer.empty()) words.emplace_back(std::move(buffer));
         buffer.clear();
 
-        words.emplace_back(content[i++]);
+        words.emplace_back(str[i++]);
         continue;
       }
 
-      buffer += content[i++];
+      buffer += str[i++];
     }
 
     if (!buffer.empty()) words.emplace_back(std::move(buffer));
     return words;
   }
-
-  std::vector<String> wrap(const std::vector<String>& words, size_t width,
-                           const std::string& styles, const String& delimiter) const
+  std::vector<String> wrap(const std::vector<String>& words) const
   {
+    const std::string styles = resolveStyles();
+    const String delimiter = config().delimiter();
+    const Padding padd = config().padd();
+
+    // leave space for the padding
+    size_t width = config().width() - padd.left - padd.right;
+
     std::vector<String> lines;
-    lines.reserve(this->content.length() / width);
+    lines.reserve(this->content_.length() / width);
 
     String buffer;
     buffer.reserve(width);
@@ -482,72 +538,57 @@ private:
 
     return lines;
   }
-  static std::vector<String> format(std::vector<String>& lines, size_t width,
-                                    Padding padd, Alignment align,
-                                    const std::string& base)
+  std::vector<String> format(const std::vector<String>& lines) const
   {
+    const size_t width = config().width();
+    const std::string base = resolveBase();
+    const Padding padd = config().padd();
+    const Alignment align = config().align();
+
     std::vector<String> formated;
     formated.reserve(lines.size() + padd.top + padd.bottom);
 
-    bool styled = !base.empty();
-
-    String emptyLine = base;
-    emptyLine += std::string(width, ' ');
-    if (styled) emptyLine += RESET_ESC;
-
-    formated.insert(formated.end(), padd.top, emptyLine);
+    const bool styled = !base.empty();
+    const String empty = genEmptyLine();
+    formated.insert(formated.end(), padd.top, empty);
 
     // temporary buffer
     String buffer;
     buffer.reserve(width);
 
-    for (auto& line : lines)
+    for (const auto& line : lines)
     {
       // append the base styles
       if (styled) buffer += base;
 
       // calculate the total line width
-      size_t lineWidth = line.dw() + padd.left + padd.right;
+      const size_t lineWidth = line.dw() + padd.left + padd.right;
+      const size_t freeSpace = (width > lineWidth) ? width - lineWidth : 0;
 
-      // handle the alignment
-      size_t freeSpace = width - lineWidth;
+      size_t leftSpace = 0, rightSpace = 0;
       switch (align)
       {
       case Alignment::Left:
-        buffer += std::string(padd.left, ' ');
-        buffer += line;
-
-        if (line.endsWith("\x1b[0m")) buffer += base;
-
-        buffer += std::string(padd.right, ' ');
-        buffer += std::string(freeSpace, ' ');
-
+        leftSpace = 0;
+        rightSpace = freeSpace;
         break;
       case Alignment::Center: {
-        size_t leftSpace = freeSpace / 2;
-        buffer += std::string(leftSpace, ' ');
-
-        buffer += std::string(padd.left, ' ');
-        buffer += line;
-
-        if (line.endsWith("\x1b[0m")) buffer += base;
-
-        buffer += std::string(padd.right, ' ');
-
-        buffer += std::string(freeSpace - leftSpace, ' ');
+        leftSpace = freeSpace / 2;
+        rightSpace = freeSpace - leftSpace;
         break;
       }
       case Alignment::Right:
-        buffer += std::string(freeSpace, ' ');
-
-        buffer += std::string(padd.left, ' ');
-        buffer += line;
-
-        if (line.endsWith("\x1b[0m")) buffer += base;
-
-        buffer += std::string(padd.right, ' ');
+        leftSpace = freeSpace;
+        rightSpace = 0;
         break;
       }
+
+      buffer.append(leftSpace + padd.left, ' ');
+      buffer += line;
+
+      if (line.endsWith(RESET_ESC)) buffer += base;
+
+      buffer.append(rightSpace + padd.right, ' ');
 
       // reset the base styles
       if (styled) buffer += RESET_ESC;
@@ -556,13 +597,15 @@ private:
       buffer.clear();
     }
 
-    formated.insert(formated.end(), padd.bottom, emptyLine);
+    formated.insert(formated.end(), padd.bottom, empty);
     return formated;
   }
 };
 
-inline Column::Style operator|(Attribute lhs, Attribute rhs)
+constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
 {
-  return Column::Style(lhs) | rhs;
+  return static_cast<Attribute>(
+    static_cast<uint16_t>(lhs) | static_cast<uint16_t>(rhs)
+    );
 }
 } // namespace tabular
