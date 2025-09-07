@@ -1,18 +1,26 @@
 #pragma once
 
 #include "global.h"
-#include "./string.h"
+#include "string_utils.h"
+
 #include <utility>
 #include <vector>
 
 namespace tabular {
 
 namespace detail {
+
+struct Str {
+  std::string str;
+  size_t dw;
+};
+
 // for strings
-inline bool isspace(const char c)
+inline bool isSpace(const char c)
 {
   return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r';
 }
+
 inline std::string readUtf8Char(const std::string& str, const size_t pos)
 {
   if (pos >= str.length()) return "";
@@ -55,10 +63,12 @@ constexpr bool isColorSet(const uint32_t colorValue)
 {
   return colorValue != 0;
 }
+
 constexpr bool isColor(const uint32_t colorValue)
 {
   return isColorSet(colorValue) && (colorValue & (1u << 24)) == 0;
 }
+
 constexpr bool isRgb(const uint32_t colorValue)
 {
   return isColorSet(colorValue) && (colorValue & (1u << 24)) != 0;
@@ -68,6 +78,7 @@ constexpr Color getColor(const uint32_t colorValue)
 {
   return static_cast<Color>(colorValue & 0xFFFFFF);
 }
+
 constexpr Rgb getRgb(const uint32_t colorValue)
 {
   return {colorValue & 0xFFFFFF};
@@ -79,7 +90,9 @@ public:
   class Style {
   public:
     explicit Style(Column& parent)
-      : parent(parent) {}
+      : parent(parent)
+    {
+    }
 
     Style& fg(Color color)
     {
@@ -87,41 +100,48 @@ public:
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Style& fg(Rgb rgb)
     {
       this->fg_ = rgb.toHex() | (1u << 24);
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Style& bg(Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Style& bg(Rgb rgb)
     {
       this->bg_ = rgb.toHex() | (1u << 24);
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Style& base(Color color)
     {
       this->base_ = static_cast<uint32_t>(color);
       return *this;
     }
+
     Style& base(Rgb rgb)
     {
       this->base_ = rgb.toHex() | (1u << 24);
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Style& attrs(Attribute attr)
     {
       this->attrs_ |= static_cast<uint16_t>(attr);
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Style& attrs(const Style& attr)
     {
       this->attrs_ |= attr.attrs_;
@@ -144,21 +164,25 @@ public:
       this->fg_ = 0;
       this->parent.regenerate_ = true;
     }
+
     void resetBg()
     {
       this->bg_ = 0;
       this->parent.regenerate_ = true;
     }
+
     void resetBase()
     {
       this->base_ = 0;
       this->parent.regenerate_ = true;
     }
+
     void resetAttrs()
     {
       this->attrs_ = 0;
       this->parent.regenerate_ = true;
     }
+
     void reset()
     {
       this->fg_ = 0;
@@ -179,15 +203,18 @@ public:
     // all the attributes
     uint16_t attrs_ = 0;
   };
+
   class Config {
   public:
     explicit Config(Column& parent)
-      : parent(parent) {}
+      : parent(parent)
+    {
+    }
 
     Alignment align() const { return this->align_; }
     Padding padd() const { return this->padd_; }
     size_t width() const { return this->width_; }
-    String delimiter() const { return this->delimiter_; }
+    std::string delimiter() const { return this->delimiter_; }
 
     Config& align(Alignment alignment)
     {
@@ -195,19 +222,22 @@ public:
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Config& padd(Padding padd)
     {
       this->padd_ = padd;
       this->parent.regenerate_ = true;
       return *this;
     }
+
     Config& width(size_t width)
     {
       this->width_ = width;
       this->parent.regenerate_ = true;
       return *this;
     }
-    Config& delimiter(String delimiter)
+
+    Config& delimiter(std::string delimiter)
     {
       this->delimiter_ = std::move(delimiter);
       this->parent.regenerate_ = true;
@@ -219,24 +249,27 @@ public:
 
     Alignment align_ = Alignment::Left;
     Padding padd_ = Padding();
-    String delimiter_ = String("-");
+    std::string delimiter_ = "";
     size_t width_ = 0;
   };
 
 public:
   constexpr Column() = default;
+
   Column(std::string content)
-  : content_(std::move(content)), regenerate_(true) {}
+    : content_(std::move(content)), regenerate_(true)
+  {
+  }
 
   std::string content() const { return this->content_; }
   void content(std::string content) { this->content_ = std::move(content); }
 
-  String genEmptyLine() const
+  std::string genEmptyLine() const
   {
     const std::string base = resolveBase();
     const size_t width = config().width();
 
-    String empty = base;
+    std::string empty = base;
     empty.reserve(width);
 
     empty += std::string(width, ' ');
@@ -244,7 +277,8 @@ public:
 
     return empty;
   }
-  std::vector<String> lines() const
+
+  std::vector<std::string> lines() const
   {
     if (regenerate_) lines_ = reGenLines();
     return lines_;
@@ -253,26 +287,19 @@ public:
   // regenerate the lines of a column.
   // NOTE THAT THIS FUNCTION DOES NOT CACHE THE LINES GENERATED, IT IS
   // HIGHLY RECOMMENDED TO USE `Column::lines()` WHEN DOING MULTIPLE CALLS
-  std::vector<String> reGenLines() const
+  std::vector<std::string> reGenLines() const
   {
     const std::string base = resolveBase();
     const std::string styles = resolveStyles();
 
-    const size_t width = config().width();
-    const Padding padd = config().padd();
-    const Alignment align = config().align();
-    const String delimiter = config().delimiter();
-
     // split the content into words
-    const std::vector<String> words = split(this->content_);
+    const auto words = split(this->content_);
 
     // wrap the words into lines
-    std::vector<String> lines = wrap(words);
+    const std::vector<detail::Str> lines = wrap(words);
 
     // format the lines handling padding, alignment and the base styles
-    lines = format(lines);
-
-    return lines;
+    return format(lines);
   }
 
   Config& config() { return this->config_; }
@@ -287,7 +314,7 @@ private:
   std::string content_ = "";
 
   // cached lines
-  mutable std::vector<String> lines_ = {};
+  mutable std::vector<std::string> lines_ = {};
   mutable bool regenerate_ = false;
 
 private:
@@ -310,6 +337,7 @@ private:
       styles += std::to_string(rgb.b) + ';';
     }
   }
+
   static void handleAttrs(std::string& styles, Attribute attr)
   {
     auto hasAttr = [](Attribute attr, Attribute flag) -> bool {
@@ -343,6 +371,7 @@ private:
     if (styles.back() == ';') styles.back() = 'm';
     return styles;
   }
+
   std::string resolveBase() const
   {
     std::string base = "\x1b[";
@@ -354,14 +383,16 @@ private:
     return base;
   }
 
-  std::vector<String> split(const std::string& str) const
+  std::vector<std::string> split(const std::string& str) const
   {
+    using namespace string_utils;
+
     const size_t len = str.length();
 
-    std::vector<String> words;
+    std::vector<std::string> words;
     words.reserve(len / WORD_LENGTH_AVERAGE); // average
 
-    String buffer;
+    std::string buffer;
     buffer.reserve(WORD_LENGTH_AVERAGE);
 
     size_t i = 0;
@@ -372,7 +403,7 @@ private:
         if (!buffer.empty()) words.emplace_back(std::move(buffer));
         buffer.clear();
 
-        while (i < len && detail::isAscii(str[i]) && !detail::isAlpha(str[i]))
+        while (i < len && isAscii(str[i]) && !isAlpha(str[i]))
           buffer += str[i++];
 
         if (i < len) buffer += str[i++];
@@ -381,12 +412,12 @@ private:
         continue;
       }
 
-      if (detail::isspace(str[i]))
+      if (detail::isSpace(str[i]))
       {
         if (!buffer.empty()) words.emplace_back(std::move(buffer));
         buffer.clear();
 
-        words.emplace_back(str[i++]);
+        words.emplace_back(1, str[i++]);
         continue;
       }
 
@@ -396,19 +427,28 @@ private:
     if (!buffer.empty()) words.emplace_back(std::move(buffer));
     return words;
   }
-  std::vector<String> wrap(const std::vector<String>& words) const
+
+  std::vector<detail::Str> wrap(const std::vector<std::string>& words) const
   {
+    using namespace string_utils;
+
     const std::string styles = resolveStyles();
-    const String delimiter = config().delimiter();
+
+    // the delimiter
+    const std::string delimiter = config().delimiter();
+    size_t delimiterDw = dw(delimiter);
+
     const Padding padd = config().padd();
 
     // leave space for the padding
     size_t width = config().width() - padd.left - padd.right;
 
-    std::vector<String> lines;
+    std::vector<detail::Str> lines;
     lines.reserve(this->content_.length() / width);
 
-    String buffer;
+    std::string buffer;
+    size_t bufferDw = 0; // the display width
+
     buffer.reserve(width);
     if (!styles.empty()) buffer += styles;
 
@@ -418,76 +458,89 @@ private:
     std::string activeEscs;
 
     // helper lambdas to avoid repeating code
-    auto appendResetIfNeeded = [&](String& buf) {
-      if (!(activeEscs.empty() && styles.empty()) && !buf.endsWith(RESET_ESC))
-        buf += RESET_ESC;
+    auto appendResetIfNeeded = [&]() {
+      if (!(activeEscs.empty() && styles.empty()) && !endsWith(buffer, RESET_ESC))
+        buffer += RESET_ESC;
     };
-    auto startNewLine = [&](std::vector<String>& lns, String& buf) {
-      appendResetIfNeeded(buf);
-      lns.emplace_back(std::move(buf));
-      buf.clear();
-      if (!styles.empty()) buf += styles;
-      if (!activeEscs.empty()) buf += activeEscs;
-    };
-    auto wordFits = [&](const String* word) {
-      return word && word->dw() + buffer.dw() <= width;
+    auto startNewLine = [&]() {
+      appendResetIfNeeded();
+      lines.push_back({buffer, bufferDw});
+
+      buffer.clear();
+      bufferDw = 0;
+
+      if (!styles.empty()) buffer += styles;
+      if (!activeEscs.empty()) buffer += activeEscs;
     };
 
     for (size_t i = 0; i < words.size(); ++i)
     {
-      String word = words[i];
+      std::string word = words[i];
 
       // SKIP empty strings
-      if (word.len() == 0) continue;
+      if (word.empty()) continue;
 
       // SKIP spaces at the start of a new line
       if (buffer.empty() && word == " ") continue;
 
       // IGNORE other space characters
-      if (word.len() == 1 && detail::isspace(word[0]) && word != " ") continue;
+      if (word.length() == 1 && detail::isSpace(word[0]) && word != " ") continue;
 
       // HANDLE escape sequences
       if (word[0] == '\x1b')
       {
         if (word.back() != 'm') continue;
 
-        const String* nextWord = i + 1 < words.size() ? &words[i + 1] : nullptr;
+        const auto* nextWord = i + 1 < words.size() ? &words[i + 1] : nullptr;
         if (word == "\x1b[0m")
         {
           activeEscs.clear();
           buffer += word;
 
-          if (nextWord && wordFits(nextWord)) buffer += styles;
+          if (nextWord && dw(*nextWord) + bufferDw <= width)
+            buffer += styles;
+
           continue;
         }
 
-        activeEscs += word.toStr();
+        activeEscs += word;
 
-        if (nextWord && wordFits(nextWord)) buffer += word;
+        if (nextWord && dw(*nextWord) + bufferDw <= width)
+          buffer += word;
+
         continue;
       }
 
       // HANDLE new lines
       if (word == "\n")
       {
-        startNewLine(lines, buffer);
+        startNewLine();
         continue;
       }
 
+      // word display width
+      size_t wordDw = dw(word);
+
       // the word fits in the line
-      if (wordFits(&word))
+      if (wordDw + bufferDw <= width)
       {
         buffer += word;
+        bufferDw += wordDw;
         continue;
       }
 
       // the word fits in the next line
-      if (word.dw() <= width)
+      if (wordDw <= width)
       {
-        startNewLine(lines, buffer);
+        startNewLine();
 
         // add the next word and avoid spaces
-        if (word != " ") buffer += word;
+        if (word != " ")
+        {
+          buffer += word;
+          bufferDw += wordDw;
+        }
+
         continue;
       }
 
@@ -497,63 +550,73 @@ private:
        */
 
       // no free space, append the current line and process the others
-      if (buffer.dw() >= width + delimiter.dw()) startNewLine(lines, buffer);
+      if (bufferDw >= width + delimiterDw) startNewLine();
 
-      while (word.dw() > width)
+      while (wordDw > width)
       {
-        size_t limit = width - delimiter.dw() - buffer.dw();
+        size_t limit = width - delimiterDw - bufferDw;
 
-        String firstPart;
+        std::string firstPart;
+        size_t firstPartDw = 0;
         firstPart.reserve(limit);
 
         size_t pos = 0;
-        while (firstPart.dw() < limit)
+        while (firstPartDw < limit)
         {
-          String utf8char = detail::readUtf8Char(word.toStr(), pos);
+          std::string utf8char = detail::readUtf8Char(word, pos);
+          size_t utf8charDw = dw(utf8char);
 
           // if it will exceed the limit don't append
-          if (utf8char.dw() + firstPart.dw() > limit) break;
+          if (utf8charDw + firstPartDw > limit) break;
 
           // otherwise append this part
           firstPart += utf8char;
-          pos += utf8char.len();
+          firstPartDw += utf8charDw;
+
+          pos += utf8char.length();
         }
 
         firstPart += delimiter;
-        buffer += firstPart;
+        firstPartDw += delimiterDw;
 
-        startNewLine(lines, buffer);
-        word = word.toStr().substr(pos);
+        buffer += firstPart;
+        bufferDw += firstPartDw;
+
+        startNewLine();
+        word = word.substr(pos);
       }
 
       buffer += word;
+      bufferDw += wordDw;
     }
 
     if (!buffer.empty())
     {
-      appendResetIfNeeded(buffer);
-      lines.emplace_back(std::move(buffer));
-      buffer.clear();
+      appendResetIfNeeded();
+      lines.push_back({buffer, bufferDw});
     }
 
     return lines;
   }
-  std::vector<String> format(const std::vector<String>& lines) const
+
+  std::vector<std::string> format(const std::vector<detail::Str>& lines) const
   {
+    using namespace string_utils;
+
     const size_t width = config().width();
     const std::string base = resolveBase();
     const Padding padd = config().padd();
     const Alignment align = config().align();
 
-    std::vector<String> formated;
+    std::vector<std::string> formated;
     formated.reserve(lines.size() + padd.top + padd.bottom);
 
     const bool styled = !base.empty();
-    const String empty = genEmptyLine();
+    const std::string empty = genEmptyLine();
     formated.insert(formated.end(), padd.top, empty);
 
     // temporary buffer
-    String buffer;
+    std::string buffer;
     buffer.reserve(width);
 
     for (const auto& line : lines)
@@ -562,7 +625,7 @@ private:
       if (styled) buffer += base;
 
       // calculate the total line width
-      const size_t lineWidth = line.dw() + padd.left + padd.right;
+      const size_t lineWidth = line.dw + padd.left + padd.right;
       const size_t freeSpace = (width > lineWidth) ? width - lineWidth : 0;
 
       size_t leftSpace = 0, rightSpace = 0;
@@ -584,9 +647,9 @@ private:
       }
 
       buffer.append(leftSpace + padd.left, ' ');
-      buffer += line;
+      buffer += line.str;
 
-      if (line.endsWith(RESET_ESC)) buffer += base;
+      if (endsWith(line.str, RESET_ESC)) buffer += base;
 
       buffer.append(rightSpace + padd.right, ' ');
 
@@ -606,6 +669,6 @@ constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
 {
   return static_cast<Attribute>(
     static_cast<uint16_t>(lhs) | static_cast<uint16_t>(rhs)
-    );
+  );
 }
 } // namespace tabular

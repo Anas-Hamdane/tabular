@@ -9,10 +9,10 @@ int main()
   column.config().width(15);
   column.style().fg(Color::BrightRed);
 
-  const std::vector<String> lines = column.toString();
+  const auto lines = column.lines();
 
   for (const auto& line : lines)
-    std::cout << line.toStr() << '\n';
+    std::cout << line << '\n';
 
   return 0;
 }
