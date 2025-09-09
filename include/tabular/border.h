@@ -296,7 +296,5 @@ private:
   Part connectorRight_ = '+'; // ┤
   Part connectorTop_ = '-'; // ┬
   Part connectorBottom_ = '-'; // ┴
-
-  friend Border empty();
 };
 }
