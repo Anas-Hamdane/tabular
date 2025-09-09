@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
 #include "color.h"
 #include "global.h"
@@ -54,13 +53,13 @@ public:
       return *this;
     }
 
-    std::string toStr()
+    std::string toStr() const
     {
       using namespace detail;
       std::string buffer;
 
-      detail::ColorType fg = this->fg_;
-      detail::ColorType bg = this->bg_;
+      ColorType fg = this->fg_;
+      ColorType bg = this->bg_;
 
       if (fg.isColor())
       {
@@ -104,7 +103,7 @@ public:
     uint32_t fg_ = 0; // fg color
     uint32_t bg_ = 0; // bg color
 
-    std::string formts()
+    std::string formts() const
     {
       std::string result;
 
