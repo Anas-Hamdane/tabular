@@ -16,7 +16,7 @@ int main()
 
   const Row row(columns);
 
-  std::cout << row.toString();
+  std::cout << row.toStr();
 
   return 0;
 }
