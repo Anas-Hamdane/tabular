@@ -15,8 +15,10 @@ public:
   std::vector<Column> columns() const { return this->columns_; }
   void columns(std::vector<Column> columns) { this->columns_ = std::move(columns); }
 
-  std::string toString() const
+  std::string toStr() const
   {
+    if (columns_.empty()) return "";
+
     std::string row;
 
     size_t i = 0;
@@ -27,22 +29,22 @@ public:
       {
         const auto lines = column.lines();
 
+        row += '|';
         if (lines.size() <= i)
         {
           row += column.genEmptyLine();
         }
         else
         {
-          hasColumn = true;
           row += lines[i];
+          hasColumn = true;
         }
-
-        row += '|';
       }
 
+      row += '|';
       row += '\n';
-      if (!hasColumn) break;
 
+      if (!hasColumn) break;
       ++i;
     }
 
