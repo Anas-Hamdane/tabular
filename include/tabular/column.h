@@ -262,7 +262,11 @@ public:
   }
 
   std::string content() const { return this->content_; }
-  void content(std::string content) { this->content_ = std::move(content); }
+  void content(std::string content)
+  {
+    this->content_ = std::move(content);
+    this->regenerate_ = true;
+  }
 
   std::string genEmptyLine() const
   {
