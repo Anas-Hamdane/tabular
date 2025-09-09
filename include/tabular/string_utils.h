@@ -139,21 +139,19 @@ static constexpr unsigned char utf8_len[256] = {
     3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-inline bool bisearch(wchar_t ucs, const std::pair<uint32_t, uint32_t>* interval,
+inline bool bisearch(uint32_t ucs, const std::pair<uint32_t, uint32_t>* interval,
                      int max)
 {
   int min = 0;
-  auto ucsu = static_cast<uint32_t>(ucs);
 
-  if (ucsu < interval[0].first || ucsu > interval[max].second) return false;
+  if (ucs < interval[0].first || ucs > interval[max].second) return false;
 
   while (max >= min)
   {
     const int mid = (min + max) / 2;
 
-    if (ucsu > interval[mid].second)
-      min = mid + 1;
-    else if (ucsu < interval[mid].first) max = mid - 1;
+    if (ucs > interval[mid].second) min = mid + 1;
+    else if (ucs < interval[mid].first) max = mid - 1;
     else return true;
   }
 
@@ -176,7 +174,7 @@ constexpr bool isAlpha(const char character)
 
 // convert a utf8 encoded sequence to a wide characters
 // returns true if it's a valid utf8 string
-inline bool utf8twc(const char* s, wchar_t& wc, int& consumed)
+inline bool utf8twc(const char* s, uint32_t& wc, int& consumed)
 {
   const auto* u = reinterpret_cast<const unsigned char*>(s);
   const unsigned char c = u[0];
@@ -184,7 +182,7 @@ inline bool utf8twc(const char* s, wchar_t& wc, int& consumed)
   // ascii
   if (c < 0x80)
   {
-    wc = static_cast<wchar_t>(c);
+    wc = static_cast<uint32_t>(c);
     consumed = 1;
     return true;
   }
@@ -218,6 +216,27 @@ inline bool utf8twc(const char* s, wchar_t& wc, int& consumed)
   }
 }
 
+
+
+// return the display width of a Unicode character
+inline size_t wcwidth(const uint32_t ucs)
+{
+  using namespace detail;
+
+  if (ucs == 0) return 0;
+  if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0)) return 0;
+
+  if (bisearch(ucs, combining,
+               (sizeof(combining) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
+    return 0;
+
+  if (bisearch(ucs, wide,
+               (sizeof(wide) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
+    return 2;
+
+  return 1;
+}
+
 // calculates the display width of a given utf8 string
 inline size_t dw(const char* str)
 {
@@ -243,11 +262,11 @@ inline size_t dw(const char* str)
     }
 
     // UTF-8 characters
-    wchar_t wc;
+    uint32_t wc;
     int consumed;
     if (utf8twc(ptr, wc, consumed))
     {
-      width += wcwidth(wc);
+      width += string_utils::wcwidth(wc);
       ptr += consumed;
     }
 
@@ -265,25 +284,6 @@ inline size_t dw(const char* str)
 inline size_t dw(const std::string& str)
 {
   return dw(str.c_str());
-}
-
-// return the display width of a Unicode character
-inline size_t wcwidth(const wchar_t ucs)
-{
-  using namespace detail;
-
-  if (ucs == 0) return 0;
-  if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0)) return 0;
-
-  if (bisearch(ucs, combining,
-               (sizeof(combining) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
-    return 0;
-
-  if (bisearch(ucs, wide,
-               (sizeof(wide) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
-    return 2;
-
-  return 1;
 }
 
 inline std::string readUtf8Char(const std::string& str, const size_t pos)
