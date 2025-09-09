@@ -1,6 +1,7 @@
 #pragma once
 
 #include "global.h"
+#include "color.h"
 #include "string_utils.h"
 
 #include <utility>
@@ -56,32 +57,6 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
   }
 
   return str.substr(pos, len);
-}
-
-// for colors
-constexpr bool isColorSet(const uint32_t colorValue)
-{
-  return colorValue != 0;
-}
-
-constexpr bool isColor(const uint32_t colorValue)
-{
-  return isColorSet(colorValue) && (colorValue & (1u << 24)) == 0;
-}
-
-constexpr bool isRgb(const uint32_t colorValue)
-{
-  return isColorSet(colorValue) && (colorValue & (1u << 24)) != 0;
-}
-
-constexpr Color getColor(const uint32_t colorValue)
-{
-  return static_cast<Color>(colorValue & 0xFFFFFF);
-}
-
-constexpr Rgb getRgb(const uint32_t colorValue)
-{
-  return {colorValue & 0xFFFFFF};
 }
 } // namespace detail
 
@@ -322,19 +297,17 @@ private:
   mutable bool regenerate_ = false;
 
 private:
-  static void handleColor(std::string& styles, uint32_t color, bool back)
+  static void handleColor(std::string& styles, detail::ColorType colortype, bool back)
   {
-    using namespace detail;
-
-    if (isColor(color))
+    if (colortype.isColor())
     {
-      Color c = getColor(color);
+      Color c = colortype.color();
       styles += std::to_string(static_cast<uint8_t>(c) + (back ? 10 : 0)) + ';';
     }
 
-    else if (isRgb(color))
+    else if (colortype.isRgb())
     {
-      Rgb rgb = getRgb(color);
+      Rgb rgb = colortype.rgb();
       styles += back ? "48;2;" : "38;2;";
       styles += std::to_string(rgb.r) + ';';
       styles += std::to_string(rgb.g) + ';';
