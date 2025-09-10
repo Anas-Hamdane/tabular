@@ -30,6 +30,10 @@ public:
       this->fg_ = rgb.toHex() | (1u << 24);
       return *this;
     }
+    uint32_t fg()const
+    {
+      return this->fg_;
+    }
 
     Part& bg(const Color color)
     {
@@ -40,6 +44,10 @@ public:
     {
       this->bg_ = rgb.toHex() | (1u << 24);
       return *this;
+    }
+    uint32_t bg()const
+    {
+      return this->bg_;
     }
 
     Part& resetFg()
@@ -98,6 +106,11 @@ public:
       return buffer;
     }
 
+    operator std::string() const
+    {
+      return this->toStr();
+    }
+
   private:
     uint32_t form_ = 0; // Unicode code point
     uint32_t fg_ = 0; // fg color
@@ -138,6 +151,7 @@ public:
   };
 
   Part& horizontal() { return this->horizontal_; }
+  const Part& horizontal() const { return this->horizontal_; }
   Border& horizontal(const uint32_t form)
   {
     this->horizontal_.form(form);
@@ -145,6 +159,7 @@ public:
   }
 
   Part& vertical() { return this->vertical_; }
+  const Part& vertical() const { return this->vertical_; }
   Border& vertical(const uint32_t form)
   {
     this->vertical_.form(form);
@@ -152,6 +167,7 @@ public:
   }
 
   Part& cornerTopLeft() { return this->cornerTopLeft_; }
+  const Part& cornerTopLeft() const { return this->cornerTopLeft_; }
   Border& cornerTopLeft(const uint32_t form)
   {
     this->cornerTopLeft_.form(form);
@@ -159,6 +175,7 @@ public:
   }
 
   Part& cornerTopRight() { return this->cornerTopRight_; }
+  const Part& cornerTopRight() const { return this->cornerTopRight_; }
   Border& cornerTopRight(const uint32_t form)
   {
     this->cornerTopRight_.form(form);
@@ -166,6 +183,7 @@ public:
   }
 
   Part& cornerBottomLeft() { return this->cornerBottomLeft_; }
+  const Part& cornerBottomLeft() const { return this->cornerBottomLeft_; }
   Border& cornerBottomLeft(const uint32_t form)
   {
     this->cornerBottomLeft_.form(form);
@@ -173,6 +191,7 @@ public:
   }
 
   Part& cornerBottomRight() { return this->cornerBottomRight_; }
+  const Part& cornerBottomRight() const { return this->cornerBottomRight_; }
   Border& cornerBottomRight(const uint32_t form)
   {
     this->cornerBottomRight_.form(form);
@@ -180,6 +199,7 @@ public:
   }
 
   Part& intersection() { return this->intersection_; }
+  const Part& intersection() const { return this->intersection_; }
   Border& intersection(const uint32_t form)
   {
     this->intersection_.form(form);
@@ -187,6 +207,7 @@ public:
   }
 
   Part& connectorLeft() { return this->connectorLeft_; }
+  const Part& connectorLeft() const { return this->connectorLeft_; }
   Border& connectorLeft(const uint32_t form)
   {
     this->connectorLeft_.form(form);
@@ -194,6 +215,7 @@ public:
   }
 
   Part& connectorRight() { return this->connectorRight_; }
+  const Part& connectorRight() const { return this->connectorRight_; }
   Border& connectorRight(const uint32_t form)
   {
     this->connectorRight_.form(form);
@@ -201,6 +223,7 @@ public:
   }
 
   Part& connectorTop() { return this->connectorTop_; }
+  const Part& connectorTop() const { return this->connectorTop_; }
   Border& connectorTop(const uint32_t form)
   {
     this->connectorTop_.form(form);
@@ -208,6 +231,7 @@ public:
   }
 
   Part& connectorBottom() { return this->connectorBottom_; }
+  const Part& connectorBottom() const { return this->connectorBottom_; }
   Border& connectorBottom(const uint32_t form)
   {
     this->connectorBottom_.form(form);
