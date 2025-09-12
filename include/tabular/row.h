@@ -38,42 +38,45 @@ public:
   std::string toStr() const
   {
     if (this->columns_.empty()) return "";
-    std::string row;
+    const size_t maxLines = getMaxLines();
 
-    size_t i = 0;
-    while (true)
+    std::string rowStr;
+    rowStr.reserve(config().width() * maxLines + (this->columns_.size() + 1));
+
+    for (size_t i = 0; i < maxLines; ++i)
     {
-      bool hasColumn = false;
+      if (!rowStr.empty()) rowStr.push_back('\n');
+      rowStr.push_back('|');
+
       for (const auto& column : this->columns_)
       {
-        const auto lines = column.lines();
+        const auto& lines = column.lines();
 
-        row += '|';
-        if (lines.size() <= i)
-        {
-          row += column.genEmptyLine();
-        }
+        if (lines.size() > i)
+          rowStr += lines[i];
         else
-        {
-          row += lines[i];
-          hasColumn = true;
-        }
+          rowStr += column.genEmptyLine();
+
+        rowStr.push_back('|');
       }
-
-      row += '|';
-      if (!hasColumn) break;
-
-      row += '\n';
-      ++i;
     }
 
-    return row;
+    return rowStr;
   }
 
 private:
   std::vector<Column> columns_ = {};
   Config config_ = Config(*this);
 
+  size_t getMaxLines() const
+  {
+    size_t maxLines = 0;
+
+    for (const auto& column : this->columns_)
+      maxLines = (std::max)(maxLines, column.lines().size());
+
+    return maxLines;
+  }
   friend class Table;
 };
 }
