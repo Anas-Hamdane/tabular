@@ -1,7 +1,7 @@
 #pragma once
 
-#include "global.h"
 #include "color.h"
+#include "global.h"
 #include "string_utils.h"
 
 #include <utility>
@@ -64,10 +64,7 @@ class Column {
 public:
   class Style {
   public:
-    explicit Style(Column& parent)
-      : parent(parent)
-    {
-    }
+    explicit Style(Column& parent) : parent(parent) {}
 
     Style& fg(Color color)
     {
@@ -181,10 +178,7 @@ public:
 
   class Config {
   public:
-    explicit Config(Column& parent)
-      : parent(parent)
-    {
-    }
+    explicit Config(Column& parent) : parent(parent) {}
 
     Alignment align() const { return this->align_; }
     Padding padd() const { return this->padd_; }
@@ -224,17 +218,14 @@ public:
 
     Alignment align_ = Alignment::Left;
     Padding padd_ = Padding();
-    std::string delimiter_ = "";
+    std::string delimiter_ = "-";
     size_t width_ = 0;
   };
 
 public:
   constexpr Column() = default;
 
-  Column(std::string content)
-    : content_(std::move(content)), regenerate_(true)
-  {
-  }
+  Column(std::string content) : content_(std::move(content)), regenerate_(true) {}
 
   std::string content() const { return this->content_; }
   void content(std::string content)
@@ -268,17 +259,36 @@ public:
   // HIGHLY RECOMMENDED TO USE `Column::lines()` WHEN DOING MULTIPLE CALLS
   std::vector<std::string> reGenLines() const
   {
-    const std::string base = resolveBase();
-    const std::string styles = resolveStyles();
+    std::string delimiter = config().delimiter();
+    size_t delimiterDw = string_utils::dw(delimiter);
+    Padding padd = config().padd();
+
+    size_t width = config().width();
+    if (width < MIN_COLUMN_WIDTH) width = MIN_COLUMN_WIDTH;
+
+    if (padd.right + padd.left >= width)
+    {
+      padd.right = 0;
+      padd.left = 0;
+    }
+
+    width -= (padd.left + padd.right);
+
+    if (delimiterDw >= width)
+    {
+      delimiter = "";
+      delimiterDw = 0;
+    }
 
     // split the content into words
     const auto words = split(this->content_);
 
     // wrap the words into lines
-    const std::vector<detail::Str> lines = wrap(words);
+    const std::vector<detail::Str> lines =
+        wrap(words, width, padd, delimiter, delimiterDw);
 
     // format the lines handling padding, alignment and the base styles
-    return format(lines);
+    return format(lines, padd);
   }
 
   Config& config() { return this->config_; }
@@ -297,7 +307,8 @@ private:
   mutable bool regenerate_ = false;
 
 private:
-  static void handleColor(std::string& styles, detail::ColorType colortype, bool back)
+  static void handleColor(std::string& styles, detail::ColorType colortype,
+                          bool back)
   {
     if (colortype.isColor())
     {
@@ -405,20 +416,14 @@ private:
     return words;
   }
 
-  std::vector<detail::Str> wrap(const std::vector<std::string>& words) const
+  std::vector<detail::Str> wrap(const std::vector<std::string>& words,
+                                const size_t width, const Padding padd,
+                                const std::string delimiter,
+                                const size_t delimiterDw) const
   {
     using namespace string_utils;
 
     const std::string styles = resolveStyles();
-
-    // the delimiter
-    const std::string delimiter = config().delimiter();
-    size_t delimiterDw = dw(delimiter);
-
-    const Padding padd = config().padd();
-
-    // leave space for the padding
-    size_t width = config().width() - padd.left - padd.right;
 
     std::vector<detail::Str> lines;
     lines.reserve(this->content_.length() / width);
@@ -474,16 +479,14 @@ private:
           activeEscs.clear();
           buffer += word;
 
-          if (nextWord && dw(*nextWord) + bufferDw <= width)
-            buffer += styles;
+          if (nextWord && dw(*nextWord) + bufferDw <= width) buffer += styles;
 
           continue;
         }
 
         activeEscs += word;
 
-        if (nextWord && dw(*nextWord) + bufferDw <= width)
-          buffer += word;
+        if (nextWord && dw(*nextWord) + bufferDw <= width) buffer += word;
 
         continue;
       }
@@ -527,7 +530,7 @@ private:
        */
 
       // no free space, append the current line and process the others
-      if (bufferDw >= width + delimiterDw) startNewLine();
+      if (bufferDw >= width - delimiterDw) startNewLine();
 
       while (wordDw > width)
       {
@@ -553,14 +556,20 @@ private:
           pos += utf8char.length();
         }
 
+        // prepare the next word
+        word = word.substr(pos);
+        wordDw -= firstPartDw;
+
+        // add the delimiter
         firstPart += delimiter;
         firstPartDw += delimiterDw;
 
+        // add the stuff into the buffer
         buffer += firstPart;
         bufferDw += firstPartDw;
 
+        // append a new line
         startNewLine();
-        word = word.substr(pos);
       }
 
       buffer += word;
@@ -576,13 +585,12 @@ private:
     return lines;
   }
 
-  std::vector<std::string> format(const std::vector<detail::Str>& lines) const
+  std::vector<std::string> format(const std::vector<detail::Str>& lines, const Padding padd) const
   {
     using namespace string_utils;
 
     const size_t width = config().width();
     const std::string base = resolveBase();
-    const Padding padd = config().padd();
     const Alignment align = config().align();
 
     std::vector<std::string> formated;
@@ -644,8 +652,7 @@ private:
 
 constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
 {
-  return static_cast<Attribute>(
-    static_cast<uint16_t>(lhs) | static_cast<uint16_t>(rhs)
-  );
+  return static_cast<Attribute>(static_cast<uint16_t>(lhs) |
+                                static_cast<uint16_t>(rhs));
 }
 } // namespace tabular
