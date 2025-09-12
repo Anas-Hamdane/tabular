@@ -9,25 +9,28 @@ class Border {
 public:
   class Part {
   public:
-    constexpr Part(const uint32_t form)
-      : form_(form)
+    Part(const uint32_t form)
+      : form_(form), regenerate_(true)
     {
     }
 
     Part& form(const uint32_t form)
     {
       this->form_ = form;
+      this->regenerate_ = true;
       return *this;
     }
 
     Part& fg(const Color color)
     {
       this->fg_ = static_cast<uint32_t>(color);
+      this->regenerate_ = true;
       return *this;
     }
     Part& fg(const Rgb rgb)
     {
       this->fg_ = rgb.toHex() | (1u << 24);
+      this->regenerate_ = true;
       return *this;
     }
     uint32_t fg()const
@@ -38,11 +41,13 @@ public:
     Part& bg(const Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
+      this->regenerate_ = true;
       return *this;
     }
     Part& bg(const Rgb rgb)
     {
       this->bg_ = rgb.toHex() | (1u << 24);
+      this->regenerate_ = true;
       return *this;
     }
     uint32_t bg()const
@@ -53,15 +58,27 @@ public:
     Part& resetFg()
     {
       this->fg_ = 0;
+      this->regenerate_ = true;
       return *this;
     }
     Part& resetBg()
     {
       this->bg_ = 0;
+      this->regenerate_ = true;
       return *this;
     }
 
     std::string toStr() const
+    {
+      if (this->regenerate_)
+      {
+        this->str = reConstructStr();
+        this->regenerate_ = false;
+      }
+
+      return this->str;
+    }
+    std::string reConstructStr() const
     {
       using namespace detail;
       std::string buffer;
@@ -98,7 +115,7 @@ public:
       }
 
       std::string form = formts();
-      buffer.append(std::move(form));
+      buffer.append(form);
 
       if (buffer.length() - form.length() > 0)
         buffer.append(RESET_ESC);
@@ -115,6 +132,9 @@ public:
     uint32_t form_ = 0; // Unicode code point
     uint32_t fg_ = 0; // fg color
     uint32_t bg_ = 0; // bg color
+
+    mutable bool regenerate_ = false; // cache flag
+    mutable std::string str; // cached string form
 
     std::string formts() const
     {

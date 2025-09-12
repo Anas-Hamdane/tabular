@@ -1,6 +1,7 @@
 #pragma once
 
 #include "column.h"
+#include "border.h"
 
 namespace tabular {
 class Row {
@@ -35,18 +36,18 @@ public:
   Config& config() { return this->config_; }
   const Config& config() const { return this->config_; }
 
-  std::string toStr() const
+  std::string toStr(const Border::Part& verticalBorder = '\0') const
   {
     if (this->columns_.empty()) return "";
     const size_t maxLines = getMaxLines();
 
     std::string rowStr;
-    rowStr.reserve(config().width() * maxLines + (this->columns_.size() + 1));
+    rowStr.reserve(this->config_.width() * maxLines + (this->columns_.size() + 1));
 
     for (size_t i = 0; i < maxLines; ++i)
     {
       if (!rowStr.empty()) rowStr.push_back('\n');
-      rowStr.push_back('|');
+      rowStr += verticalBorder;
 
       for (const auto& column : this->columns_)
       {
@@ -57,7 +58,7 @@ public:
         else
           rowStr += column.genEmptyLine();
 
-        rowStr.push_back('|');
+        rowStr += verticalBorder;
       }
     }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "row.h"
-#include "border.h"
 
 namespace tabular {
 
@@ -58,22 +57,25 @@ public:
   {
     if (this->rows_.empty()) return "";
 
-    std::string table;
-    adjustWidth();
+    std::string tableStr;
+    tableStr.reserve(this->rows_.size() * this->config_.width());
 
-    table += getBorderHeader() + '\n';
+    const Border::Part& vertical = this->border_.vertical();
+
+    adjustWidth();
+    tableStr += getBorderHeader() + '\n';
 
     const size_t rowsSize = this->rows_.size();
     for (size_t i = 0; i < rowsSize; ++i)
     {
       const auto& row = this->rows_[i];
 
-      table += row.toStr() + '\n';
-      if (i + 1 < rowsSize) table += getBorderMiddle(i) + '\n';
+      tableStr += row.toStr(vertical) + '\n';
+      if (i + 1 < rowsSize) tableStr += getBorderMiddle(i) + '\n';
     }
 
-    table += getBorderFooter();
-    return table;
+    tableStr += getBorderFooter();
+    return tableStr;
   }
 
 private:
@@ -100,7 +102,7 @@ private:
   void setWidth(Row& row) const
   {
     auto& columns = row.columns_;
-    size_t width = config().width();
+    size_t width = this->config_.width();
 
     // subtract the splits
     width -= (columns.size() + 1);
@@ -119,7 +121,7 @@ private:
   void setUnspecifiedWidth(Row& row, size_t unspecified) const
   {
     auto& columns = row.columns_;
-    size_t width = config().width();
+    size_t width = this->config_.width();
 
     // subtract the splits
     width -= (columns.size() + 1);
@@ -144,7 +146,6 @@ private:
   void adjustWidth() const
   {
     if (this->rows_.empty()) return;
-    const size_t width = config().width();
 
     for (Row& row : this->rows_)
     {
@@ -163,7 +164,7 @@ private:
   std::vector<size_t> connections(const Row& row) const
   {
     std::vector<size_t> connections;
-    connections.reserve(row.columns().size());
+    connections.reserve(row.columns_.size());
 
     size_t track = 1;
     for (const Column& column : row.columns())
@@ -179,7 +180,7 @@ private:
     const auto& columns = this->rows_[0].columns();
 
     std::string header = this->border_.cornerTopLeft();
-    header.reserve(config().width());
+    header.reserve(this->config_.width());
 
     for (size_t i = 0; i < columns.size(); ++i)
     {
@@ -199,7 +200,7 @@ private:
     const auto& columns = this->rows_.back().columns();
 
     std::string footer = this->border_.cornerBottomLeft();
-    footer.reserve(config().width());
+    footer.reserve(this->config_.width());
 
     for (size_t i = 0; i < columns.size(); ++i)
     {
@@ -217,10 +218,9 @@ private:
   std::string getBorderMiddle(size_t index) const
   {
     const auto nextRowConnections = connections(this->rows_[index + 1]);
-    const auto& border = this->border_; // I like this alias
 
-    std::string middle = border.connectorLeft();
-    middle.reserve(config().width());
+    std::string middle = this->border_.connectorLeft();
+    middle.reserve(this->config_.width());
 
     const auto& columns = this->rows_[index].columns();
 
@@ -232,21 +232,21 @@ private:
       for (size_t j = 0; j < width; ++j)
       {
         if (detail::bisearch(nextRowConnections, ++tracker))
-          middle += border.connectorTop();
+          middle += this->border_.connectorTop();
         else
-          middle += border.horizontal();
+          middle += this->border_.horizontal();
       }
       tracker++;
 
       if (i + 1 >= columns.size()) continue;
 
       if (detail::bisearch(nextRowConnections, tracker))
-        middle += border.intersection();
+        middle += this->border_.intersection();
       else
-        middle += border.connectorBottom();
+        middle += this->border_.connectorBottom();
     }
 
-    middle += border.connectorRight();
+    middle += this->border_.connectorRight();
     return middle;
   }
 };
