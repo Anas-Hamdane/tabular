@@ -7,6 +7,7 @@ int main()
   Row row({ Column("Hello"), Column("Hi"), Column("How are you") });
   Table table({row});
 
+  table.border(Border::Modern());
   std::cout << table.toStr() << '\n';
   return 0;
 }

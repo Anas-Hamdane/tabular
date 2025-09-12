@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "row.h"
 
 namespace tabular {
@@ -27,33 +29,64 @@ class Table {
 public:
   class Config {
   public:
-    constexpr Config() = default;
+    Config(Table& table) : parent(parent) {}
 
-    void width(const size_t width) { this->width_ = width; }
+    void width(const size_t width)
+    {
+      parent.regenerate_ = true;
+      this->width_ = width;
+    }
     size_t width() const { return this->width_; }
 
   private:
+    Table& parent;
     size_t width_ = 50;
   };
 
 public:
-  constexpr Table() = default;
+  Table() = default;
 
   Table(std::vector<Row> rows, Border border = {})
-    : rows_(std::move(rows)), border_(border)
+    : rows_(std::move(rows)), border_(std::move(border)), regenerate_(true)
   {
   }
 
-  std::vector<Row> rows();
-  void rows(std::vector<Row> rows);
+  std::vector<Row>& rows()
+  {
+    this->regenerate_ = true;
+    return this->rows_;
+  }
+  const std::vector<Row>& rows() const { return this->rows_; }
+  void rows(std::vector<Row> rows)
+  {
+    this->regenerate_ = true;
+    this->rows_ = std::move(rows);
+  }
 
   Config& config() { return this->config_; }
   const Config& config() const { return this->config_; }
 
   Border& border() { return this->border_; }
   const Border& border() const { return this->border_; }
+  void border(Border border)
+  {
+    this->border_ = std::move(border);
+    this->regenerate_ = true;
+  }
+
+  Table& addRow(Row row)
+  {
+    this->rows_.emplace_back(std::move(row));
+    this->regenerate_ = true;
+  }
+
 
   std::string toStr() const
+  {
+    if (this->regenerate_) this->str = reGenStr();
+    return this->str;
+  }
+  std::string reGenStr() const
   {
     if (this->rows_.empty()) return "";
 
@@ -80,8 +113,11 @@ public:
 
 private:
   mutable std::vector<Row> rows_ = {};
-  Config config_ = {};
+  Config config_ = Config(*this);
   Border border_ = {};
+
+  mutable bool regenerate_ = false;
+  mutable std::string str; // cached str
 
   size_t calculateWidth(const Row& row, size_t& unspecified) const
   {

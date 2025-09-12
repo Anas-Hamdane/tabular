@@ -4,7 +4,6 @@
 #include "global.h"
 #include "string_utils.h"
 
-#include <utility>
 #include <vector>
 
 namespace tabular {
@@ -223,7 +222,7 @@ public:
   };
 
 public:
-  constexpr Column() = default;
+  Column() = default;
 
   Column(std::string content) : content_(std::move(content)), regenerate_(true) {}
 
@@ -285,7 +284,7 @@ public:
 
     // wrap the words into lines
     const std::vector<detail::Str> lines =
-        wrap(words, width, padd, delimiter, delimiterDw);
+        wrap(words, width, delimiter, delimiterDw);
 
     // format the lines handling padding, alignment and the base styles
     return format(lines, padd);
@@ -300,10 +299,10 @@ public:
 private:
   Config config_ = Config(*this);
   Style style_ = Style(*this);
-  std::string content_ = "";
+  std::string content_;
 
   // cached lines
-  mutable std::vector<std::string> lines_ = {};
+  mutable std::vector<std::string> lines_;
   mutable bool regenerate_ = false;
 
 private:
@@ -417,8 +416,8 @@ private:
   }
 
   std::vector<detail::Str> wrap(const std::vector<std::string>& words,
-                                const size_t width, const Padding padd,
-                                const std::string delimiter,
+                                const size_t width,
+                                const std::string& delimiter,
                                 const size_t delimiterDw) const
   {
     using namespace string_utils;
