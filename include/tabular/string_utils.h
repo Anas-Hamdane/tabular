@@ -5,7 +5,12 @@
 
 namespace tabular {
 namespace detail {
-static constexpr std::pair<uint32_t, uint32_t> combining[] = {
+struct Range {
+  uint32_t first;
+  uint32_t last;
+};
+
+constexpr static Range combining[] = {
     {0x0000, 0x001F}, {0x007F, 0x009F}, {0x0300, 0x036F}, {0x0483, 0x0489},
     {0x0591, 0x05BD}, {0x05BF, 0x05BF}, {0x05C1, 0x05C2}, {0x05C4, 0x05C5},
     {0x05C7, 0x05C7}, {0x0600, 0x0605}, {0x0610, 0x061A}, {0x061C, 0x061C},
@@ -90,8 +95,9 @@ static constexpr std::pair<uint32_t, uint32_t> combining[] = {
     {0x1E08F, 0x1E08F}, {0x1E130, 0x1E136}, {0x1E2AE, 0x1E2AE}, {0x1E2EC, 0x1E2EF},
     {0x1E4EC, 0x1E4EF}, {0x1E5EE, 0x1E5EF}, {0x1E8D0, 0x1E8D6}, {0x1E944, 0x1E94A},
     {0xE0001, 0xE0001}, {0xE0020, 0xE007F}, {0xE0100, 0xE01EF}};
+
 // Wide characters (East Asian wide/fullwidth)
-static constexpr std::pair<uint32_t, uint32_t> wide[] = {
+constexpr static Range wide[] = {
     {0x1100, 0x115F}, {0x231A, 0x231B}, {0x2329, 0x232A}, {0x23E9, 0x23EC},
     {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, {0x25FD, 0x25FE}, {0x2614, 0x2615},
     {0x2630, 0x2637}, {0x2648, 0x2653}, {0x267F, 0x267F}, {0x268A, 0x268F},
@@ -139,18 +145,17 @@ static constexpr unsigned char utf8_len[256] = {
     3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-inline bool bisearch(uint32_t ucs, const std::pair<uint32_t, uint32_t>* interval,
-                     int max)
+inline bool bisearch(uint32_t ucs, const Range* interval, int max)
 {
   int min = 0;
 
-  if (ucs < interval[0].first || ucs > interval[max].second) return false;
+  if (ucs < interval[0].first || ucs > interval[max].last) return false;
 
   while (max >= min)
   {
     const int mid = (min + max) / 2;
 
-    if (ucs > interval[mid].second) min = mid + 1;
+    if (ucs > interval[mid].last) min = mid + 1;
     else if (ucs < interval[mid].first) max = mid - 1;
     else return true;
   }

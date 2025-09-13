@@ -68,50 +68,51 @@ public:
     Style& fg(Color color)
     {
       this->fg_ = static_cast<uint32_t>(color);
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Style& bg(Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Style& base(Color color)
     {
       this->base_ = static_cast<uint32_t>(color);
+      this->parent.makeDirty();
       return *this;
     }
 
     Style& fg(const Rgb rgb)
     {
       this->fg_ = rgb.toHex() | (1u << 24);
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Style& bg(const Rgb rgb)
     {
       this->bg_ = rgb.toHex() | (1u << 24);
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Style& base(const Rgb rgb)
     {
       this->base_ = rgb.toHex() | (1u << 24);
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
 
     Style& attrs(Attribute attr)
     {
       this->attrs_ |= static_cast<uint16_t>(attr);
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Style& attrs(const Style& attr)
     {
       this->attrs_ |= attr.attrs_;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
 
@@ -128,25 +129,25 @@ public:
     void clrFg()
     {
       this->fg_ = 0;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
     }
 
     void clrBg()
     {
       this->bg_ = 0;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
     }
 
     void clrBase()
     {
       this->base_ = 0;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
     }
 
     void clrAttrs()
     {
       this->attrs_ = 0;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
     }
 
     void clr()
@@ -155,7 +156,7 @@ public:
       this->bg_ = 0;
       this->base_ = 0;
       this->attrs_ = 0;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
     }
 
   private:
@@ -169,7 +170,6 @@ public:
     // all the attributes
     uint16_t attrs_ = 0;
   };
-
   class Config {
   public:
     explicit Config(Column& parent) : parent(parent) {}
@@ -182,25 +182,25 @@ public:
     Config& align(const Alignment alignment)
     {
       this->align_ = alignment;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Config& padd(const Padding padd)
     {
       this->padd_ = padd;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Config& width(const size_t width)
     {
       this->width_ = width;
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
     Config& delimiter(std::string delimiter)
     {
       this->delimiter_ = std::move(delimiter);
-      this->parent.regenerate_ = true;
+      this->parent.makeDirty();
       return *this;
     }
 
@@ -216,13 +216,16 @@ public:
 public:
   Column() = default;
 
-  Column(std::string content) : content_(std::move(content)), regenerate_(true) {}
+  Column(std::string content) : content_(std::move(content)), dirty_(true) {}
 
-  std::string content() const { return this->content_; }
+  void makeDirty() const { this->dirty_ = true; }
+  void makeClean() const { this->dirty_ = false; }
+
+  const std::string& content() const { return this->content_; }
   void content(std::string content)
   {
     this->content_ = std::move(content);
-    this->regenerate_ = true;
+    makeDirty();
   }
 
   std::string genEmptyLine() const
@@ -239,9 +242,13 @@ public:
     return empty;
   }
 
-  std::vector<std::string> lines() const
+  const std::vector<std::string>& lines() const
   {
-    if (regenerate_) lines_ = reGenLines();
+    if (dirty_)
+    {
+      lines_ = reGenLines();
+      makeClean();
+    }
     return lines_;
   }
 
@@ -280,9 +287,9 @@ public:
   }
 
   Config& config() { return this->config_; }
-  const Config& config() const { return this->config_; }
-
   Style& style() { return this->style_; }
+
+  const Config& config() const { return this->config_; }
   const Style& style() const { return this->style_; }
 
 private:
@@ -292,7 +299,7 @@ private:
 
   // cache
   mutable std::vector<std::string> lines_;
-  mutable bool regenerate_ = false;
+  mutable bool dirty_ = false;
 
 private:
   static void handleColor(std::string& styles, detail::ColorType colortype,
@@ -366,7 +373,7 @@ private:
     const size_t len = str.length();
 
     std::vector<std::string> words;
-    words.reserve(len / WORD_LENGTH_AVERAGE); // average
+    words.reserve((len / WORD_LENGTH_AVERAGE) + 1); // average
 
     std::string buffer;
     buffer.reserve(WORD_LENGTH_AVERAGE);
@@ -414,7 +421,7 @@ private:
     const std::string styles = resolveStyles();
 
     std::vector<detail::Str> lines;
-    lines.reserve(this->content_.length() / width);
+    lines.reserve(this->content_.length() / width + 1);
 
     std::string buffer;
     size_t bufferDw = 0; // the display width
@@ -581,12 +588,12 @@ private:
     const std::string base = resolveBase();
     const Alignment align = config().align();
 
-    std::vector<std::string> formated;
-    formated.reserve(lines.size() + padd.top + padd.bottom);
+    std::vector<std::string> formatted;
+    formatted.reserve(lines.size() + padd.top + padd.bottom);
 
     const bool styled = !base.empty();
     const std::string empty = genEmptyLine();
-    formated.insert(formated.end(), padd.top, empty);
+    formatted.insert(formatted.end(), padd.top, empty);
 
     // temporary buffer
     std::string buffer;
@@ -629,12 +636,12 @@ private:
       // reset the base styles
       if (styled) buffer += RESET_ESC;
 
-      formated.emplace_back(std::move(buffer));
+      formatted.emplace_back(std::move(buffer));
       buffer.clear();
     }
 
-    formated.insert(formated.end(), padd.bottom, empty);
-    return formated;
+    formatted.insert(formatted.end(), padd.bottom, empty);
+    return formatted;
   }
 };
 
@@ -642,5 +649,10 @@ constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
 {
   return static_cast<Attribute>(static_cast<uint16_t>(lhs) |
                                 static_cast<uint16_t>(rhs));
+}
+
+constexpr Attribute& operator|=(Attribute& lhs, Attribute rhs) noexcept {
+  lhs = lhs | rhs;
+  return lhs;
 }
 } // namespace tabular
