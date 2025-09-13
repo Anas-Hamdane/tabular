@@ -80,30 +80,37 @@ public:
     this->regenerate_ = true;
   }
 
-
   std::string toStr() const
   {
-    if (this->regenerate_) this->str = reGenStr();
+    if (this->regenerate_)
+    {
+      this->str = reGenStr();
+      this->regenerate_ = false;
+    }
+
     return this->str;
   }
   std::string reGenStr() const
   {
-    if (this->rows_.empty()) return "";
+    // avoid reference
+    auto rows = this->rows_;
+    if (rows.empty()) return "";
 
     std::string tableStr;
-    tableStr.reserve(this->rows_.size() * this->config_.width());
+    tableStr.reserve(rows.size() * this->config_.width());
 
     const Border::Part& vertical = this->border_.vertical();
 
-    adjustWidth();
+    adjustWidth(rows);
+    configureRows(rows);
     tableStr += getBorderHeader() + '\n';
 
     const size_t rowsSize = this->rows_.size();
     for (size_t i = 0; i < rowsSize; ++i)
     {
-      const auto& row = this->rows_[i];
+      auto& row = rows[i];
 
-      tableStr += row.toStr(vertical) + '\n';
+      tableStr += row.toStr() + '\n';
       if (i + 1 < rowsSize) tableStr += getBorderMiddle(i) + '\n';
     }
 
@@ -112,12 +119,13 @@ public:
   }
 
 private:
-  mutable std::vector<Row> rows_ = {};
+  std::vector<Row> rows_ = {};
   Config config_ = Config(*this);
   Border border_ = {};
 
+  // cache
   mutable bool regenerate_ = false;
-  mutable std::string str; // cached str
+  mutable std::string str;
 
   size_t calculateWidth(const Row& row, size_t& unspecified) const
   {
@@ -137,7 +145,7 @@ private:
   }
   void setWidth(Row& row) const
   {
-    auto& columns = row.columns_;
+    auto& columns = row.columns();
     size_t width = this->config_.width();
 
     // subtract the splits
@@ -156,7 +164,7 @@ private:
   }
   void setUnspecifiedWidth(Row& row, size_t unspecified) const
   {
-    auto& columns = row.columns_;
+    auto& columns = row.columns();
     size_t width = this->config_.width();
 
     // subtract the splits
@@ -179,11 +187,11 @@ private:
     if (rest > 0) columns[lastUnsp].config().width(indivWidth + rest);
   }
 
-  void adjustWidth() const
+  void adjustWidth(std::vector<Row>& rows) const
   {
-    if (this->rows_.empty()) return;
+    if (rows.empty()) return;
 
-    for (Row& row : this->rows_)
+    for (Row& row : rows)
     {
       const size_t estimatedWidth = config().width();
 
@@ -196,11 +204,22 @@ private:
         setWidth(row);
     }
   }
+  void configureRows(std::vector<Row>& rows) const
+  {
+    auto& verticalBorder = this->border_.vertical();
+    for (auto& row : rows)
+    {
+      auto& config = row.config();
+
+      if (config.vertical().form() == '\0')
+        config.vertical(verticalBorder);
+    }
+  }
 
   std::vector<size_t> connections(const Row& row) const
   {
     std::vector<size_t> connections;
-    connections.reserve(row.columns_.size());
+    connections.reserve(row.columns().size());
 
     size_t track = 1;
     for (const Column& column : row.columns())

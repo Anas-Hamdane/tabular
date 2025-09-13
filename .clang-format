@@ -16,3 +16,5 @@ BraceWrapping:
   BeforeElse: true
   BeforeCatch: false
   BeforeWhile: false
+
+SeparateDefinitionBlocks: Leave

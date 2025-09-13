@@ -33,10 +33,6 @@ public:
       this->regenerate_ = true;
       return *this;
     }
-    uint32_t fg()const
-    {
-      return this->fg_;
-    }
 
     Part& bg(const Color color)
     {
@@ -50,18 +46,27 @@ public:
       this->regenerate_ = true;
       return *this;
     }
-    uint32_t bg()const
+
+    uint32_t fg() const
+    {
+      return this->fg_;
+    }
+    uint32_t bg() const
     {
       return this->bg_;
     }
+    uint32_t form() const
+    {
+      return this->form_;
+    }
 
-    Part& resetFg()
+    Part& clrFg()
     {
       this->fg_ = 0;
       this->regenerate_ = true;
       return *this;
     }
-    Part& resetBg()
+    Part& clrBg()
     {
       this->bg_ = 0;
       this->regenerate_ = true;
@@ -72,13 +77,13 @@ public:
     {
       if (this->regenerate_)
       {
-        this->str = reConstructStr();
+        this->str = reGenStr();
         this->regenerate_ = false;
       }
 
       return this->str;
     }
-    std::string reConstructStr() const
+    std::string reGenStr() const
     {
       using namespace detail;
       std::string buffer;
@@ -133,8 +138,9 @@ public:
     uint32_t fg_ = 0; // fg color
     uint32_t bg_ = 0; // bg color
 
-    mutable bool regenerate_ = false; // cache flag
-    mutable std::string str; // cached string form
+    // cache
+    mutable bool regenerate_ = false;
+    mutable std::string str;
 
     std::string formts() const
     {
@@ -171,87 +177,79 @@ public:
   };
 
   Part& horizontal() { return this->horizontal_; }
+  Part& vertical() { return this->vertical_; }
+  Part& cornerTopLeft() { return this->cornerTopLeft_; }
+  Part& cornerTopRight() { return this->cornerTopRight_; }
+  Part& cornerBottomLeft() { return this->cornerBottomLeft_; }
+  Part& cornerBottomRight() { return this->cornerBottomRight_; }
+  Part& intersection() { return this->intersection_; }
+  Part& connectorLeft() { return this->connectorLeft_; }
+  Part& connectorRight() { return this->connectorRight_; }
+  Part& connectorTop() { return this->connectorTop_; }
+  Part& connectorBottom() { return this->connectorBottom_; }
+
   const Part& horizontal() const { return this->horizontal_; }
+  const Part& vertical() const { return this->vertical_; }
+  const Part& cornerTopLeft() const { return this->cornerTopLeft_; }
+  const Part& cornerTopRight() const { return this->cornerTopRight_; }
+  const Part& cornerBottomLeft() const { return this->cornerBottomLeft_; }
+  const Part& cornerBottomRight() const { return this->cornerBottomRight_; }
+  const Part& intersection() const { return this->intersection_; }
+  const Part& connectorLeft() const { return this->connectorLeft_; }
+  const Part& connectorRight() const { return this->connectorRight_; }
+  const Part& connectorTop() const { return this->connectorTop_; }
+  const Part& connectorBottom() const { return this->connectorBottom_; }
+
   Border& horizontal(const uint32_t form)
   {
     this->horizontal_.form(form);
     return *this;
   }
-
-  Part& vertical() { return this->vertical_; }
-  const Part& vertical() const { return this->vertical_; }
   Border& vertical(const uint32_t form)
   {
     this->vertical_.form(form);
     return *this;
   }
-
-  Part& cornerTopLeft() { return this->cornerTopLeft_; }
-  const Part& cornerTopLeft() const { return this->cornerTopLeft_; }
   Border& cornerTopLeft(const uint32_t form)
   {
     this->cornerTopLeft_.form(form);
     return *this;
   }
-
-  Part& cornerTopRight() { return this->cornerTopRight_; }
-  const Part& cornerTopRight() const { return this->cornerTopRight_; }
   Border& cornerTopRight(const uint32_t form)
   {
     this->cornerTopRight_.form(form);
     return *this;
   }
-
-  Part& cornerBottomLeft() { return this->cornerBottomLeft_; }
-  const Part& cornerBottomLeft() const { return this->cornerBottomLeft_; }
   Border& cornerBottomLeft(const uint32_t form)
   {
     this->cornerBottomLeft_.form(form);
     return *this;
   }
-
-  Part& cornerBottomRight() { return this->cornerBottomRight_; }
-  const Part& cornerBottomRight() const { return this->cornerBottomRight_; }
   Border& cornerBottomRight(const uint32_t form)
   {
     this->cornerBottomRight_.form(form);
     return *this;
   }
-
-  Part& intersection() { return this->intersection_; }
-  const Part& intersection() const { return this->intersection_; }
   Border& intersection(const uint32_t form)
   {
     this->intersection_.form(form);
     return *this;
   }
-
-  Part& connectorLeft() { return this->connectorLeft_; }
-  const Part& connectorLeft() const { return this->connectorLeft_; }
   Border& connectorLeft(const uint32_t form)
   {
     this->connectorLeft_.form(form);
     return *this;
   }
-
-  Part& connectorRight() { return this->connectorRight_; }
-  const Part& connectorRight() const { return this->connectorRight_; }
   Border& connectorRight(const uint32_t form)
   {
     this->connectorRight_.form(form);
     return *this;
   }
-
-  Part& connectorTop() { return this->connectorTop_; }
-  const Part& connectorTop() const { return this->connectorTop_; }
   Border& connectorTop(const uint32_t form)
   {
     this->connectorTop_.form(form);
     return *this;
   }
-
-  Part& connectorBottom() { return this->connectorBottom_; }
-  const Part& connectorBottom() const { return this->connectorBottom_; }
   Border& connectorBottom(const uint32_t form)
   {
     this->connectorBottom_.form(form);
@@ -261,7 +259,7 @@ public:
   static Border Default()
   {
     // already default constructed
-    return Border();
+    return {};
   }
   static Border None()
   {

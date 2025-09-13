@@ -71,35 +71,31 @@ public:
       this->parent.regenerate_ = true;
       return *this;
     }
-
-    Style& fg(Rgb rgb)
-    {
-      this->fg_ = rgb.toHex() | (1u << 24);
-      this->parent.regenerate_ = true;
-      return *this;
-    }
-
     Style& bg(Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
       this->parent.regenerate_ = true;
       return *this;
     }
-
-    Style& bg(Rgb rgb)
-    {
-      this->bg_ = rgb.toHex() | (1u << 24);
-      this->parent.regenerate_ = true;
-      return *this;
-    }
-
     Style& base(Color color)
     {
       this->base_ = static_cast<uint32_t>(color);
       return *this;
     }
 
-    Style& base(Rgb rgb)
+    Style& fg(const Rgb rgb)
+    {
+      this->fg_ = rgb.toHex() | (1u << 24);
+      this->parent.regenerate_ = true;
+      return *this;
+    }
+    Style& bg(const Rgb rgb)
+    {
+      this->bg_ = rgb.toHex() | (1u << 24);
+      this->parent.regenerate_ = true;
+      return *this;
+    }
+    Style& base(const Rgb rgb)
     {
       this->base_ = rgb.toHex() | (1u << 24);
       this->parent.regenerate_ = true;
@@ -112,7 +108,6 @@ public:
       this->parent.regenerate_ = true;
       return *this;
     }
-
     Style& attrs(const Style& attr)
     {
       this->attrs_ |= attr.attrs_;
@@ -120,41 +115,41 @@ public:
       return *this;
     }
 
-    constexpr bool hasFg() const { return this->fg_ != 0; }
-    constexpr bool hasBg() const { return this->bg_ != 0; }
-    constexpr bool hasBase() const { return this->base_ != 0; }
-    constexpr bool hasAttrs() const { return this->attrs_ != 0; }
+    bool hasFg() const { return this->fg_ != 0; }
+    bool hasBg() const { return this->bg_ != 0; }
+    bool hasBase() const { return this->base_ != 0; }
+    bool hasAttrs() const { return this->attrs_ != 0; }
 
-    constexpr uint32_t fg() const { return this->fg_; }
-    constexpr uint32_t bg() const { return this->bg_; }
-    constexpr uint32_t base() const { return this->base_; }
-    constexpr Attribute attrs() const { return static_cast<Attribute>(attrs_); }
+    uint32_t fg() const { return this->fg_; }
+    uint32_t bg() const { return this->bg_; }
+    uint32_t base() const { return this->base_; }
+    Attribute attrs() const { return static_cast<Attribute>(attrs_); }
 
-    void resetFg()
+    void clrFg()
     {
       this->fg_ = 0;
       this->parent.regenerate_ = true;
     }
 
-    void resetBg()
+    void clrBg()
     {
       this->bg_ = 0;
       this->parent.regenerate_ = true;
     }
 
-    void resetBase()
+    void clrBase()
     {
       this->base_ = 0;
       this->parent.regenerate_ = true;
     }
 
-    void resetAttrs()
+    void clrAttrs()
     {
       this->attrs_ = 0;
       this->parent.regenerate_ = true;
     }
 
-    void reset()
+    void clr()
     {
       this->fg_ = 0;
       this->bg_ = 0;
@@ -184,27 +179,24 @@ public:
     size_t width() const { return this->width_; }
     std::string delimiter() const { return this->delimiter_; }
 
-    Config& align(Alignment alignment)
+    Config& align(const Alignment alignment)
     {
       this->align_ = alignment;
       this->parent.regenerate_ = true;
       return *this;
     }
-
-    Config& padd(Padding padd)
+    Config& padd(const Padding padd)
     {
       this->padd_ = padd;
       this->parent.regenerate_ = true;
       return *this;
     }
-
-    Config& width(size_t width)
+    Config& width(const size_t width)
     {
       this->width_ = width;
       this->parent.regenerate_ = true;
       return *this;
     }
-
     Config& delimiter(std::string delimiter)
     {
       this->delimiter_ = std::move(delimiter);
@@ -253,9 +245,6 @@ public:
     return lines_;
   }
 
-  // regenerate the lines of a column.
-  // NOTE THAT THIS FUNCTION DOES NOT CACHE THE LINES GENERATED, IT IS
-  // HIGHLY RECOMMENDED TO USE `Column::lines()` WHEN DOING MULTIPLE CALLS
   std::vector<std::string> reGenLines() const
   {
     std::string delimiter = config().delimiter();
@@ -301,7 +290,7 @@ private:
   Style style_ = Style(*this);
   std::string content_;
 
-  // cached lines
+  // cache
   mutable std::vector<std::string> lines_;
   mutable bool regenerate_ = false;
 

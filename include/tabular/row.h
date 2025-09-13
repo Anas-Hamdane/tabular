@@ -8,7 +8,7 @@ class Row {
 public:
   class Config {
   public:
-    Config(Row& parent)
+    explicit Config(Row& parent)
       : parent(parent)
     {
     }
@@ -58,7 +58,12 @@ public:
 
   std::string toStr() const
   {
-    if (this->regenerate_) this->str = reGenStr();
+    if (this->regenerate_)
+    {
+      this->str = reGenStr();
+      this->regenerate_ = false;
+    }
+
     return this->str;
   }
 
@@ -109,6 +114,5 @@ private:
 
     return maxLines;
   }
-  friend class Table;
 };
 }
