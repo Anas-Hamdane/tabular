@@ -9,41 +9,44 @@ class Border {
 public:
   class Part {
   public:
-    Part(const uint32_t form)
-      : form_(form), regenerate_(true)
+    Part(const uint32_t glyph)
+      : glyph_(glyph), dirty_(true)
     {
     }
 
-    Part& form(const uint32_t form)
+    void makeDirty() const { this->dirty_ = true; }
+    void makeClean() const { this->dirty_ = false; }
+
+    Part& glyph(const uint32_t glyph)
     {
-      this->form_ = form;
-      this->regenerate_ = true;
+      this->glyph_ = glyph;
+      makeDirty();
       return *this;
     }
 
     Part& fg(const Color color)
     {
       this->fg_ = static_cast<uint32_t>(color);
-      this->regenerate_ = true;
+      makeDirty();
       return *this;
     }
     Part& fg(const Rgb rgb)
     {
       this->fg_ = rgb.toHex() | (1u << 24);
-      this->regenerate_ = true;
+      makeDirty();
       return *this;
     }
 
     Part& bg(const Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
-      this->regenerate_ = true;
+      makeDirty();
       return *this;
     }
     Part& bg(const Rgb rgb)
     {
       this->bg_ = rgb.toHex() | (1u << 24);
-      this->regenerate_ = true;
+      makeDirty();
       return *this;
     }
 
@@ -55,30 +58,37 @@ public:
     {
       return this->bg_;
     }
-    uint32_t form() const
+    uint32_t glyph() const
     {
-      return this->form_;
+      return this->glyph_;
     }
 
     Part& clrFg()
     {
       this->fg_ = 0;
-      this->regenerate_ = true;
+      makeDirty();
       return *this;
     }
     Part& clrBg()
     {
       this->bg_ = 0;
-      this->regenerate_ = true;
+      makeDirty();
+      return *this;
+    }
+    Part& clr()
+    {
+      this->fg_ = 0;
+      this->bg_ = 0;
+      makeDirty();
       return *this;
     }
 
-    std::string toStr() const
+    const std::string& toStr() const
     {
-      if (this->regenerate_)
+      if (this->dirty_)
       {
         this->str = reGenStr();
-        this->regenerate_ = false;
+        makeClean();
       }
 
       return this->str;
@@ -94,82 +104,91 @@ public:
       if (fg.isColor())
       {
         buffer.append("\x1b[");
-        buffer += std::to_string(static_cast<uint8_t>(fg.color())) + ';';
+        buffer.append(std::to_string(static_cast<uint8_t>(fg.color())));
+        buffer.push_back(';');
       }
       else if (fg.isRgb())
       {
         Rgb rgb = fg.rgb();
         buffer.append("\x1b[38;2;");
-        buffer += std::to_string(rgb.r) + ';';
-        buffer += std::to_string(rgb.g) + ';';
-        buffer += std::to_string(rgb.b) + ';';
+
+        buffer.append(std::to_string(rgb.r));
+        buffer.push_back(';');
+        buffer.append(std::to_string(rgb.g));
+        buffer.push_back(';');
+        buffer.append(std::to_string(rgb.b));
+        buffer.push_back(';');
       }
 
       if (bg.isColor())
       {
         if (buffer.empty()) buffer.append("\x1b[");
-        buffer += std::to_string(static_cast<uint8_t>(bg.color()) + 10) + ';';
+        buffer.append(std::to_string(static_cast<uint8_t>(bg.color()) + 10));
+        buffer.push_back(';');
       }
       else if (bg.isRgb())
       {
         Rgb rgb = bg.rgb();
-        if (buffer.empty()) buffer.append("\x1b[38;2;");
-        buffer += std::to_string(rgb.r) + ';';
-        buffer += std::to_string(rgb.g) + ';';
-        buffer += std::to_string(rgb.b) + ';';
+        if (buffer.empty()) buffer.append("\x1b[48;2;");
+        buffer.append(std::to_string(rgb.r));
+        buffer.push_back(';');
+        buffer.append(std::to_string(rgb.g));
+        buffer.push_back(';');
+        buffer.append(std::to_string(rgb.b));
+        buffer.push_back(';');
       }
 
-      std::string form = formts();
-      buffer.append(form);
+      const std::string glyph = glyphToStr();
+      buffer.append(glyph);
 
-      if (buffer.length() - form.length() > 0)
+      if (buffer.length() - glyph.length() > 0)
         buffer.append(RESET_ESC);
 
       return buffer;
     }
 
-    operator std::string() const
+    operator const std::string&() const
     {
       return this->toStr();
     }
 
   private:
-    uint32_t form_ = 0; // Unicode code point
+    uint32_t glyph_ = 0; // Unicode code point
     uint32_t fg_ = 0; // fg color
     uint32_t bg_ = 0; // bg color
 
     // cache
-    mutable bool regenerate_ = false;
+    mutable bool dirty_ = false;
     mutable std::string str;
 
-    std::string formts() const
+    std::string glyphToStr() const
     {
       std::string result;
 
-      if (form_ <= 0x7F)
+      if (this->glyph_ <= 0x7F)
       {
-        result += static_cast<char>(form_);
+        result += static_cast<char>(this->glyph_);
       }
 
-      else if (form_ <= 0x7FF)
+      else if (this->glyph_ <= 0x7FF)
       {
-        result += static_cast<char>(0xC0 | ((form_ >> 6) & 0x1F));
-        result += static_cast<char>(0x80 | (form_ & 0x3F));
+        result += static_cast<char>(0xC0 | ((this->glyph_ >> 6) & 0x1F));
+        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
       }
 
-      else if (form_ <= 0xFFFF)
+      else if (this->glyph_ <= 0xFFFF)
       {
-        result += static_cast<char>(0xE0 | ((form_ >> 12) & 0x0F));
-        result += static_cast<char>(0x80 | ((form_ >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (form_ & 0x3F));
+        result += static_cast<char>(0xE0 | ((this->glyph_ >> 12) & 0x0F));
+        result += static_cast<char>(0x80 | ((this->glyph_ >> 6) & 0x3F));
+        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
       }
 
       else
       {
-        result += static_cast<char>(0xF0 | ((form_ >> 18) & 0x07));
-        result += static_cast<char>(0x80 | ((form_ >> 12) & 0x3F));
-        result += static_cast<char>(0x80 | ((form_ >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (form_ & 0x3F));
+        result += static_cast<char>(0xF0 | ((this->glyph_ >> 18) & 0x07));
+        result += static_cast<char>(0x80 | ((this->glyph_ >> 12) & 0x3F));
+        result += static_cast<char>(0x80 | ((this->glyph_ >> 6) & 0x3F));
+        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
       }
 
       return result;
@@ -200,59 +219,59 @@ public:
   const Part& connectorTop() const { return this->connectorTop_; }
   const Part& connectorBottom() const { return this->connectorBottom_; }
 
-  Border& horizontal(const uint32_t form)
+  Border& horizontal(const uint32_t glyph)
   {
-    this->horizontal_.form(form);
+    this->horizontal_.glyph(glyph);
     return *this;
   }
-  Border& vertical(const uint32_t form)
+  Border& vertical(const uint32_t glyph)
   {
-    this->vertical_.form(form);
+    this->vertical_.glyph(glyph);
     return *this;
   }
-  Border& cornerTopLeft(const uint32_t form)
+  Border& cornerTopLeft(const uint32_t glyph)
   {
-    this->cornerTopLeft_.form(form);
+    this->cornerTopLeft_.glyph(glyph);
     return *this;
   }
-  Border& cornerTopRight(const uint32_t form)
+  Border& cornerTopRight(const uint32_t glyph)
   {
-    this->cornerTopRight_.form(form);
+    this->cornerTopRight_.glyph(glyph);
     return *this;
   }
-  Border& cornerBottomLeft(const uint32_t form)
+  Border& cornerBottomLeft(const uint32_t glyph)
   {
-    this->cornerBottomLeft_.form(form);
+    this->cornerBottomLeft_.glyph(glyph);
     return *this;
   }
-  Border& cornerBottomRight(const uint32_t form)
+  Border& cornerBottomRight(const uint32_t glyph)
   {
-    this->cornerBottomRight_.form(form);
+    this->cornerBottomRight_.glyph(glyph);
     return *this;
   }
-  Border& intersection(const uint32_t form)
+  Border& intersection(const uint32_t glyph)
   {
-    this->intersection_.form(form);
+    this->intersection_.glyph(glyph);
     return *this;
   }
-  Border& connectorLeft(const uint32_t form)
+  Border& connectorLeft(const uint32_t glyph)
   {
-    this->connectorLeft_.form(form);
+    this->connectorLeft_.glyph(glyph);
     return *this;
   }
-  Border& connectorRight(const uint32_t form)
+  Border& connectorRight(const uint32_t glyph)
   {
-    this->connectorRight_.form(form);
+    this->connectorRight_.glyph(glyph);
     return *this;
   }
-  Border& connectorTop(const uint32_t form)
+  Border& connectorTop(const uint32_t glyph)
   {
-    this->connectorTop_.form(form);
+    this->connectorTop_.glyph(glyph);
     return *this;
   }
-  Border& connectorBottom(const uint32_t form)
+  Border& connectorBottom(const uint32_t glyph)
   {
-    this->connectorBottom_.form(form);
+    this->connectorBottom_.glyph(glyph);
     return *this;
   }
 
@@ -261,45 +280,33 @@ public:
     // already default constructed
     return {};
   }
-  static Border None()
+  static Border Filled(const uint32_t c)
   {
     Border border;
-    border.horizontal_ = '\0';
-    border.vertical_ = '\0';
+    border.horizontal_ = c;
+    border.vertical_ = c;
 
-    border.cornerTopLeft_ = '\0';
-    border.cornerTopRight_ = '\0';
-    border.cornerBottomLeft_ = '\0';
-    border.cornerBottomRight_ = '\0';
+    border.cornerTopLeft_ = c;
+    border.cornerTopRight_ = c;
+    border.cornerBottomLeft_ = c;
+    border.cornerBottomRight_ = c;
 
-    border.intersection_ = '\0';
+    border.intersection_ = c;
 
-    border.connectorLeft_ = '\0';
-    border.connectorRight_ = '\0';
-    border.connectorTop_ = '\0';
-    border.connectorBottom_ = '\0';
+    border.connectorLeft_ = c;
+    border.connectorRight_ = c;
+    border.connectorTop_ = c;
+    border.connectorBottom_ = c;
 
     return border;
   }
+  static Border None()
+  {
+    return Filled(U'\0');
+  }
   static Border Blank()
   {
-    Border border;
-    border.horizontal_ = ' ';
-    border.vertical_ = ' ';
-
-    border.cornerTopLeft_ = ' ';
-    border.cornerTopRight_ = ' ';
-    border.cornerBottomLeft_ = ' ';
-    border.cornerBottomRight_ = ' ';
-
-    border.intersection_ = ' ';
-
-    border.connectorLeft_ = ' ';
-    border.connectorRight_ = ' ';
-    border.connectorTop_ = ' ';
-    border.connectorBottom_ = ' ';
-
-    return border;
+    return Filled(U' ');
   }
   static Border Modern()
   {
@@ -323,19 +330,19 @@ public:
   }
 
 private:
-  Part horizontal_ = '-'; // ─
-  Part vertical_ = '|'; // │
+  Part horizontal_ = U'-'; // ─
+  Part vertical_ = U'|'; // │
 
-  Part cornerTopLeft_ = '+'; // ┌
-  Part cornerTopRight_ = '+'; // ┐
-  Part cornerBottomLeft_ = '+'; // └
-  Part cornerBottomRight_ = '+'; // ┘
+  Part cornerTopLeft_ = U'+'; // ┌
+  Part cornerTopRight_ = U'+'; // ┐
+  Part cornerBottomLeft_ = U'+'; // └
+  Part cornerBottomRight_ = U'+'; // ┘
 
-  Part intersection_ = '+'; // ┼
+  Part intersection_ = U'+'; // ┼
 
-  Part connectorLeft_ = '+'; // ├
-  Part connectorRight_ = '+'; // ┤
-  Part connectorTop_ = '-'; // ┬
-  Part connectorBottom_ = '-'; // ┴
+  Part connectorLeft_ = U'+'; // ├
+  Part connectorRight_ = U'+'; // ┤
+  Part connectorTop_ = U'-'; // ┬
+  Part connectorBottom_ = U'-'; // ┴
 };
 }
