@@ -24,7 +24,7 @@ inline bool bisearch(const std::vector<size_t>& vec, size_t value)
   return false;
 }
 }
-
+// clang-format off
 class Table {
 public:
   class Config {
@@ -41,6 +41,11 @@ public:
 
     size_t width() const { return this->width_; }
 
+    void reset()
+    {
+      this->width_ = 50;
+    }
+
   private:
     Table& parent_;
     size_t width_ = 50;
@@ -49,38 +54,16 @@ public:
 public:
   Table() = default;
 
-  Table(std::vector<Row> rows, Border border = {})
+  explicit Table(std::vector<Row> rows, Border border = {})
     : rows_(std::move(rows)), border_(std::move(border)), dirty_(true)
   {
   }
-
-  void makeDirty() const { dirty_ = true; }
-  void makeClean() const { dirty_ = false; }
-
-  std::vector<Row>& rows()
-  {
-    makeDirty();
-    return this->rows_;
-  }
-
-  const std::vector<Row>& rows() const { return this->rows_; }
 
   void rows(std::vector<Row> rows)
   {
     this->rows_ = std::move(rows);
     makeDirty();
   }
-
-  Config& config() { return this->config_; }
-  const Config& config() const { return this->config_; }
-
-  Border& border()
-  {
-    makeDirty();
-    return this->border_;
-  }
-  const Border& border() const { return this->border_; }
-
   void border(Border border)
   {
     this->border_ = std::move(border);
@@ -93,19 +76,79 @@ public:
     makeDirty();
     return *this;
   }
+  Table& addRow(std::vector<std::string> row)
+  {
+    this->rows_.emplace_back(std::move(row));
+    makeDirty();
+    return *this;
+  }
+
+  Config& config() { return this->config_; }
+  const Config& config() const { return this->config_; }
+
+  Border& border()
+  {
+    makeDirty();
+    return this->border_;
+  }
+  const Border& border() const { return this->border_; }
 
   const std::string& str() const
   {
     if (this->dirty_)
     {
-      this->str_ = reGenStr();
+      this->str_ = genStr();
       makeClean();
     }
 
     return this->str_;
   }
 
-  std::string reGenStr() const
+  std::vector<Row>& rows()
+  {
+    makeDirty();
+    return this->rows_;
+  }
+  const std::vector<Row>& rows() const { return this->rows_; }
+
+  Row& row(int index)
+  {
+    makeDirty();
+    return this->rows_.at(index);
+  }
+  const Row& row(int index) const { return this->rows_.at(index); }
+
+  Row& operator[](int index)
+  {
+    makeDirty();
+    return this->rows_.at(index);
+  }
+  const Row& operator[](int index) const
+  {
+    return this->rows_.at(index);
+  }
+
+  void clr()
+  {
+    this->rows_.clear();
+    this->str_.clear();
+    config_.reset();
+    border_ = Border();
+  }
+
+private:
+  std::vector<Row> rows_;
+  Config config_{*this};
+  Border border_;
+
+  // cache
+  mutable bool dirty_ = false;
+  mutable std::string str_;
+
+  void makeDirty() const { dirty_ = true; }
+  void makeClean() const { dirty_ = false; }
+
+  std::string genStr() const
   {
     // avoid reference
     auto rows = this->rows_;
@@ -130,16 +173,6 @@ public:
     tableStr += getBorderFooter();
     return tableStr;
   }
-
-private:
-  std::vector<Row> rows_;
-  Config config_ = Config(*this);
-  Border border_;
-
-  // cache
-  mutable bool dirty_ = false;
-  mutable std::string str_;
-
   static size_t calculateWidth(const Row& row, size_t& unspecified)
   {
     const auto& columns = row.columns();
@@ -176,7 +209,6 @@ private:
     // if there's still a rest
     if (rest > 0) columns.back().config().width(indivWidth + rest);
   }
-
   void setUnspecifiedWidth(Row& row, size_t unspecified) const
   {
     auto& columns = row.columns();
@@ -219,7 +251,6 @@ private:
         setWidth(row);
     }
   }
-
   void configureRows(std::vector<Row>& rows) const
   {
     auto& verticalBorder = this->border_.vertical();
@@ -246,7 +277,6 @@ private:
 
     return connections;
   }
-
   std::string getBorderHeader() const
   {
     const auto& columns = this->rows_[0].columns();
@@ -268,7 +298,6 @@ private:
     header += this->border_.cornerTopRight();
     return header;
   }
-
   std::string getBorderFooter() const
   {
     const auto& columns = this->rows_.back().columns();
@@ -290,7 +319,6 @@ private:
     footer += this->border_.cornerBottomRight();
     return footer;
   }
-
   std::string getBorderMiddle(size_t index) const
   {
     const auto nextRowConnections = connections(this->rows_[index + 1]);
@@ -327,4 +355,5 @@ private:
     return middle;
   }
 };
+// clang-format off
 }

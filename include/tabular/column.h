@@ -229,7 +229,8 @@ public:
 public:
   Column() = default;
 
-  Column(std::string content) : content_(std::move(content)), dirty_(true)
+  Column(std::string content)
+    : content_(std::move(content)), dirty_(true)
   {
   }
 

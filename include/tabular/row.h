@@ -37,9 +37,19 @@ public:
 public:
   Row() = default;
 
-  Row(std::vector<Column> columns)
+  explicit Row(std::vector<Column> columns)
     : columns_(std::move(columns))
   {
+  }
+
+  explicit Row(std::vector<std::string> columns)
+  {
+    this->columns_.reserve(columns.size());
+
+    for (auto& column : columns)
+    {
+      this->columns_.emplace_back(std::move(column));
+    }
   }
 
   void makeDirty() const { this->dirty_ = true; }
@@ -101,6 +111,17 @@ public:
     }
 
     return rowStr;
+  }
+
+  Column& operator[](int index)
+  {
+    makeDirty();
+    return this->columns_.at(index);
+  }
+
+  const Column& operator[](int index) const
+  {
+    return this->columns_.at(index);
   }
 
 private:
