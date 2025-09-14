@@ -5,6 +5,7 @@
 #include "global.h"
 
 namespace tabular {
+// clang-format off
 class Border {
 public:
   class Part {
@@ -195,6 +196,7 @@ public:
     }
   };
 
+
   Part& horizontal() { return this->horizontal_; }
   Part& vertical() { return this->vertical_; }
   Part& cornerTopLeft() { return this->cornerTopLeft_; }
@@ -329,6 +331,7 @@ public:
     return border;
   }
 
+
 private:
   Part horizontal_ = U'-'; // ─
   Part vertical_ = U'|'; // │
@@ -345,4 +348,5 @@ private:
   Part connectorTop_ = U'-'; // ┬
   Part connectorBottom_ = U'-'; // ┴
 };
+// clang-format on
 }

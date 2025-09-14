@@ -15,20 +15,21 @@ public:
 
     void width(const size_t width)
     {
-      parent.regenerate_ = true;
+      parent.makeDirty();
       this->width_ = width;
     }
-    void vertical(Border::Part vertical)
+    void vertical(Border::Part part)
     {
-      parent.regenerate_ = true;
-      this->vertical_ = std::move(vertical);
+      parent.makeDirty();
+      this->vertical_ = std::move(part);
     }
 
     size_t width() const { return this->width_; }
-    Border::Part vertical() const { return this->vertical_; }
+    const Border::Part& vertical() const { return this->vertical_; }
 
   private:
     Row& parent;
+
     size_t width_ = 50;
     Border::Part vertical_ = '\0';
   };
@@ -41,30 +42,35 @@ public:
   {
   }
 
+  void makeDirty() const { this->dirty_ = true; }
+  void makeClean() const { this->dirty_ = false; }
+
   std::vector<Column>& columns()
   {
-    this->regenerate_ = true;
+    makeDirty();
     return this->columns_;
   }
+
   const std::vector<Column>& columns() const { return this->columns_; }
+
   void columns(std::vector<Column> columns)
   {
-    this->regenerate_ = true;
+    makeDirty();
     this->columns_ = std::move(columns);
   }
 
   Config& config() { return this->config_; }
   const Config& config() const { return this->config_; }
 
-  std::string toStr() const
+  const std::string& str() const
   {
-    if (this->regenerate_)
+    if (this->dirty_)
     {
-      this->str = reGenStr();
-      this->regenerate_ = false;
+      this->str_ = reGenStr();
+      makeClean();
     }
 
-    return this->str;
+    return this->str_;
   }
 
   std::string reGenStr() const
@@ -79,18 +85,18 @@ public:
     for (size_t i = 0; i < maxLines; ++i)
     {
       if (!rowStr.empty()) rowStr.push_back('\n');
-      rowStr += vertical;
+      rowStr.append(vertical);
 
       for (const auto& column : this->columns_)
       {
         const auto& lines = column.lines();
 
         if (lines.size() > i)
-          rowStr += lines[i];
+          rowStr.append(lines[i]);
         else
-          rowStr += column.genEmptyLine();
+          rowStr.append(column.genEmptyLine());
 
-        rowStr += vertical;
+        rowStr.append(vertical);
       }
     }
 
@@ -98,12 +104,12 @@ public:
   }
 
 private:
-  std::vector<Column> columns_ = {};
+  std::vector<Column> columns_;
   Config config_ = Config(*this);
 
   // cache
-  mutable bool regenerate_ = false;
-  mutable std::string str;
+  mutable bool dirty_ = false;
+  mutable std::string str_;
 
   size_t getMaxLines() const
   {

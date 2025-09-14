@@ -63,7 +63,9 @@ class Column {
 public:
   class Style {
   public:
-    explicit Style(Column& parent) : parent(parent) {}
+    explicit Style(Column& parent) : parent(parent)
+    {
+    }
 
     Style& fg(Color color)
     {
@@ -71,12 +73,14 @@ public:
       this->parent.makeDirty();
       return *this;
     }
+
     Style& bg(Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
       this->parent.makeDirty();
       return *this;
     }
+
     Style& base(Color color)
     {
       this->base_ = static_cast<uint32_t>(color);
@@ -90,12 +94,14 @@ public:
       this->parent.makeDirty();
       return *this;
     }
+
     Style& bg(const Rgb rgb)
     {
       this->bg_ = rgb.toHex() | (1u << 24);
       this->parent.makeDirty();
       return *this;
     }
+
     Style& base(const Rgb rgb)
     {
       this->base_ = rgb.toHex() | (1u << 24);
@@ -109,6 +115,7 @@ public:
       this->parent.makeDirty();
       return *this;
     }
+
     Style& attrs(const Style& attr)
     {
       this->attrs_ |= attr.attrs_;
@@ -170,9 +177,12 @@ public:
     // all the attributes
     uint16_t attrs_ = 0;
   };
+
   class Config {
   public:
-    explicit Config(Column& parent) : parent(parent) {}
+    explicit Config(Column& parent) : parent(parent)
+    {
+    }
 
     Alignment align() const { return this->align_; }
     Padding padd() const { return this->padd_; }
@@ -185,18 +195,21 @@ public:
       this->parent.makeDirty();
       return *this;
     }
+
     Config& padd(const Padding padd)
     {
       this->padd_ = padd;
       this->parent.makeDirty();
       return *this;
     }
+
     Config& width(const size_t width)
     {
       this->width_ = width;
       this->parent.makeDirty();
       return *this;
     }
+
     Config& delimiter(std::string delimiter)
     {
       this->delimiter_ = std::move(delimiter);
@@ -216,12 +229,15 @@ public:
 public:
   Column() = default;
 
-  Column(std::string content) : content_(std::move(content)), dirty_(true) {}
+  Column(std::string content) : content_(std::move(content)), dirty_(true)
+  {
+  }
 
   void makeDirty() const { this->dirty_ = true; }
   void makeClean() const { this->dirty_ = false; }
 
   const std::string& content() const { return this->content_; }
+
   void content(std::string content)
   {
     this->content_ = std::move(content);
@@ -580,7 +596,8 @@ private:
     return lines;
   }
 
-  std::vector<std::string> format(const std::vector<detail::Str>& lines, const Padding padd) const
+  std::vector<std::string> format(const std::vector<detail::Str>& lines,
+                                  const Padding padd) const
   {
     using namespace string_utils;
 
@@ -651,7 +668,8 @@ constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
                                 static_cast<uint16_t>(rhs));
 }
 
-constexpr Attribute& operator|=(Attribute& lhs, Attribute rhs) noexcept {
+constexpr Attribute& operator|=(Attribute& lhs, Attribute rhs) noexcept
+{
   lhs = lhs | rhs;
   return lhs;
 }

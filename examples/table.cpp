@@ -8,6 +8,6 @@ int main()
   Table table({row});
 
   table.border(Border::Modern());
-  std::cout << table.toStr() << '\n';
+  std::cout << table.str() << '\n';
   return 0;
 }

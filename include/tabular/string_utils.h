@@ -222,7 +222,6 @@ inline bool utf8twc(const char* s, uint32_t& wc, int& consumed)
 }
 
 
-
 // return the display width of a Unicode character
 inline size_t wcwidth(const uint32_t ucs)
 {

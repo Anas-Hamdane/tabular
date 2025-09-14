@@ -29,17 +29,20 @@ class Table {
 public:
   class Config {
   public:
-    Config(Table& table) : parent(parent) {}
+    explicit Config(Table& table) : parent_(table)
+    {
+    }
 
     void width(const size_t width)
     {
-      parent.regenerate_ = true;
+      parent_.makeDirty();
       this->width_ = width;
     }
+
     size_t width() const { return this->width_; }
 
   private:
-    Table& parent;
+    Table& parent_;
     size_t width_ = 50;
   };
 
@@ -47,49 +50,61 @@ public:
   Table() = default;
 
   Table(std::vector<Row> rows, Border border = {})
-    : rows_(std::move(rows)), border_(std::move(border)), regenerate_(true)
+    : rows_(std::move(rows)), border_(std::move(border)), dirty_(true)
   {
   }
 
+  void makeDirty() const { dirty_ = true; }
+  void makeClean() const { dirty_ = false; }
+
   std::vector<Row>& rows()
   {
-    this->regenerate_ = true;
+    makeDirty();
     return this->rows_;
   }
+
   const std::vector<Row>& rows() const { return this->rows_; }
+
   void rows(std::vector<Row> rows)
   {
-    this->regenerate_ = true;
     this->rows_ = std::move(rows);
+    makeDirty();
   }
 
   Config& config() { return this->config_; }
   const Config& config() const { return this->config_; }
 
-  Border& border() { return this->border_; }
+  Border& border()
+  {
+    makeDirty();
+    return this->border_;
+  }
   const Border& border() const { return this->border_; }
+
   void border(Border border)
   {
     this->border_ = std::move(border);
-    this->regenerate_ = true;
+    makeDirty();
   }
 
   Table& addRow(Row row)
   {
     this->rows_.emplace_back(std::move(row));
-    this->regenerate_ = true;
+    makeDirty();
+    return *this;
   }
 
-  std::string toStr() const
+  const std::string& str() const
   {
-    if (this->regenerate_)
+    if (this->dirty_)
     {
-      this->str = reGenStr();
-      this->regenerate_ = false;
+      this->str_ = reGenStr();
+      makeClean();
     }
 
-    return this->str;
+    return this->str_;
   }
+
   std::string reGenStr() const
   {
     // avoid reference
@@ -98,8 +113,6 @@ public:
 
     std::string tableStr;
     tableStr.reserve(rows.size() * this->config_.width());
-
-    const Border::Part& vertical = this->border_.vertical();
 
     adjustWidth(rows);
     configureRows(rows);
@@ -110,7 +123,7 @@ public:
     {
       auto& row = rows[i];
 
-      tableStr += row.toStr() + '\n';
+      tableStr += row.str() + '\n';
       if (i + 1 < rowsSize) tableStr += getBorderMiddle(i) + '\n';
     }
 
@@ -119,15 +132,15 @@ public:
   }
 
 private:
-  std::vector<Row> rows_ = {};
+  std::vector<Row> rows_;
   Config config_ = Config(*this);
-  Border border_ = {};
+  Border border_;
 
   // cache
-  mutable bool regenerate_ = false;
-  mutable std::string str;
+  mutable bool dirty_ = false;
+  mutable std::string str_;
 
-  size_t calculateWidth(const Row& row, size_t& unspecified) const
+  static size_t calculateWidth(const Row& row, size_t& unspecified)
   {
     const auto& columns = row.columns();
     if (columns.empty()) return 0;
@@ -143,6 +156,7 @@ private:
 
     return width;
   }
+
   void setWidth(Row& row) const
   {
     auto& columns = row.columns();
@@ -162,6 +176,7 @@ private:
     // if there's still a rest
     if (rest > 0) columns.back().config().width(indivWidth + rest);
   }
+
   void setUnspecifiedWidth(Row& row, size_t unspecified) const
   {
     auto& columns = row.columns();
@@ -204,6 +219,7 @@ private:
         setWidth(row);
     }
   }
+
   void configureRows(std::vector<Row>& rows) const
   {
     auto& verticalBorder = this->border_.vertical();
@@ -211,12 +227,12 @@ private:
     {
       auto& config = row.config();
 
-      if (config.vertical().form() == '\0')
+      if (config.vertical().glyph() == '\0')
         config.vertical(verticalBorder);
     }
   }
 
-  std::vector<size_t> connections(const Row& row) const
+  static std::vector<size_t> connections(const Row& row)
   {
     std::vector<size_t> connections;
     connections.reserve(row.columns().size());
@@ -230,6 +246,7 @@ private:
 
     return connections;
   }
+
   std::string getBorderHeader() const
   {
     const auto& columns = this->rows_[0].columns();
@@ -237,12 +254,13 @@ private:
     std::string header = this->border_.cornerTopLeft();
     header.reserve(this->config_.width());
 
+    const std::string& horizontal = this->border_.horizontal();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
 
       for (size_t j = 0; j < width; ++j)
-          header += this->border_.horizontal();
+        header += horizontal;
 
       if (i + 1 < columns.size()) header += this->border_.connectorTop();
     }
@@ -250,6 +268,7 @@ private:
     header += this->border_.cornerTopRight();
     return header;
   }
+
   std::string getBorderFooter() const
   {
     const auto& columns = this->rows_.back().columns();
@@ -257,12 +276,13 @@ private:
     std::string footer = this->border_.cornerBottomLeft();
     footer.reserve(this->config_.width());
 
+    const std::string& horizontal = this->border_.horizontal();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
 
       for (size_t j = 0; j < width; ++j)
-        footer += this->border_.horizontal();
+        footer += horizontal;
 
       if (i + 1 < columns.size()) footer += this->border_.connectorBottom();
     }
@@ -270,6 +290,7 @@ private:
     footer += this->border_.cornerBottomRight();
     return footer;
   }
+
   std::string getBorderMiddle(size_t index) const
   {
     const auto nextRowConnections = connections(this->rows_[index + 1]);
@@ -280,6 +301,7 @@ private:
     const auto& columns = this->rows_[index].columns();
 
     size_t tracker = 0;
+    const std::string& horizontal = this->border_.horizontal();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -289,7 +311,7 @@ private:
         if (detail::bisearch(nextRowConnections, ++tracker))
           middle += this->border_.connectorTop();
         else
-          middle += this->border_.horizontal();
+          middle += horizontal;
       }
       tracker++;
 
