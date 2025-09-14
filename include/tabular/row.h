@@ -131,7 +131,7 @@ private:
 
     std::string rowStr;
     rowStr.reserve(this->config_.width() * maxLines + (this->columns_.size() + 1));
-    const auto vertical = config().vertical();
+    const auto& vertical = config().vertical().str();
 
     for (size_t i = 0; i < maxLines; ++i)
     {

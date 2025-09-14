@@ -283,10 +283,10 @@ private:
   {
     const auto& columns = this->rows_[0].columns();
 
-    std::string header = this->border_.cornerTopLeft();
+    std::string header = this->border_.cornerTopLeft().str();
     header.reserve(this->config_.width());
 
-    const std::string& horizontal = this->border_.horizontal();
+    const std::string& horizontal = this->border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -294,20 +294,20 @@ private:
       for (size_t j = 0; j < width; ++j)
         header += horizontal;
 
-      if (i + 1 < columns.size()) header += this->border_.connectorTop();
+      if (i + 1 < columns.size()) header += this->border_.connectorTop().str();
     }
 
-    header += this->border_.cornerTopRight();
+    header += this->border_.cornerTopRight().str();
     return header;
   }
   std::string getBorderFooter() const
   {
     const auto& columns = this->rows_.back().columns();
 
-    std::string footer = this->border_.cornerBottomLeft();
+    std::string footer = this->border_.cornerBottomLeft().str();
     footer.reserve(this->config_.width());
 
-    const std::string& horizontal = this->border_.horizontal();
+    const std::string& horizontal = this->border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -315,23 +315,23 @@ private:
       for (size_t j = 0; j < width; ++j)
         footer += horizontal;
 
-      if (i + 1 < columns.size()) footer += this->border_.connectorBottom();
+      if (i + 1 < columns.size()) footer += this->border_.connectorBottom().str();
     }
 
-    footer += this->border_.cornerBottomRight();
+    footer += this->border_.cornerBottomRight().str();
     return footer;
   }
   std::string getBorderMiddle(size_t index) const
   {
     const auto nextRowConnections = connections(this->rows_[index + 1]);
 
-    std::string middle = this->border_.connectorLeft();
+    std::string middle = this->border_.connectorLeft().str();
     middle.reserve(this->config_.width());
 
     const auto& columns = this->rows_[index].columns();
 
     size_t tracker = 0;
-    const std::string& horizontal = this->border_.horizontal();
+    const std::string& horizontal = this->border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -339,7 +339,7 @@ private:
       for (size_t j = 0; j < width; ++j)
       {
         if (detail::bisearch(nextRowConnections, ++tracker))
-          middle += this->border_.connectorTop();
+          middle += this->border_.connectorTop().str();
         else
           middle += horizontal;
       }
@@ -348,12 +348,12 @@ private:
       if (i + 1 >= columns.size()) continue;
 
       if (detail::bisearch(nextRowConnections, tracker))
-        middle += this->border_.intersection();
+        middle += this->border_.intersection().str();
       else
-        middle += this->border_.connectorBottom();
+        middle += this->border_.connectorBottom().str();
     }
 
-    middle += this->border_.connectorRight();
+    middle += this->border_.connectorRight().str();
     return middle;
   }
 };

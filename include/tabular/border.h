@@ -15,9 +15,6 @@ public:
     {
     }
 
-    void makeDirty() const { this->dirty_ = true; }
-    void makeClean() const { this->dirty_ = false; }
-
     Part& glyph(const uint32_t glyph)
     {
       this->glyph_ = glyph;
@@ -83,18 +80,31 @@ public:
       makeDirty();
       return *this;
     }
-
-    const std::string& toStr() const
+    explicit operator const std::string&() const { return this->str(); }
+    const std::string& str() const
     {
       if (this->dirty_)
       {
-        this->str = reGenStr();
+        this->str_ = genStr();
         makeClean();
       }
 
-      return this->str;
+      return this->str_;
     }
-    std::string reGenStr() const
+
+  private:
+    uint32_t glyph_ = 0; // Unicode code point
+    uint32_t fg_ = 0; // fg color
+    uint32_t bg_ = 0; // bg color
+
+    // cache
+    mutable bool dirty_ = false;
+    mutable std::string str_;
+
+    void makeDirty() const { this->dirty_ = true; }
+    void makeClean() const { this->dirty_ = false; }
+
+    std::string genStr() const
     {
       using namespace detail;
       std::string buffer;
@@ -147,21 +157,6 @@ public:
 
       return buffer;
     }
-
-    operator const std::string&() const
-    {
-      return this->toStr();
-    }
-
-  private:
-    uint32_t glyph_ = 0; // Unicode code point
-    uint32_t fg_ = 0; // fg color
-    uint32_t bg_ = 0; // bg color
-
-    // cache
-    mutable bool dirty_ = false;
-    mutable std::string str;
-
     std::string glyphToStr() const
     {
       std::string result;
@@ -195,7 +190,6 @@ public:
       return result;
     }
   };
-
 
   Part& horizontal() { return this->horizontal_; }
   Part& vertical() { return this->vertical_; }
@@ -331,6 +325,23 @@ public:
     return border;
   }
 
+  void reset()
+  {
+    this->horizontal_ = U'-'; // ─
+    this->vertical_ = U'|'; // │
+
+    this->cornerTopLeft_ = U'+'; // ┌
+    this->cornerTopRight_ = U'+'; // ┐
+    this->cornerBottomLeft_ = U'+'; // └
+    this->cornerBottomRight_ = U'+'; // ┘
+
+    this->intersection_ = U'+'; // ┼
+
+    this->connectorLeft_ = U'+'; // ├
+    this->connectorRight_ = U'+'; // ┤
+    this->connectorTop_ = U'-'; // ┬
+    this->connectorBottom_ = U'-'; // ┴
+  }
 
 private:
   Part horizontal_ = U'-'; // ─

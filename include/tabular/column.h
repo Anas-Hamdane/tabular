@@ -247,29 +247,6 @@ public:
     return this->content_;
   }
 
-  const std::vector<std::string>& lines() const
-  {
-    if (dirty_)
-    {
-      lines_ = genLines();
-      makeClean();
-    }
-    return lines_;
-  }
-  std::string genEmptyLine() const
-  {
-    const std::string base = resolveBase();
-    const size_t width = config().width();
-
-    std::string empty = base;
-    empty.reserve(width);
-
-    empty += std::string(width, ' ');
-    if (!base.empty()) empty += RESET_ESC;
-
-    return empty;
-  }
-
   explicit operator const std::string&() const
   {
     return this->content_;
@@ -297,6 +274,29 @@ public:
     this->style_.reset();
     this->lines_.clear();
     makeClean();
+  }
+
+  const std::vector<std::string>& lines() const
+  {
+    if (dirty_)
+    {
+      lines_ = genLines();
+      makeClean();
+    }
+    return lines_;
+  }
+  std::string genEmptyLine() const
+  {
+    const std::string base = resolveBase();
+    const size_t width = config().width();
+
+    std::string empty = base;
+    empty.reserve(width);
+
+    empty += std::string(width, ' ');
+    if (!base.empty()) empty += RESET_ESC;
+
+    return empty;
   }
 
 private:
