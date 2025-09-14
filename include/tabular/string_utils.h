@@ -132,7 +132,7 @@ constexpr static Range wide[] = {
     {0x2B740, 0x2B81D}, {0x2B820, 0x2CEA1}, {0x2CEB0, 0x2EBE0}, {0x2EBF0, 0x2EE5D},
     {0x2F800, 0x2FA1D}, {0x30000, 0x3134A}, {0x31350, 0x323AF}};
 // lookup table
-static constexpr unsigned char utf8_len[256] = {
+static constexpr unsigned char utf8Len[256] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -193,28 +193,27 @@ inline bool utf8twc(const char* s, uint32_t& wc, int& consumed)
   }
 
   // utf8
-  consumed = detail::utf8_len[c];
+  consumed = detail::utf8Len[c];
   if (consumed == 0) return false;
 
-  uint32_t codepoint;
   switch (consumed)
   {
   case 2:
     if ((u[1] & 0xC0) != 0x80) return false;
-    codepoint = ((c & 0x1F) << 6) | (u[1] & 0x3F);
-    return codepoint >= 0x80;
+    wc = ((c & 0x1F) << 6) | (u[1] & 0x3F);
+    return wc >= 0x80;
 
   case 3:
     if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) return false;
-    codepoint = ((c & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
-    return codepoint >= 0x800 && (codepoint < 0xD800 || codepoint > 0xDFFF);
+    wc = ((c & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
+    return wc >= 0x800 && (wc < 0xD800 || wc > 0xDFFF);
 
   case 4:
     if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80 || (u[3] & 0xC0) != 0x80)
       return false;
-    codepoint = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) | ((u[2] & 0x3F) << 6) |
+    wc = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) | ((u[2] & 0x3F) << 6) |
                 (u[3] & 0x3F);
-    return codepoint >= 0x10000 && codepoint <= 0x10FFFF;
+    return wc >= 0x10000 && wc <= 0x10FFFF;
 
   default:
     return false;
@@ -256,18 +255,18 @@ inline size_t dw(const char* str)
     {
       // skip every ascii character until a non-ascii one
       // or an alphabet is found
+      ++ptr;
       while (*ptr && isAscii(*ptr) && !isAlpha(*ptr))
         ++ptr;
 
       // skip the first alphabet too
       if (*ptr && isAlpha(*ptr)) ++ptr;
-
       continue;
     }
 
     // UTF-8 characters
     uint32_t wc;
-    int consumed;
+    int consumed = 1;
     if (utf8twc(ptr, wc, consumed))
     {
       width += string_utils::wcwidth(wc);

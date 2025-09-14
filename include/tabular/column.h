@@ -18,43 +18,6 @@ inline bool isSpace(const char c)
 {
   return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r';
 }
-
-inline std::string readUtf8Char(const std::string& str, const size_t pos)
-{
-  if (pos >= str.length()) return "";
-
-  const auto first_byte = static_cast<unsigned char>(str[pos]);
-
-  // if it's a continuation byte then it's invalid
-  if ((first_byte & 0xC0) == 0x80) return "";
-
-  // find the length of the sequence from the start byte
-  size_t len;
-  if ((first_byte & 0x80) == 0)
-    len = 1;
-  else if ((first_byte & 0xE0) == 0xC0)
-    len = 2;
-  else if ((first_byte & 0xF0) == 0xE0)
-    len = 3;
-  else if ((first_byte & 0xF8) == 0xF0)
-    len = 4;
-  else
-    return "";
-
-  // not enough bytes
-  if (pos + len > str.length()) return "";
-
-  // validate
-  for (size_t i = 1; i < len; ++i)
-  {
-    if ((static_cast<unsigned char>(str[pos + i]) & 0xC0) != 0x80)
-    {
-      return "";
-    }
-  }
-
-  return str.substr(pos, len);
-}
 } // namespace detail
 // clang-format off
 class Column {
@@ -300,8 +263,8 @@ public:
   }
 
 private:
-  Config config_ = Config(*this);
-  Style style_ = Style(*this);
+  Config config_{*this};
+  Style style_{*this};
   std::string content_;
 
   // cache
@@ -577,7 +540,7 @@ private:
         size_t pos = 0;
         while (firstPartDw < limit)
         {
-          std::string utf8char = detail::readUtf8Char(word, pos);
+          std::string utf8char = readUtf8Char(word, pos);
           size_t utf8charDw = dw(utf8char);
 
           // if it will exceed the limit don't append
@@ -587,7 +550,8 @@ private:
           firstPart += utf8char;
           firstPartDw += utf8charDw;
 
-          pos += utf8char.length();
+          if (utf8char.empty()) pos++;
+          else pos += utf8char.length();
         }
 
         // prepare the next word
@@ -685,7 +649,7 @@ private:
 };
 // clang-format on
 
-constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
+inline Attribute operator|(Attribute lhs, Attribute rhs) noexcept
 {
   return static_cast<Attribute>(static_cast<uint16_t>(lhs) |
                                 static_cast<uint16_t>(rhs));

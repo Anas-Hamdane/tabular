@@ -26,7 +26,7 @@ public:
     }
     void vertical(Border::Part part)
     {
-      parent.makeDirty();
+      this->parent.makeDirty();
       this->vertical_ = std::move(part);
     }
 
@@ -122,7 +122,7 @@ public:
 
 private:
   std::vector<Column> columns_;
-  Config config_ = Config(*this);
+  Config config_{*this};
 
   // cache
   mutable bool dirty_ = false;
