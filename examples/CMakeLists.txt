@@ -11,6 +11,4 @@
 #
 #
 
-add_executable(column column.cpp)
-add_executable(row row.cpp)
-add_executable(table table.cpp)
+add_executable(basic basic.cpp)
