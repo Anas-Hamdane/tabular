@@ -1,10 +1,20 @@
-UseTab: Never
-IndentWidth: 2
-BreakBeforeBraces: Attach
-AllowShortIfStatementsOnASingleLine: true
-IndentCaseLabels: true
-ColumnLimit: 0
-NamespaceIndentation: All
-AccessModifierOffset: -4
+BasedOnStyle: LLVM
+BreakBeforeBraces: Custom
 PointerAlignment: Left
-IndentPPDirectives: None
+ColumnLimit: 85
+
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortFunctionsOnASingleLine: Inline
+
+BraceWrapping:
+  AfterFunction: true
+  AfterClass: false
+  AfterStruct: false
+  AfterEnum: false
+  AfterNamespace: false
+  AfterControlStatement: Always
+  BeforeElse: true
+  BeforeCatch: false
+  BeforeWhile: false
+
+SeparateDefinitionBlocks: Leave
