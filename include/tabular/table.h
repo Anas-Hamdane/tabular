@@ -44,6 +44,7 @@ public:
     void reset()
     {
       this->width_ = 50;
+      this->parent_.makeDirty();
     }
 
   private:
@@ -120,10 +121,10 @@ public:
   void clr()
   {
     this->rows_.clear();
-    this->str_.clear();
-    this->dirty_ = false;
     config_.reset();
-    border_ = Border();
+    border_.reset();
+    this->str_.clear();
+    makeClean();
   }
 
   const std::string& str() const

@@ -7,9 +7,7 @@
 #include <vector>
 
 namespace tabular {
-
 namespace detail {
-
 struct Str {
   std::string str;
   size_t dw;
@@ -58,7 +56,7 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
   return str.substr(pos, len);
 }
 } // namespace detail
-
+// clang-format off
 class Column {
 public:
   class Style {
@@ -73,14 +71,12 @@ public:
       this->parent.makeDirty();
       return *this;
     }
-
     Style& bg(Color color)
     {
       this->bg_ = static_cast<uint32_t>(color);
       this->parent.makeDirty();
       return *this;
     }
-
     Style& base(Color color)
     {
       this->base_ = static_cast<uint32_t>(color);
@@ -94,14 +90,12 @@ public:
       this->parent.makeDirty();
       return *this;
     }
-
     Style& bg(const Rgb rgb)
     {
       this->bg_ = rgb.toHex() | (1u << 24);
       this->parent.makeDirty();
       return *this;
     }
-
     Style& base(const Rgb rgb)
     {
       this->base_ = rgb.toHex() | (1u << 24);
@@ -115,7 +109,6 @@ public:
       this->parent.makeDirty();
       return *this;
     }
-
     Style& attrs(const Style& attr)
     {
       this->attrs_ |= attr.attrs_;
@@ -133,31 +126,27 @@ public:
     uint32_t base() const { return this->base_; }
     Attribute attrs() const { return static_cast<Attribute>(attrs_); }
 
-    void clrFg()
+    void resetFg()
     {
       this->fg_ = 0;
       this->parent.makeDirty();
     }
-
-    void clrBg()
+    void resetBg()
     {
       this->bg_ = 0;
       this->parent.makeDirty();
     }
-
-    void clrBase()
+    void resetBase()
     {
       this->base_ = 0;
       this->parent.makeDirty();
     }
-
-    void clrAttrs()
+    void resetAttrs()
     {
       this->attrs_ = 0;
       this->parent.makeDirty();
     }
-
-    void clr()
+    void reset()
     {
       this->fg_ = 0;
       this->bg_ = 0;
@@ -177,7 +166,6 @@ public:
     // all the attributes
     uint16_t attrs_ = 0;
   };
-
   class Config {
   public:
     explicit Config(Column& parent) : parent(parent)
@@ -195,26 +183,32 @@ public:
       this->parent.makeDirty();
       return *this;
     }
-
     Config& padd(const Padding padd)
     {
       this->padd_ = padd;
       this->parent.makeDirty();
       return *this;
     }
-
     Config& width(const size_t width)
     {
       this->width_ = width;
       this->parent.makeDirty();
       return *this;
     }
-
     Config& delimiter(std::string delimiter)
     {
       this->delimiter_ = std::move(delimiter);
       this->parent.makeDirty();
       return *this;
+    }
+
+    void reset()
+    {
+      this->align_ = Alignment::Left;
+      this->padd_ = Padding();
+      this->delimiter_ = "-";
+      this->width_ = 0;
+      this->parent.makeDirty();
     }
 
   private:
@@ -234,17 +228,34 @@ public:
   {
   }
 
-  void makeDirty() const { this->dirty_ = true; }
-  void makeClean() const { this->dirty_ = false; }
-
-  const std::string& content() const { return this->content_; }
-
   void content(std::string content)
   {
     this->content_ = std::move(content);
     makeDirty();
   }
 
+  Config& config() { return this->config_; }
+  Style& style() { return this->style_; }
+
+  const Config& config() const { return this->config_; }
+  const Style& style() const { return this->style_; }
+
+  const std::string& content() const { return this->content_; }
+  std::string& content()
+  {
+    makeDirty();
+    return this->content_;
+  }
+
+  const std::vector<std::string>& lines() const
+  {
+    if (dirty_)
+    {
+      lines_ = genLines();
+      makeClean();
+    }
+    return lines_;
+  }
   std::string genEmptyLine() const
   {
     const std::string base = resolveBase();
@@ -259,17 +270,48 @@ public:
     return empty;
   }
 
-  const std::vector<std::string>& lines() const
+  explicit operator const std::string&() const
   {
-    if (dirty_)
-    {
-      lines_ = reGenLines();
-      makeClean();
-    }
-    return lines_;
+    return this->content_;
+  }
+  explicit operator std::string&()
+  {
+    makeDirty();
+    return this->content_;
   }
 
-  std::vector<std::string> reGenLines() const
+  char& operator[](int index)
+  {
+    makeDirty();
+    return this->content_.at(index);
+  }
+  const char& operator[](int index) const
+  {
+    return this->content_.at(index);
+  }
+
+  void clr()
+  {
+    this->content_.clear();
+    this->config_.reset();
+    this->style_.reset();
+    this->lines_.clear();
+    makeClean();
+  }
+
+private:
+  Config config_ = Config(*this);
+  Style style_ = Style(*this);
+  std::string content_;
+
+  // cache
+  mutable std::vector<std::string> lines_;
+  mutable bool dirty_ = false;
+
+  void makeDirty() const { this->dirty_ = true; }
+  void makeClean() const { this->dirty_ = false; }
+
+  std::vector<std::string> genLines() const
   {
     std::string delimiter = config().delimiter();
     size_t delimiterDw = string_utils::dw(delimiter);
@@ -302,23 +344,6 @@ public:
     // format the lines handling padding, alignment and the base styles
     return format(lines, padd);
   }
-
-  Config& config() { return this->config_; }
-  Style& style() { return this->style_; }
-
-  const Config& config() const { return this->config_; }
-  const Style& style() const { return this->style_; }
-
-private:
-  Config config_ = Config(*this);
-  Style style_ = Style(*this);
-  std::string content_;
-
-  // cache
-  mutable std::vector<std::string> lines_;
-  mutable bool dirty_ = false;
-
-private:
   static void handleColor(std::string& styles, detail::ColorType colortype,
                           bool back)
   {
@@ -337,7 +362,6 @@ private:
       styles += std::to_string(rgb.b) + ';';
     }
   }
-
   static void handleAttrs(std::string& styles, Attribute attr)
   {
     auto hasAttr = [](Attribute attr, Attribute flag) -> bool {
@@ -371,7 +395,6 @@ private:
     if (styles.back() == ';') styles.back() = 'm';
     return styles;
   }
-
   std::string resolveBase() const
   {
     std::string base = "\x1b[";
@@ -427,7 +450,6 @@ private:
     if (!buffer.empty()) words.emplace_back(std::move(buffer));
     return words;
   }
-
   std::vector<detail::Str> wrap(const std::vector<std::string>& words,
                                 const size_t width,
                                 const std::string& delimiter,
@@ -447,7 +469,7 @@ private:
     if (!styles.empty()) buffer += styles;
 
     // in case the line contains active escape sequences, and they were NOT
-    // reseted (with '\x1b[0m'), we need to register them, reset them
+    // reset (with '\x1b[0m'), we need to register them, reset them
     // at the end of the line, and restore them in the next line.
     std::string activeEscs;
 
@@ -596,7 +618,6 @@ private:
 
     return lines;
   }
-
   std::vector<std::string> format(const std::vector<detail::Str>& lines,
                                   const Padding padd) const
   {
@@ -662,6 +683,7 @@ private:
     return formatted;
   }
 };
+// clang-format on
 
 constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
 {

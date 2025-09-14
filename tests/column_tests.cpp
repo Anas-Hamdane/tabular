@@ -69,7 +69,7 @@ TEST(column_tests, styling)
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], " \x1b[31mHello, World\x1b[0m  ");
 
-  column.style().clrFg();
+  column.style().resetFg();
 
   column.style().bg(Rgb(0, 255, 0));
   lines = column.lines();
@@ -81,7 +81,7 @@ TEST(column_tests, styling)
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], " \x1b[42mHello, World\x1b[0m  ");
 
-  column.style().clrBg();
+  column.style().resetBg();
 
   column.style().base(Rgb(0, 0, 255));
   lines = column.lines();
@@ -93,14 +93,14 @@ TEST(column_tests, styling)
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], "\x1b[44m Hello, World  \x1b[0m");
 
-  column.style().clrBase();
+  column.style().resetBase();
 
   column.style().attrs(Attribute::Bold | Attribute::Italic | Attribute::Underline);
   lines = column.lines();
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], " \x1b[1;3;4mHello, World\x1b[0m  ");
 
-  column.style().clrAttrs();
+  column.style().resetAttrs();
 
   // merged
   column.style().fg(Color::Red);

@@ -32,6 +32,7 @@ public:
     {
       this->width_ = 50;
       this->vertical_ = 0;
+      this->parent.makeDirty();
     }
 
   private:
@@ -98,7 +99,7 @@ public:
     this->columns_.clear();
     this->str_.clear();
     this->config_.reset();
-    this->dirty_ = false;
+    makeClean();
   }
 
   const std::string& str() const
