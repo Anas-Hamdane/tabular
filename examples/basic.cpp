@@ -1,4 +1,4 @@
-#include "../include/tabular/basic.h"
+#include "../include/tabular/table.h"
 #include "../include/tabular/render.h"
 
 int main()
