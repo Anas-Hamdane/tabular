@@ -5,6 +5,10 @@
 # tabular
 A lightweight, header-only C++ library for creating well-formatted, fully-customizable CLI tables.
 
+> [!WARNING]
+> the project got rewrited and both the README and the documentation still are outdated.
+> please don't rely on them until they get updated.
+
 ## Why Yet Another Tabling Library?
 This project was inspired primarily by [tabulate](https://github.com/p-ranav/tabulate), a modern C++ table formatting library. However, while using it, I encountered several limitations:
 
