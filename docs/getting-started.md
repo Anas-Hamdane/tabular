@@ -3,7 +3,7 @@ Complete guide for using tabular, a lightweight, header-only C++ library
 for creating well-formatted, fully-customizable CLI tables.
 
 > [!WARNING]
-> the project got rewrited and both the README and the documentation still are outdated.
+> the project got rewrited and both the README and the documentation are still outdated.
 > please don't rely on them until they get updated.
 
 - [Getting Started](#getting-started)
