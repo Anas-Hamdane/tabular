@@ -19,6 +19,11 @@ public:
       parent.makeDirty();
       this->width_ = width;
     }
+    void hasBottom(bool has)
+    {
+      this->parent.makeDirty();
+      this->hasBottom_ = has;
+    }
     void vertical(Border::Part part)
     {
       parent.makeDirty();
@@ -26,6 +31,7 @@ public:
     }
 
     size_t width() const { return this->width_; }
+    bool hasBottom() const { return this->hasBottom_; }
     const Border::Part& vertical() const { return this->vertical_; }
 
     void reset()
@@ -38,6 +44,7 @@ public:
   private:
     Row& parent;
     size_t width_ = 50;
+    bool hasBottom_ = true;
     Border::Part vertical_ = 0;
   };
 

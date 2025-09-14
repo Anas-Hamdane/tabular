@@ -691,7 +691,7 @@ constexpr Attribute operator|(Attribute lhs, Attribute rhs) noexcept
                                 static_cast<uint16_t>(rhs));
 }
 
-constexpr Attribute& operator|=(Attribute& lhs, Attribute rhs) noexcept
+inline Attribute& operator|=(Attribute& lhs, const Attribute rhs) noexcept
 {
   lhs = lhs | rhs;
   return lhs;

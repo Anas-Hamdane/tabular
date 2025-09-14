@@ -80,6 +80,7 @@ public:
       makeDirty();
       return *this;
     }
+
     explicit operator const std::string&() const { return this->str(); }
     const std::string& str() const
     {

@@ -159,7 +159,7 @@ private:
 
     adjustWidth(rows);
     configureRows(rows);
-    tableStr += getBorderHeader() + '\n';
+    tableStr += getBorderHeader(rows) + '\n';
 
     const size_t rowsSize = this->rows_.size();
     for (size_t i = 0; i < rowsSize; ++i)
@@ -167,10 +167,12 @@ private:
       auto& row = rows[i];
 
       tableStr += row.str() + '\n';
-      if (i + 1 < rowsSize) tableStr += getBorderMiddle(i) + '\n';
+
+      if (i + 1 < rowsSize && row.config().hasBottom())
+        tableStr += getBorderMiddle(rows, i) + '\n';
     }
 
-    tableStr += getBorderFooter();
+    tableStr += getBorderFooter(rows);
     return tableStr;
   }
   static size_t calculateWidth(const Row& row, size_t& unspecified)
@@ -211,7 +213,7 @@ private:
   }
   void setUnspecifiedWidth(Row& row, size_t unspecified) const
   {
-    auto& columns = row.columns();
+    std::vector<Column>& columns = row.columns();
     size_t width = this->config_.width();
 
     // subtract the splits
@@ -277,9 +279,9 @@ private:
 
     return connections;
   }
-  std::string getBorderHeader() const
+  std::string getBorderHeader(std::vector<Row>& rows) const
   {
-    const auto& columns = this->rows_[0].columns();
+    const auto& columns = rows[0].columns();
 
     std::string header = this->border_.cornerTopLeft().str();
     header.reserve(this->config_.width());
@@ -298,9 +300,9 @@ private:
     header += this->border_.cornerTopRight().str();
     return header;
   }
-  std::string getBorderFooter() const
+  std::string getBorderFooter(std::vector<Row>& rows) const
   {
-    const auto& columns = this->rows_.back().columns();
+    const auto& columns = rows.back().columns();
 
     std::string footer = this->border_.cornerBottomLeft().str();
     footer.reserve(this->config_.width());
@@ -319,14 +321,14 @@ private:
     footer += this->border_.cornerBottomRight().str();
     return footer;
   }
-  std::string getBorderMiddle(size_t index) const
+  std::string getBorderMiddle(std::vector<Row>& rows, size_t index) const
   {
-    const auto nextRowConnections = connections(this->rows_[index + 1]);
+    const auto nextRowConnections = connections(rows[index + 1]);
 
     std::string middle = this->border_.connectorLeft().str();
     middle.reserve(this->config_.width());
 
-    const auto& columns = this->rows_[index].columns();
+    const auto& columns = rows[index].columns();
 
     size_t tracker = 0;
     const std::string& horizontal = this->border_.horizontal().str();
