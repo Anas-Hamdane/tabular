@@ -165,6 +165,10 @@ inline bool bisearch(uint32_t ucs, const Range* interval, int max)
 }
 
 namespace string_utils {
+inline bool isSpace(const char c)
+{
+  return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r';
+}
 
 constexpr bool isAscii(const char character)
 {

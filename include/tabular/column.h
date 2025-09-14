@@ -12,12 +12,6 @@ struct Str {
   std::string str;
   size_t dw;
 };
-
-// for strings
-inline bool isSpace(const char c)
-{
-  return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r';
-}
 } // namespace detail
 // clang-format off
 class Column {
@@ -398,7 +392,7 @@ private:
         continue;
       }
 
-      if (detail::isSpace(str[i]))
+      if (isSpace(str[i]))
       {
         if (!buffer.empty()) words.emplace_back(std::move(buffer));
         buffer.clear();
@@ -463,7 +457,7 @@ private:
       if (buffer.empty() && word == " ") continue;
 
       // IGNORE other space characters
-      if (word.length() == 1 && detail::isSpace(word[0]) && word != " ") continue;
+      if (word.length() == 1 && isSpace(word[0]) && word != " ") continue;
 
       // HANDLE escape sequences
       if (word[0] == '\x1b')
