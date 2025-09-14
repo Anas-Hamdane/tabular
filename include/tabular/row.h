@@ -4,6 +4,7 @@
 #include "border.h"
 
 namespace tabular {
+// clang-format off
 class Row {
 public:
   class Config {
@@ -27,11 +28,16 @@ public:
     size_t width() const { return this->width_; }
     const Border::Part& vertical() const { return this->vertical_; }
 
+    void reset()
+    {
+      this->width_ = 50;
+      this->vertical_ = 0;
+    }
+
   private:
     Row& parent;
-
     size_t width_ = 50;
-    Border::Part vertical_ = '\0';
+    Border::Part vertical_ = 0;
   };
 
 public:
@@ -41,7 +47,6 @@ public:
     : columns_(std::move(columns))
   {
   }
-
   explicit Row(std::vector<std::string> columns)
   {
     this->columns_.reserve(columns.size());
@@ -52,17 +57,6 @@ public:
     }
   }
 
-  void makeDirty() const { this->dirty_ = true; }
-  void makeClean() const { this->dirty_ = false; }
-
-  std::vector<Column>& columns()
-  {
-    makeDirty();
-    return this->columns_;
-  }
-
-  const std::vector<Column>& columns() const { return this->columns_; }
-
   void columns(std::vector<Column> columns)
   {
     makeDirty();
@@ -72,18 +66,64 @@ public:
   Config& config() { return this->config_; }
   const Config& config() const { return this->config_; }
 
+  std::vector<Column>& columns()
+  {
+    makeDirty();
+    return this->columns_;
+  }
+  const std::vector<Column>& columns() const { return this->columns_; }
+
+  Column& column(int index)
+  {
+    makeDirty();
+    return this->columns_.at(index);
+  }
+  const Column& column(int index) const
+  {
+    return this->columns_.at(index);
+  }
+
+  Column& operator[](int index)
+  {
+    makeDirty();
+    return this->columns_.at(index);
+  }
+  const Column& operator[](int index) const
+  {
+    return this->columns_.at(index);
+  }
+
+  void clr()
+  {
+    this->columns_.clear();
+    this->str_.clear();
+    this->config_.reset();
+    this->dirty_ = false;
+  }
+
   const std::string& str() const
   {
     if (this->dirty_)
     {
-      this->str_ = reGenStr();
+      this->str_ = genStr();
       makeClean();
     }
 
     return this->str_;
   }
 
-  std::string reGenStr() const
+private:
+  std::vector<Column> columns_;
+  Config config_ = Config(*this);
+
+  // cache
+  mutable bool dirty_ = false;
+  mutable std::string str_;
+
+  void makeDirty() const { this->dirty_ = true; }
+  void makeClean() const { this->dirty_ = false; }
+
+  std::string genStr() const
   {
     if (this->columns_.empty()) return "";
     const size_t maxLines = getMaxLines();
@@ -112,26 +152,6 @@ public:
 
     return rowStr;
   }
-
-  Column& operator[](int index)
-  {
-    makeDirty();
-    return this->columns_.at(index);
-  }
-
-  const Column& operator[](int index) const
-  {
-    return this->columns_.at(index);
-  }
-
-private:
-  std::vector<Column> columns_;
-  Config config_ = Config(*this);
-
-  // cache
-  mutable bool dirty_ = false;
-  mutable std::string str_;
-
   size_t getMaxLines() const
   {
     size_t maxLines = 0;
@@ -142,4 +162,5 @@ private:
     return maxLines;
   }
 };
+// clang-format off
 }

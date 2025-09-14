@@ -93,17 +93,6 @@ public:
   }
   const Border& border() const { return this->border_; }
 
-  const std::string& str() const
-  {
-    if (this->dirty_)
-    {
-      this->str_ = genStr();
-      makeClean();
-    }
-
-    return this->str_;
-  }
-
   std::vector<Row>& rows()
   {
     makeDirty();
@@ -132,8 +121,20 @@ public:
   {
     this->rows_.clear();
     this->str_.clear();
+    this->dirty_ = false;
     config_.reset();
     border_ = Border();
+  }
+
+  const std::string& str() const
+  {
+    if (this->dirty_)
+    {
+      this->str_ = genStr();
+      makeClean();
+    }
+
+    return this->str_;
   }
 
 private:
