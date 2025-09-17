@@ -133,6 +133,7 @@ public:
     Padding padd() const { return this->padd_; }
     size_t width() const { return this->width_; }
     std::string delimiter() const { return this->delimiter_; }
+    bool skipEmptyLineIndent() const { return this->skipEmptyLineIndent_; }
 
     Config& align(const Alignment alignment)
     {
@@ -158,6 +159,12 @@ public:
       this->parent.makeDirty();
       return *this;
     }
+    Config& skipEmptyLineIndent(const bool skip)
+    {
+      this->skipEmptyLineIndent_ = skip;
+      this->parent.makeDirty();
+      return *this;
+    }
 
     void reset()
     {
@@ -175,6 +182,7 @@ public:
     Padding padd_ = Padding();
     std::string delimiter_ = "-";
     size_t width_ = 0;
+    bool skipEmptyLineIndent_ = true;
   };
 
 public:
@@ -415,6 +423,7 @@ private:
     using namespace string_utils;
 
     const std::string styles = resolveStyles();
+    const bool skipBlanks = this->config_.skipEmptyLineIndent();
 
     std::vector<detail::Str> lines;
     lines.reserve(this->content_.length() / width + 1);
@@ -454,7 +463,14 @@ private:
       if (word.empty()) continue;
 
       // SKIP spaces at the start of a new line
-      if (buffer.empty() && word == " ") continue;
+      if (skipBlanks && buffer.empty() && word == " ") continue;
+
+      // HANDLE new lines
+      if (word == "\n")
+      {
+        startNewLine();
+        continue;
+      }
 
       // IGNORE other space characters
       if (word.length() == 1 && isSpace(word[0]) && word != " ") continue;
@@ -479,13 +495,6 @@ private:
 
         if (nextWord && dw(*nextWord) + bufferDw <= width) buffer += word;
 
-        continue;
-      }
-
-      // HANDLE new lines
-      if (word == "\n")
-      {
-        startNewLine();
         continue;
       }
 
