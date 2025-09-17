@@ -16,6 +16,6 @@ int main()
   });
 
   table[0][0].config().skipEmptyLineIndent(false);
-  render(table.str(), stdout);
+  render(table.str() + '\n', stdout);
   return 0;
 }

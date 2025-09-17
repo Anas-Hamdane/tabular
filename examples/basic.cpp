@@ -13,6 +13,6 @@ int main()
       .addRow({"Japan", "Tokyo"})
       .addRow({"India", "New Delhi"});
 
-  render(table.str(), stdout);
+  render(table.str() + '\n', stdout);
   return 0;
 }
