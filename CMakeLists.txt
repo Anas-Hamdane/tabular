@@ -24,9 +24,6 @@ if (TABULAR_BUILD_TESTS)
     add_subdirectory(tests)
 endif ()
 
-# examples
-add_subdirectory(examples)
-
 add_library(tabular INTERFACE)
 add_library(tabular::tabular ALIAS tabular)
 
@@ -72,3 +69,6 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/tabularConfigVersion.cmake"
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/tabular
 )
+
+# examples
+add_subdirectory(examples)

@@ -12,3 +12,5 @@
 #
 
 add_executable(basic basic.cpp)
+add_executable(tabular_ tabular.cpp)
+set_target_properties(tabular_ PROPERTIES OUTPUT_NAME tabular)
