@@ -413,18 +413,18 @@ struct Rgb {
 
 namespace detail {
 class ColorType {
-public:
+  public:
   ColorType(uint32_t value)
     : value_(value) {}
 
-  bool isSet() { return this->value_ != 0; }
-  bool isColor() { return isSet() && (this->value_ & (1u << 24)) == 0; }
-  bool isRgb() { return isSet() && (this->value_ & (1u << 24)) != 0; }
+  bool isSet() { return value_ != 0; }
+  bool isColor() { return isSet() && (value_ & (1u << 24)) == 0; }
+  bool isRgb() { return isSet() && (value_ & (1u << 24)) != 0; }
 
-  Color color() { return static_cast<Color>(this->value_ & 0xFFFFFF); }
-  Rgb rgb() { return {this->value_ & 0xFFFFFF}; }
+  Color color() { return static_cast<Color>(value_ & 0xFFFFFF); }
+  Rgb rgb() { return {value_ & 0xFFFFFF}; }
 
-private:
+  private:
   uint32_t value_;
 };
 }
@@ -470,102 +470,102 @@ class Column {
 public:
   class Style {
   public:
-    explicit Style(Column& parent) : parent(parent)
+    explicit Style(Column& parent) : parent_(parent)
     {
     }
 
     Style& fg(Color color)
     {
-      this->fg_ = static_cast<uint32_t>(color);
-      this->parent.makeDirty();
+      fg_ = static_cast<uint32_t>(color);
+      parent_.makeDirty();
       return *this;
     }
     Style& bg(Color color)
     {
-      this->bg_ = static_cast<uint32_t>(color);
-      this->parent.makeDirty();
+      bg_ = static_cast<uint32_t>(color);
+      parent_.makeDirty();
       return *this;
     }
     Style& base(Color color)
     {
-      this->base_ = static_cast<uint32_t>(color);
-      this->parent.makeDirty();
+      base_ = static_cast<uint32_t>(color);
+      parent_.makeDirty();
       return *this;
     }
 
     Style& fg(const Rgb rgb)
     {
-      this->fg_ = rgb.toHex() | (1u << 24);
-      this->parent.makeDirty();
+      fg_ = rgb.toHex() | (1u << 24);
+      parent_.makeDirty();
       return *this;
     }
     Style& bg(const Rgb rgb)
     {
-      this->bg_ = rgb.toHex() | (1u << 24);
-      this->parent.makeDirty();
+      bg_ = rgb.toHex() | (1u << 24);
+      parent_.makeDirty();
       return *this;
     }
     Style& base(const Rgb rgb)
     {
-      this->base_ = rgb.toHex() | (1u << 24);
-      this->parent.makeDirty();
+      base_ = rgb.toHex() | (1u << 24);
+      parent_.makeDirty();
       return *this;
     }
 
     Style& attrs(Attribute attr)
     {
-      this->attrs_ |= static_cast<uint16_t>(attr);
-      this->parent.makeDirty();
+      attrs_ |= static_cast<uint16_t>(attr);
+      parent_.makeDirty();
       return *this;
     }
     Style& attrs(const Style& attr)
     {
-      this->attrs_ |= attr.attrs_;
-      this->parent.makeDirty();
+      attrs_ |= attr.attrs_;
+      parent_.makeDirty();
       return *this;
     }
 
-    bool hasFg() const { return this->fg_ != 0; }
-    bool hasBg() const { return this->bg_ != 0; }
-    bool hasBase() const { return this->base_ != 0; }
-    bool hasAttrs() const { return this->attrs_ != 0; }
+    bool hasFg() const { return fg_ != 0; }
+    bool hasBg() const { return bg_ != 0; }
+    bool hasBase() const { return base_ != 0; }
+    bool hasAttrs() const { return attrs_ != 0; }
 
-    uint32_t fg() const { return this->fg_; }
-    uint32_t bg() const { return this->bg_; }
-    uint32_t base() const { return this->base_; }
+    uint32_t fg() const { return fg_; }
+    uint32_t bg() const { return bg_; }
+    uint32_t base() const { return base_; }
     Attribute attrs() const { return static_cast<Attribute>(attrs_); }
 
     void resetFg()
     {
-      this->fg_ = 0;
-      this->parent.makeDirty();
+      fg_ = 0;
+      parent_.makeDirty();
     }
     void resetBg()
     {
-      this->bg_ = 0;
-      this->parent.makeDirty();
+      bg_ = 0;
+      parent_.makeDirty();
     }
     void resetBase()
     {
-      this->base_ = 0;
-      this->parent.makeDirty();
+      base_ = 0;
+      parent_.makeDirty();
     }
     void resetAttrs()
     {
-      this->attrs_ = 0;
-      this->parent.makeDirty();
+      attrs_ = 0;
+      parent_.makeDirty();
     }
     void reset()
     {
-      this->fg_ = 0;
-      this->bg_ = 0;
-      this->base_ = 0;
-      this->attrs_ = 0;
-      this->parent.makeDirty();
+      fg_ = 0;
+      bg_ = 0;
+      base_ = 0;
+      attrs_ = 0;
+      parent_.makeDirty();
     }
 
   private:
-    Column& parent;
+    Column& parent_;
 
     // representing all the colors
     uint32_t fg_ = 0;
@@ -577,58 +577,58 @@ public:
   };
   class Config {
   public:
-    explicit Config(Column& parent) : parent(parent)
+    explicit Config(Column& parent) : parent_(parent)
     {
     }
 
-    Alignment align() const { return this->align_; }
-    Padding padd() const { return this->padd_; }
-    size_t width() const { return this->width_; }
-    std::string delimiter() const { return this->delimiter_; }
-    bool skipEmptyLineIndent() const { return this->skipEmptyLineIndent_; }
+    Alignment align() const { return align_; }
+    Padding padd() const { return padd_; }
+    size_t width() const { return width_; }
+    std::string delimiter() const { return delimiter_; }
+    bool skipEmptyLineIndent() const { return skipEmptyLineIndent_; }
 
     Config& align(const Alignment alignment)
     {
-      this->align_ = alignment;
-      this->parent.makeDirty();
+      align_ = alignment;
+      parent_.makeDirty();
       return *this;
     }
     Config& padd(const Padding padd)
     {
-      this->padd_ = padd;
-      this->parent.makeDirty();
+      padd_ = padd;
+      parent_.makeDirty();
       return *this;
     }
     Config& width(const size_t width)
     {
-      this->width_ = width;
-      this->parent.makeDirty();
+      width_ = width;
+      parent_.makeDirty();
       return *this;
     }
     Config& delimiter(std::string delimiter)
     {
-      this->delimiter_ = std::move(delimiter);
-      this->parent.makeDirty();
+      delimiter_ = std::move(delimiter);
+      parent_.makeDirty();
       return *this;
     }
     Config& skipEmptyLineIndent(const bool skip)
     {
-      this->skipEmptyLineIndent_ = skip;
-      this->parent.makeDirty();
+      skipEmptyLineIndent_ = skip;
+      parent_.makeDirty();
       return *this;
     }
 
     void reset()
     {
-      this->align_ = Alignment::Left;
-      this->padd_ = Padding();
-      this->delimiter_ = "-";
-      this->width_ = 0;
-      this->parent.makeDirty();
+      align_ = Alignment::Left;
+      padd_ = Padding();
+      delimiter_ = "-";
+      width_ = 0;
+      parent_.makeDirty();
     }
 
   private:
-    Column& parent;
+    Column& parent_;
 
     Alignment align_ = Alignment::Left;
     Padding padd_ = Padding();
@@ -647,49 +647,49 @@ public:
 
   void content(std::string content)
   {
-    this->content_ = std::move(content);
+    content_ = std::move(content);
     makeDirty();
   }
 
-  Config& config() { return this->config_; }
-  Style& style() { return this->style_; }
+  Config& config() { return config_; }
+  Style& style() { return style_; }
 
-  const Config& config() const { return this->config_; }
-  const Style& style() const { return this->style_; }
+  const Config& config() const { return config_; }
+  const Style& style() const { return style_; }
 
-  const std::string& content() const { return this->content_; }
+  const std::string& content() const { return content_; }
   std::string& content()
   {
     makeDirty();
-    return this->content_;
+    return content_;
   }
 
   explicit operator const std::string&() const
   {
-    return this->content_;
+    return content_;
   }
   explicit operator std::string&()
   {
     makeDirty();
-    return this->content_;
+    return content_;
   }
 
   char& operator[](int index)
   {
     makeDirty();
-    return this->content_.at(index);
+    return content_.at(index);
   }
   const char& operator[](int index) const
   {
-    return this->content_.at(index);
+    return content_.at(index);
   }
 
   void clr()
   {
-    this->content_.clear();
-    this->config_.reset();
-    this->style_.reset();
-    this->lines_.clear();
+    content_.clear();
+    config_.reset();
+    style_.reset();
+    lines_.clear();
     makeClean();
   }
 
@@ -725,8 +725,8 @@ private:
   mutable std::vector<std::string> lines_;
   mutable bool dirty_ = false;
 
-  void makeDirty() const { this->dirty_ = true; }
-  void makeClean() const { this->dirty_ = false; }
+  void makeDirty() const { dirty_ = true; }
+  void makeClean() const { dirty_ = false; }
 
   std::vector<std::string> genLines() const
   {
@@ -752,7 +752,7 @@ private:
     }
 
     // split the content into words
-    const auto words = split(this->content_);
+    const auto words = split(content_);
 
     // wrap the words into lines
     const std::vector<detail::Str> lines =
@@ -875,10 +875,10 @@ private:
     using namespace string_utils;
 
     const std::string styles = resolveStyles();
-    const bool skipBlanks = this->config_.skipEmptyLineIndent();
+    const bool skipBlanks = config_.skipEmptyLineIndent();
 
     std::vector<detail::Str> lines;
-    lines.reserve(this->content_.length() / width + 1);
+    lines.reserve(content_.length() / width + 1);
 
     std::string buffer;
     size_t bufferDw = 0; // the display width
@@ -1126,80 +1126,80 @@ public:
 
     Part& glyph(const uint32_t glyph)
     {
-      this->glyph_ = glyph;
+      glyph_ = glyph;
       makeDirty();
       return *this;
     }
 
     Part& fg(const Color color)
     {
-      this->fg_ = static_cast<uint32_t>(color);
+      fg_ = static_cast<uint32_t>(color);
       makeDirty();
       return *this;
     }
     Part& fg(const Rgb rgb)
     {
-      this->fg_ = rgb.toHex() | (1u << 24);
+      fg_ = rgb.toHex() | (1u << 24);
       makeDirty();
       return *this;
     }
 
     Part& bg(const Color color)
     {
-      this->bg_ = static_cast<uint32_t>(color);
+      bg_ = static_cast<uint32_t>(color);
       makeDirty();
       return *this;
     }
     Part& bg(const Rgb rgb)
     {
-      this->bg_ = rgb.toHex() | (1u << 24);
+      bg_ = rgb.toHex() | (1u << 24);
       makeDirty();
       return *this;
     }
 
     uint32_t fg() const
     {
-      return this->fg_;
+      return fg_;
     }
     uint32_t bg() const
     {
-      return this->bg_;
+      return bg_;
     }
     uint32_t glyph() const
     {
-      return this->glyph_;
+      return glyph_;
     }
 
     Part& clrFg()
     {
-      this->fg_ = 0;
+      fg_ = 0;
       makeDirty();
       return *this;
     }
     Part& clrBg()
     {
-      this->bg_ = 0;
+      bg_ = 0;
       makeDirty();
       return *this;
     }
     Part& clr()
     {
-      this->fg_ = 0;
-      this->bg_ = 0;
+      fg_ = 0;
+      bg_ = 0;
       makeDirty();
       return *this;
     }
 
-    explicit operator const std::string&() const { return this->str(); }
+    explicit operator const std::string&() const { return str(); }
     const std::string& str() const
     {
-      if (this->dirty_)
+      if (dirty_)
       {
-        this->str_ = genStr();
+        str_ = genStr();
         makeClean();
       }
 
-      return this->str_;
+      return str_;
     }
 
   private:
@@ -1211,16 +1211,16 @@ public:
     mutable bool dirty_ = false;
     mutable std::string str_;
 
-    void makeDirty() const { this->dirty_ = true; }
-    void makeClean() const { this->dirty_ = false; }
+    void makeDirty() const { dirty_ = true; }
+    void makeClean() const { dirty_ = false; }
 
     std::string genStr() const
     {
       using namespace detail;
       std::string buffer;
 
-      ColorType fg = this->fg_;
-      ColorType bg = this->bg_;
+      ColorType fg = fg_;
+      ColorType bg = bg_;
 
       if (fg.isColor())
       {
@@ -1271,113 +1271,113 @@ public:
     {
       std::string result;
 
-      if (this->glyph_ <= 0x7F)
+      if (glyph_ <= 0x7F)
       {
-        result += static_cast<char>(this->glyph_);
+        result += static_cast<char>(glyph_);
       }
 
-      else if (this->glyph_ <= 0x7FF)
+      else if (glyph_ <= 0x7FF)
       {
-        result += static_cast<char>(0xC0 | ((this->glyph_ >> 6) & 0x1F));
-        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
+        result += static_cast<char>(0xC0 | ((glyph_ >> 6) & 0x1F));
+        result += static_cast<char>(0x80 | (glyph_ & 0x3F));
       }
 
-      else if (this->glyph_ <= 0xFFFF)
+      else if (glyph_ <= 0xFFFF)
       {
-        result += static_cast<char>(0xE0 | ((this->glyph_ >> 12) & 0x0F));
-        result += static_cast<char>(0x80 | ((this->glyph_ >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
+        result += static_cast<char>(0xE0 | ((glyph_ >> 12) & 0x0F));
+        result += static_cast<char>(0x80 | ((glyph_ >> 6) & 0x3F));
+        result += static_cast<char>(0x80 | (glyph_ & 0x3F));
       }
 
       else
       {
-        result += static_cast<char>(0xF0 | ((this->glyph_ >> 18) & 0x07));
-        result += static_cast<char>(0x80 | ((this->glyph_ >> 12) & 0x3F));
-        result += static_cast<char>(0x80 | ((this->glyph_ >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
+        result += static_cast<char>(0xF0 | ((glyph_ >> 18) & 0x07));
+        result += static_cast<char>(0x80 | ((glyph_ >> 12) & 0x3F));
+        result += static_cast<char>(0x80 | ((glyph_ >> 6) & 0x3F));
+        result += static_cast<char>(0x80 | (glyph_ & 0x3F));
       }
 
       return result;
     }
   };
 
-  Part& horizontal() { return this->horizontal_; }
-  Part& vertical() { return this->vertical_; }
-  Part& cornerTopLeft() { return this->cornerTopLeft_; }
-  Part& cornerTopRight() { return this->cornerTopRight_; }
-  Part& cornerBottomLeft() { return this->cornerBottomLeft_; }
-  Part& cornerBottomRight() { return this->cornerBottomRight_; }
-  Part& intersection() { return this->intersection_; }
-  Part& connectorLeft() { return this->connectorLeft_; }
-  Part& connectorRight() { return this->connectorRight_; }
-  Part& connectorTop() { return this->connectorTop_; }
-  Part& connectorBottom() { return this->connectorBottom_; }
+  Part& horizontal() { return horizontal_; }
+  Part& vertical() { return vertical_; }
+  Part& cornerTopLeft() { return cornerTopLeft_; }
+  Part& cornerTopRight() { return cornerTopRight_; }
+  Part& cornerBottomLeft() { return cornerBottomLeft_; }
+  Part& cornerBottomRight() { return cornerBottomRight_; }
+  Part& intersection() { return intersection_; }
+  Part& connectorLeft() { return connectorLeft_; }
+  Part& connectorRight() { return connectorRight_; }
+  Part& connectorTop() { return connectorTop_; }
+  Part& connectorBottom() { return connectorBottom_; }
 
-  const Part& horizontal() const { return this->horizontal_; }
-  const Part& vertical() const { return this->vertical_; }
-  const Part& cornerTopLeft() const { return this->cornerTopLeft_; }
-  const Part& cornerTopRight() const { return this->cornerTopRight_; }
-  const Part& cornerBottomLeft() const { return this->cornerBottomLeft_; }
-  const Part& cornerBottomRight() const { return this->cornerBottomRight_; }
-  const Part& intersection() const { return this->intersection_; }
-  const Part& connectorLeft() const { return this->connectorLeft_; }
-  const Part& connectorRight() const { return this->connectorRight_; }
-  const Part& connectorTop() const { return this->connectorTop_; }
-  const Part& connectorBottom() const { return this->connectorBottom_; }
+  const Part& horizontal() const { return horizontal_; }
+  const Part& vertical() const { return vertical_; }
+  const Part& cornerTopLeft() const { return cornerTopLeft_; }
+  const Part& cornerTopRight() const { return cornerTopRight_; }
+  const Part& cornerBottomLeft() const { return cornerBottomLeft_; }
+  const Part& cornerBottomRight() const { return cornerBottomRight_; }
+  const Part& intersection() const { return intersection_; }
+  const Part& connectorLeft() const { return connectorLeft_; }
+  const Part& connectorRight() const { return connectorRight_; }
+  const Part& connectorTop() const { return connectorTop_; }
+  const Part& connectorBottom() const { return connectorBottom_; }
 
   Border& horizontal(const uint32_t glyph)
   {
-    this->horizontal_.glyph(glyph);
+    horizontal_.glyph(glyph);
     return *this;
   }
   Border& vertical(const uint32_t glyph)
   {
-    this->vertical_.glyph(glyph);
+    vertical_.glyph(glyph);
     return *this;
   }
   Border& cornerTopLeft(const uint32_t glyph)
   {
-    this->cornerTopLeft_.glyph(glyph);
+    cornerTopLeft_.glyph(glyph);
     return *this;
   }
   Border& cornerTopRight(const uint32_t glyph)
   {
-    this->cornerTopRight_.glyph(glyph);
+    cornerTopRight_.glyph(glyph);
     return *this;
   }
   Border& cornerBottomLeft(const uint32_t glyph)
   {
-    this->cornerBottomLeft_.glyph(glyph);
+    cornerBottomLeft_.glyph(glyph);
     return *this;
   }
   Border& cornerBottomRight(const uint32_t glyph)
   {
-    this->cornerBottomRight_.glyph(glyph);
+    cornerBottomRight_.glyph(glyph);
     return *this;
   }
   Border& intersection(const uint32_t glyph)
   {
-    this->intersection_.glyph(glyph);
+    intersection_.glyph(glyph);
     return *this;
   }
   Border& connectorLeft(const uint32_t glyph)
   {
-    this->connectorLeft_.glyph(glyph);
+    connectorLeft_.glyph(glyph);
     return *this;
   }
   Border& connectorRight(const uint32_t glyph)
   {
-    this->connectorRight_.glyph(glyph);
+    connectorRight_.glyph(glyph);
     return *this;
   }
   Border& connectorTop(const uint32_t glyph)
   {
-    this->connectorTop_.glyph(glyph);
+    connectorTop_.glyph(glyph);
     return *this;
   }
   Border& connectorBottom(const uint32_t glyph)
   {
-    this->connectorBottom_.glyph(glyph);
+    connectorBottom_.glyph(glyph);
     return *this;
   }
 
@@ -1437,20 +1437,20 @@ public:
 
   void reset()
   {
-    this->horizontal_ = U'-'; // ─
-    this->vertical_ = U'|'; // │
+    horizontal_ = U'-'; // ─
+    vertical_ = U'|'; // │
 
-    this->cornerTopLeft_ = U'+'; // ┌
-    this->cornerTopRight_ = U'+'; // ┐
-    this->cornerBottomLeft_ = U'+'; // └
-    this->cornerBottomRight_ = U'+'; // ┘
+    cornerTopLeft_ = U'+'; // ┌
+    cornerTopRight_ = U'+'; // ┐
+    cornerBottomLeft_ = U'+'; // └
+    cornerBottomRight_ = U'+'; // ┘
 
-    this->intersection_ = U'+'; // ┼
+    intersection_ = U'+'; // ┼
 
-    this->connectorLeft_ = U'+'; // ├
-    this->connectorRight_ = U'+'; // ┤
-    this->connectorTop_ = U'-'; // ┬
-    this->connectorBottom_ = U'-'; // ┴
+    connectorLeft_ = U'+'; // ├
+    connectorRight_ = U'+'; // ┤
+    connectorTop_ = U'-'; // ┬
+    connectorBottom_ = U'-'; // ┴
   }
 
 private:
@@ -1475,39 +1475,39 @@ public:
   class Config {
   public:
     explicit Config(Row& parent)
-      : parent(parent)
+      : parent_(parent)
     {
     }
 
     void width(const size_t width)
     {
-      parent.makeDirty();
-      this->width_ = width;
+      parent_.makeDirty();
+      width_ = width;
     }
     void hasBottom(bool has)
     {
-      this->parent.makeDirty();
-      this->hasBottom_ = has;
+      parent_.makeDirty();
+      hasBottom_ = has;
     }
     void vertical(Border::Part part)
     {
-      this->parent.makeDirty();
-      this->vertical_ = std::move(part);
+      parent_.makeDirty();
+      vertical_ = std::move(part);
     }
 
-    size_t width() const { return this->width_; }
-    bool hasBottom() const { return this->hasBottom_; }
-    const Border::Part& vertical() const { return this->vertical_; }
+    size_t width() const { return width_; }
+    bool hasBottom() const { return hasBottom_; }
+    const Border::Part& vertical() const { return vertical_; }
 
     void reset()
     {
-      this->width_ = 50;
-      this->vertical_ = 0;
-      this->parent.makeDirty();
+      width_ = 50;
+      vertical_ = 0;
+      parent_.makeDirty();
     }
 
   private:
-    Row& parent;
+    Row& parent_;
     size_t width_ = 50;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
@@ -1522,67 +1522,67 @@ public:
   }
   explicit Row(std::vector<std::string> columns)
   {
-    this->columns_.reserve(columns.size());
+    columns_.reserve(columns.size());
 
     for (auto& column : columns)
     {
-      this->columns_.emplace_back(std::move(column));
+      columns_.emplace_back(std::move(column));
     }
   }
 
   void columns(std::vector<Column> columns)
   {
     makeDirty();
-    this->columns_ = std::move(columns);
+    columns_ = std::move(columns);
   }
 
-  Config& config() { return this->config_; }
-  const Config& config() const { return this->config_; }
+  Config& config() { return config_; }
+  const Config& config() const { return config_; }
 
   std::vector<Column>& columns()
   {
     makeDirty();
-    return this->columns_;
+    return columns_;
   }
-  const std::vector<Column>& columns() const { return this->columns_; }
+  const std::vector<Column>& columns() const { return columns_; }
 
   Column& column(int index)
   {
     makeDirty();
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
   const Column& column(int index) const
   {
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
 
   Column& operator[](int index)
   {
     makeDirty();
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
   const Column& operator[](int index) const
   {
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
 
   void clr()
   {
-    this->columns_.clear();
-    this->str_.clear();
-    this->config_.reset();
+    columns_.clear();
+    str_.clear();
+    config_.reset();
     makeClean();
   }
 
   const std::string& str() const
   {
-    if (this->dirty_)
+    if (dirty_)
     {
-      this->str_ = genStr();
+      str_ = genStr();
       makeClean();
     }
 
-    return this->str_;
+    return str_;
   }
 
 private:
@@ -1593,16 +1593,16 @@ private:
   mutable bool dirty_ = false;
   mutable std::string str_;
 
-  void makeDirty() const { this->dirty_ = true; }
-  void makeClean() const { this->dirty_ = false; }
+  void makeDirty() const { dirty_ = true; }
+  void makeClean() const { dirty_ = false; }
 
   std::string genStr() const
   {
-    if (this->columns_.empty()) return "";
+    if (columns_.empty()) return "";
     const size_t maxLines = getMaxLines();
 
     std::string rowStr;
-    rowStr.reserve(this->config_.width() * maxLines + (this->columns_.size() + 1));
+    rowStr.reserve(config_.width() * maxLines + (columns_.size() + 1));
     const auto& vertical = config().vertical().str();
 
     for (size_t i = 0; i < maxLines; ++i)
@@ -1610,7 +1610,7 @@ private:
       if (!rowStr.empty()) rowStr.push_back('\n');
       rowStr.append(vertical);
 
-      for (const auto& column : this->columns_)
+      for (const auto& column : columns_)
       {
         const auto& lines = column.lines();
 
@@ -1629,7 +1629,7 @@ private:
   {
     size_t maxLines = 0;
 
-    for (const auto& column : this->columns_)
+    for (const auto& column : columns_)
       maxLines = (std::max)(maxLines, column.lines().size());
 
     return maxLines;
@@ -1647,15 +1647,15 @@ public:
     void width(const size_t width)
     {
       parent_.makeDirty();
-      this->width_ = width;
+      width_ = width;
     }
 
-    size_t width() const { return this->width_; }
+    size_t width() const { return width_; }
 
     void reset()
     {
-      this->width_ = 50;
-      this->parent_.makeDirty();
+      width_ = 50;
+      parent_.makeDirty();
     }
 
   private:
@@ -1673,80 +1673,80 @@ public:
 
   void rows(std::vector<Row> rows)
   {
-    this->rows_ = std::move(rows);
+    rows_ = std::move(rows);
     makeDirty();
   }
   void border(Border border)
   {
-    this->border_ = std::move(border);
+    border_ = std::move(border);
     makeDirty();
   }
 
   Table& addRow(Row row)
   {
-    this->rows_.emplace_back(std::move(row));
+    rows_.emplace_back(std::move(row));
     makeDirty();
     return *this;
   }
   Table& addRow(std::vector<std::string> row)
   {
-    this->rows_.emplace_back(std::move(row));
+    rows_.emplace_back(std::move(row));
     makeDirty();
     return *this;
   }
 
-  Config& config() { return this->config_; }
-  const Config& config() const { return this->config_; }
+  Config& config() { return config_; }
+  const Config& config() const { return config_; }
 
   Border& border()
   {
     makeDirty();
-    return this->border_;
+    return border_;
   }
-  const Border& border() const { return this->border_; }
+  const Border& border() const { return border_; }
 
   std::vector<Row>& rows()
   {
     makeDirty();
-    return this->rows_;
+    return rows_;
   }
-  const std::vector<Row>& rows() const { return this->rows_; }
+  const std::vector<Row>& rows() const { return rows_; }
 
   Row& row(int index)
   {
     makeDirty();
-    return this->rows_.at(index);
+    return rows_.at(index);
   }
-  const Row& row(int index) const { return this->rows_.at(index); }
+  const Row& row(int index) const { return rows_.at(index); }
 
   Row& operator[](int index)
   {
     makeDirty();
-    return this->rows_.at(index);
+    return rows_.at(index);
   }
   const Row& operator[](int index) const
   {
-    return this->rows_.at(index);
+    return rows_.at(index);
   }
 
   void clr()
   {
-    this->rows_.clear();
+    rows_.clear();
     config_.reset();
     border_.reset();
-    this->str_.clear();
+    str_.clear();
     makeClean();
   }
 
   const std::string& str() const
   {
-    if (this->dirty_)
+    if (dirty_)
     {
-      this->str_ = genStr();
+      str_ = genStr();
       makeClean();
     }
 
-    return this->str_;
+    return str_;
   }
 
 private:
@@ -1764,17 +1764,17 @@ private:
   std::string genStr() const
   {
     // avoid reference
-    auto rows = this->rows_;
+    auto rows = rows_;
     if (rows.empty()) return "";
 
     std::string tableStr;
-    tableStr.reserve(rows.size() * this->config_.width());
+    tableStr.reserve(rows.size() * config_.width());
 
     adjustWidth(rows);
     configureRows(rows);
     tableStr += getBorderHeader(rows) + '\n';
 
-    const size_t rowsSize = this->rows_.size();
+    const size_t rowsSize = rows_.size();
     for (size_t i = 0; i < rowsSize; ++i)
     {
       auto& row = rows[i];
@@ -1808,7 +1808,7 @@ private:
   void setWidth(Row& row) const
   {
     auto& columns = row.columns();
-    size_t width = this->config_.width();
+    size_t width = config_.width();
 
     // subtract the splits
     width -= (columns.size() + 1);
@@ -1827,7 +1827,7 @@ private:
   void setUnspecifiedWidth(Row& row, size_t unspecified) const
   {
     std::vector<Column>& columns = row.columns();
-    size_t width = this->config_.width();
+    size_t width = config_.width();
 
     // subtract the splits
     width -= (columns.size() + 1);
@@ -1868,7 +1868,7 @@ private:
   }
   void configureRows(std::vector<Row>& rows) const
   {
-    auto& verticalBorder = this->border_.vertical();
+    auto& verticalBorder = border_.vertical();
     for (auto& row : rows)
     {
       auto& config = row.config();
@@ -1896,10 +1896,10 @@ private:
   {
     const auto& columns = rows[0].columns();
 
-    std::string header = this->border_.cornerTopLeft().str();
-    header.reserve(this->config_.width());
+    std::string header = border_.cornerTopLeft().str();
+    header.reserve(config_.width());
 
-    const std::string& horizontal = this->border_.horizontal().str();
+    const std::string& horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -1907,20 +1907,20 @@ private:
       for (size_t j = 0; j < width; ++j)
         header += horizontal;
 
-      if (i + 1 < columns.size()) header += this->border_.connectorTop().str();
+      if (i + 1 < columns.size()) header += border_.connectorTop().str();
     }
 
-    header += this->border_.cornerTopRight().str();
+    header += border_.cornerTopRight().str();
     return header;
   }
   std::string getBorderFooter(std::vector<Row>& rows) const
   {
     const auto& columns = rows.back().columns();
 
-    std::string footer = this->border_.cornerBottomLeft().str();
-    footer.reserve(this->config_.width());
+    std::string footer = border_.cornerBottomLeft().str();
+    footer.reserve(config_.width());
 
-    const std::string& horizontal = this->border_.horizontal().str();
+    const std::string& horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -1928,23 +1928,23 @@ private:
       for (size_t j = 0; j < width; ++j)
         footer += horizontal;
 
-      if (i + 1 < columns.size()) footer += this->border_.connectorBottom().str();
+      if (i + 1 < columns.size()) footer += border_.connectorBottom().str();
     }
 
-    footer += this->border_.cornerBottomRight().str();
+    footer += border_.cornerBottomRight().str();
     return footer;
   }
   std::string getBorderMiddle(std::vector<Row>& rows, size_t index) const
   {
     const auto nextRowConnections = connections(rows[index + 1]);
 
-    std::string middle = this->border_.connectorLeft().str();
-    middle.reserve(this->config_.width());
+    std::string middle = border_.connectorLeft().str();
+    middle.reserve(config_.width());
 
     const auto& columns = rows[index].columns();
 
     size_t tracker = 0;
-    const std::string& horizontal = this->border_.horizontal().str();
+    const std::string& horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -1952,7 +1952,7 @@ private:
       for (size_t j = 0; j < width; ++j)
       {
         if (detail::bisearch(nextRowConnections, ++tracker))
-          middle += this->border_.connectorTop().str();
+          middle += border_.connectorTop().str();
         else
           middle += horizontal;
       }
@@ -1961,12 +1961,12 @@ private:
       if (i + 1 >= columns.size()) continue;
 
       if (detail::bisearch(nextRowConnections, tracker))
-        middle += this->border_.intersection().str();
+        middle += border_.intersection().str();
       else
-        middle += this->border_.connectorBottom().str();
+        middle += border_.connectorBottom().str();
     }
 
-    middle += this->border_.connectorRight().str();
+    middle += border_.connectorRight().str();
     return middle;
   }
 };

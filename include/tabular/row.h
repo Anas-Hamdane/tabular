@@ -10,39 +10,39 @@ public:
   class Config {
   public:
     explicit Config(Row& parent)
-      : parent(parent)
+      : parent_(parent)
     {
     }
 
     void width(const size_t width)
     {
-      parent.makeDirty();
-      this->width_ = width;
+      parent_.makeDirty();
+      width_ = width;
     }
     void hasBottom(bool has)
     {
-      this->parent.makeDirty();
-      this->hasBottom_ = has;
+      parent_.makeDirty();
+      hasBottom_ = has;
     }
     void vertical(Border::Part part)
     {
-      this->parent.makeDirty();
-      this->vertical_ = std::move(part);
+      parent_.makeDirty();
+      vertical_ = std::move(part);
     }
 
-    size_t width() const { return this->width_; }
-    bool hasBottom() const { return this->hasBottom_; }
-    const Border::Part& vertical() const { return this->vertical_; }
+    size_t width() const { return width_; }
+    bool hasBottom() const { return hasBottom_; }
+    const Border::Part& vertical() const { return vertical_; }
 
     void reset()
     {
-      this->width_ = 50;
-      this->vertical_ = 0;
-      this->parent.makeDirty();
+      width_ = 50;
+      vertical_ = 0;
+      parent_.makeDirty();
     }
 
   private:
-    Row& parent;
+    Row& parent_;
     size_t width_ = 50;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
@@ -57,67 +57,67 @@ public:
   }
   explicit Row(std::vector<std::string> columns)
   {
-    this->columns_.reserve(columns.size());
+    columns_.reserve(columns.size());
 
     for (auto& column : columns)
     {
-      this->columns_.emplace_back(std::move(column));
+      columns_.emplace_back(std::move(column));
     }
   }
 
   void columns(std::vector<Column> columns)
   {
     makeDirty();
-    this->columns_ = std::move(columns);
+    columns_ = std::move(columns);
   }
 
-  Config& config() { return this->config_; }
-  const Config& config() const { return this->config_; }
+  Config& config() { return config_; }
+  const Config& config() const { return config_; }
 
   std::vector<Column>& columns()
   {
     makeDirty();
-    return this->columns_;
+    return columns_;
   }
-  const std::vector<Column>& columns() const { return this->columns_; }
+  const std::vector<Column>& columns() const { return columns_; }
 
   Column& column(int index)
   {
     makeDirty();
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
   const Column& column(int index) const
   {
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
 
   Column& operator[](int index)
   {
     makeDirty();
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
   const Column& operator[](int index) const
   {
-    return this->columns_.at(index);
+    return columns_.at(index);
   }
 
   void clr()
   {
-    this->columns_.clear();
-    this->str_.clear();
-    this->config_.reset();
+    columns_.clear();
+    str_.clear();
+    config_.reset();
     makeClean();
   }
 
   const std::string& str() const
   {
-    if (this->dirty_)
+    if (dirty_)
     {
-      this->str_ = genStr();
+      str_ = genStr();
       makeClean();
     }
 
-    return this->str_;
+    return str_;
   }
 
 private:
@@ -128,16 +128,16 @@ private:
   mutable bool dirty_ = false;
   mutable std::string str_;
 
-  void makeDirty() const { this->dirty_ = true; }
-  void makeClean() const { this->dirty_ = false; }
+  void makeDirty() const { dirty_ = true; }
+  void makeClean() const { dirty_ = false; }
 
   std::string genStr() const
   {
-    if (this->columns_.empty()) return "";
+    if (columns_.empty()) return "";
     const size_t maxLines = getMaxLines();
 
     std::string rowStr;
-    rowStr.reserve(this->config_.width() * maxLines + (this->columns_.size() + 1));
+    rowStr.reserve(config_.width() * maxLines + (columns_.size() + 1));
     const auto& vertical = config().vertical().str();
 
     for (size_t i = 0; i < maxLines; ++i)
@@ -145,7 +145,7 @@ private:
       if (!rowStr.empty()) rowStr.push_back('\n');
       rowStr.append(vertical);
 
-      for (const auto& column : this->columns_)
+      for (const auto& column : columns_)
       {
         const auto& lines = column.lines();
 
@@ -164,7 +164,7 @@ private:
   {
     size_t maxLines = 0;
 
-    for (const auto& column : this->columns_)
+    for (const auto& column : columns_)
       maxLines = (std::max)(maxLines, column.lines().size());
 
     return maxLines;

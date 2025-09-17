@@ -34,15 +34,15 @@ public:
     void width(const size_t width)
     {
       parent_.makeDirty();
-      this->width_ = width;
+      width_ = width;
     }
 
-    size_t width() const { return this->width_; }
+    size_t width() const { return width_; }
 
     void reset()
     {
-      this->width_ = 50;
-      this->parent_.makeDirty();
+      width_ = 50;
+      parent_.makeDirty();
     }
 
   private:
@@ -60,80 +60,80 @@ public:
 
   void rows(std::vector<Row> rows)
   {
-    this->rows_ = std::move(rows);
+    rows_ = std::move(rows);
     makeDirty();
   }
   void border(Border border)
   {
-    this->border_ = std::move(border);
+    border_ = std::move(border);
     makeDirty();
   }
 
   Table& addRow(Row row)
   {
-    this->rows_.emplace_back(std::move(row));
+    rows_.emplace_back(std::move(row));
     makeDirty();
     return *this;
   }
   Table& addRow(std::vector<std::string> row)
   {
-    this->rows_.emplace_back(std::move(row));
+    rows_.emplace_back(std::move(row));
     makeDirty();
     return *this;
   }
 
-  Config& config() { return this->config_; }
-  const Config& config() const { return this->config_; }
+  Config& config() { return config_; }
+  const Config& config() const { return config_; }
 
   Border& border()
   {
     makeDirty();
-    return this->border_;
+    return border_;
   }
-  const Border& border() const { return this->border_; }
+  const Border& border() const { return border_; }
 
   std::vector<Row>& rows()
   {
     makeDirty();
-    return this->rows_;
+    return rows_;
   }
-  const std::vector<Row>& rows() const { return this->rows_; }
+  const std::vector<Row>& rows() const { return rows_; }
 
   Row& row(int index)
   {
     makeDirty();
-    return this->rows_.at(index);
+    return rows_.at(index);
   }
-  const Row& row(int index) const { return this->rows_.at(index); }
+  const Row& row(int index) const { return rows_.at(index); }
 
   Row& operator[](int index)
   {
     makeDirty();
-    return this->rows_.at(index);
+    return rows_.at(index);
   }
   const Row& operator[](int index) const
   {
-    return this->rows_.at(index);
+    return rows_.at(index);
   }
 
   void clr()
   {
-    this->rows_.clear();
+    rows_.clear();
     config_.reset();
     border_.reset();
-    this->str_.clear();
+    str_.clear();
     makeClean();
   }
 
   const std::string& str() const
   {
-    if (this->dirty_)
+    if (dirty_)
     {
-      this->str_ = genStr();
+      str_ = genStr();
       makeClean();
     }
 
-    return this->str_;
+    return str_;
   }
 
 private:
@@ -151,17 +151,17 @@ private:
   std::string genStr() const
   {
     // avoid reference
-    auto rows = this->rows_;
+    auto rows = rows_;
     if (rows.empty()) return "";
 
     std::string tableStr;
-    tableStr.reserve(rows.size() * this->config_.width());
+    tableStr.reserve(rows.size() * config_.width());
 
     adjustWidth(rows);
     configureRows(rows);
     tableStr += getBorderHeader(rows) + '\n';
 
-    const size_t rowsSize = this->rows_.size();
+    const size_t rowsSize = rows_.size();
     for (size_t i = 0; i < rowsSize; ++i)
     {
       auto& row = rows[i];
@@ -195,7 +195,7 @@ private:
   void setWidth(Row& row) const
   {
     auto& columns = row.columns();
-    size_t width = this->config_.width();
+    size_t width = config_.width();
 
     // subtract the splits
     width -= (columns.size() + 1);
@@ -214,7 +214,7 @@ private:
   void setUnspecifiedWidth(Row& row, size_t unspecified) const
   {
     std::vector<Column>& columns = row.columns();
-    size_t width = this->config_.width();
+    size_t width = config_.width();
 
     // subtract the splits
     width -= (columns.size() + 1);
@@ -255,7 +255,7 @@ private:
   }
   void configureRows(std::vector<Row>& rows) const
   {
-    auto& verticalBorder = this->border_.vertical();
+    auto& verticalBorder = border_.vertical();
     for (auto& row : rows)
     {
       auto& config = row.config();
@@ -283,10 +283,10 @@ private:
   {
     const auto& columns = rows[0].columns();
 
-    std::string header = this->border_.cornerTopLeft().str();
-    header.reserve(this->config_.width());
+    std::string header = border_.cornerTopLeft().str();
+    header.reserve(config_.width());
 
-    const std::string& horizontal = this->border_.horizontal().str();
+    const std::string& horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -294,20 +294,20 @@ private:
       for (size_t j = 0; j < width; ++j)
         header += horizontal;
 
-      if (i + 1 < columns.size()) header += this->border_.connectorTop().str();
+      if (i + 1 < columns.size()) header += border_.connectorTop().str();
     }
 
-    header += this->border_.cornerTopRight().str();
+    header += border_.cornerTopRight().str();
     return header;
   }
   std::string getBorderFooter(std::vector<Row>& rows) const
   {
     const auto& columns = rows.back().columns();
 
-    std::string footer = this->border_.cornerBottomLeft().str();
-    footer.reserve(this->config_.width());
+    std::string footer = border_.cornerBottomLeft().str();
+    footer.reserve(config_.width());
 
-    const std::string& horizontal = this->border_.horizontal().str();
+    const std::string& horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -315,23 +315,23 @@ private:
       for (size_t j = 0; j < width; ++j)
         footer += horizontal;
 
-      if (i + 1 < columns.size()) footer += this->border_.connectorBottom().str();
+      if (i + 1 < columns.size()) footer += border_.connectorBottom().str();
     }
 
-    footer += this->border_.cornerBottomRight().str();
+    footer += border_.cornerBottomRight().str();
     return footer;
   }
   std::string getBorderMiddle(std::vector<Row>& rows, size_t index) const
   {
     const auto nextRowConnections = connections(rows[index + 1]);
 
-    std::string middle = this->border_.connectorLeft().str();
-    middle.reserve(this->config_.width());
+    std::string middle = border_.connectorLeft().str();
+    middle.reserve(config_.width());
 
     const auto& columns = rows[index].columns();
 
     size_t tracker = 0;
-    const std::string& horizontal = this->border_.horizontal().str();
+    const std::string& horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
@@ -339,7 +339,7 @@ private:
       for (size_t j = 0; j < width; ++j)
       {
         if (detail::bisearch(nextRowConnections, ++tracker))
-          middle += this->border_.connectorTop().str();
+          middle += border_.connectorTop().str();
         else
           middle += horizontal;
       }
@@ -348,12 +348,12 @@ private:
       if (i + 1 >= columns.size()) continue;
 
       if (detail::bisearch(nextRowConnections, tracker))
-        middle += this->border_.intersection().str();
+        middle += border_.intersection().str();
       else
-        middle += this->border_.connectorBottom().str();
+        middle += border_.connectorBottom().str();
     }
 
-    middle += this->border_.connectorRight().str();
+    middle += border_.connectorRight().str();
     return middle;
   }
 };

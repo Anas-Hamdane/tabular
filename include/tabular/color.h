@@ -45,12 +45,12 @@ namespace detail {
     ColorType(uint32_t value)
       : value_(value) {}
 
-    bool isSet() { return this->value_ != 0; }
-    bool isColor() { return isSet() && (this->value_ & (1u << 24)) == 0; }
-    bool isRgb() { return isSet() && (this->value_ & (1u << 24)) != 0; }
+    bool isSet() { return value_ != 0; }
+    bool isColor() { return isSet() && (value_ & (1u << 24)) == 0; }
+    bool isRgb() { return isSet() && (value_ & (1u << 24)) != 0; }
 
-    Color color() { return static_cast<Color>(this->value_ & 0xFFFFFF); }
-    Rgb rgb() { return {this->value_ & 0xFFFFFF}; }
+    Color color() { return static_cast<Color>(value_ & 0xFFFFFF); }
+    Rgb rgb() { return {value_ & 0xFFFFFF}; }
 
     private:
     uint32_t value_;

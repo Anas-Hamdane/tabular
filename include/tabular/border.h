@@ -17,80 +17,80 @@ public:
 
     Part& glyph(const uint32_t glyph)
     {
-      this->glyph_ = glyph;
+      glyph_ = glyph;
       makeDirty();
       return *this;
     }
 
     Part& fg(const Color color)
     {
-      this->fg_ = static_cast<uint32_t>(color);
+      fg_ = static_cast<uint32_t>(color);
       makeDirty();
       return *this;
     }
     Part& fg(const Rgb rgb)
     {
-      this->fg_ = rgb.toHex() | (1u << 24);
+      fg_ = rgb.toHex() | (1u << 24);
       makeDirty();
       return *this;
     }
 
     Part& bg(const Color color)
     {
-      this->bg_ = static_cast<uint32_t>(color);
+      bg_ = static_cast<uint32_t>(color);
       makeDirty();
       return *this;
     }
     Part& bg(const Rgb rgb)
     {
-      this->bg_ = rgb.toHex() | (1u << 24);
+      bg_ = rgb.toHex() | (1u << 24);
       makeDirty();
       return *this;
     }
 
     uint32_t fg() const
     {
-      return this->fg_;
+      return fg_;
     }
     uint32_t bg() const
     {
-      return this->bg_;
+      return bg_;
     }
     uint32_t glyph() const
     {
-      return this->glyph_;
+      return glyph_;
     }
 
     Part& clrFg()
     {
-      this->fg_ = 0;
+      fg_ = 0;
       makeDirty();
       return *this;
     }
     Part& clrBg()
     {
-      this->bg_ = 0;
+      bg_ = 0;
       makeDirty();
       return *this;
     }
     Part& clr()
     {
-      this->fg_ = 0;
-      this->bg_ = 0;
+      fg_ = 0;
+      bg_ = 0;
       makeDirty();
       return *this;
     }
 
-    explicit operator const std::string&() const { return this->str(); }
+    explicit operator const std::string&() const { return str(); }
     const std::string& str() const
     {
-      if (this->dirty_)
+      if (dirty_)
       {
-        this->str_ = genStr();
+        str_ = genStr();
         makeClean();
       }
 
-      return this->str_;
+      return str_;
     }
 
   private:
@@ -102,16 +102,16 @@ public:
     mutable bool dirty_ = false;
     mutable std::string str_;
 
-    void makeDirty() const { this->dirty_ = true; }
-    void makeClean() const { this->dirty_ = false; }
+    void makeDirty() const { dirty_ = true; }
+    void makeClean() const { dirty_ = false; }
 
     std::string genStr() const
     {
       using namespace detail;
       std::string buffer;
 
-      ColorType fg = this->fg_;
-      ColorType bg = this->bg_;
+      ColorType fg = fg_;
+      ColorType bg = bg_;
 
       if (fg.isColor())
       {
@@ -162,113 +162,113 @@ public:
     {
       std::string result;
 
-      if (this->glyph_ <= 0x7F)
+      if (glyph_ <= 0x7F)
       {
-        result += static_cast<char>(this->glyph_);
+        result += static_cast<char>(glyph_);
       }
 
-      else if (this->glyph_ <= 0x7FF)
+      else if (glyph_ <= 0x7FF)
       {
-        result += static_cast<char>(0xC0 | ((this->glyph_ >> 6) & 0x1F));
-        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
+        result += static_cast<char>(0xC0 | ((glyph_ >> 6) & 0x1F));
+        result += static_cast<char>(0x80 | (glyph_ & 0x3F));
       }
 
-      else if (this->glyph_ <= 0xFFFF)
+      else if (glyph_ <= 0xFFFF)
       {
-        result += static_cast<char>(0xE0 | ((this->glyph_ >> 12) & 0x0F));
-        result += static_cast<char>(0x80 | ((this->glyph_ >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
+        result += static_cast<char>(0xE0 | ((glyph_ >> 12) & 0x0F));
+        result += static_cast<char>(0x80 | ((glyph_ >> 6) & 0x3F));
+        result += static_cast<char>(0x80 | (glyph_ & 0x3F));
       }
 
       else
       {
-        result += static_cast<char>(0xF0 | ((this->glyph_ >> 18) & 0x07));
-        result += static_cast<char>(0x80 | ((this->glyph_ >> 12) & 0x3F));
-        result += static_cast<char>(0x80 | ((this->glyph_ >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (this->glyph_ & 0x3F));
+        result += static_cast<char>(0xF0 | ((glyph_ >> 18) & 0x07));
+        result += static_cast<char>(0x80 | ((glyph_ >> 12) & 0x3F));
+        result += static_cast<char>(0x80 | ((glyph_ >> 6) & 0x3F));
+        result += static_cast<char>(0x80 | (glyph_ & 0x3F));
       }
 
       return result;
     }
   };
 
-  Part& horizontal() { return this->horizontal_; }
-  Part& vertical() { return this->vertical_; }
-  Part& cornerTopLeft() { return this->cornerTopLeft_; }
-  Part& cornerTopRight() { return this->cornerTopRight_; }
-  Part& cornerBottomLeft() { return this->cornerBottomLeft_; }
-  Part& cornerBottomRight() { return this->cornerBottomRight_; }
-  Part& intersection() { return this->intersection_; }
-  Part& connectorLeft() { return this->connectorLeft_; }
-  Part& connectorRight() { return this->connectorRight_; }
-  Part& connectorTop() { return this->connectorTop_; }
-  Part& connectorBottom() { return this->connectorBottom_; }
+  Part& horizontal() { return horizontal_; }
+  Part& vertical() { return vertical_; }
+  Part& cornerTopLeft() { return cornerTopLeft_; }
+  Part& cornerTopRight() { return cornerTopRight_; }
+  Part& cornerBottomLeft() { return cornerBottomLeft_; }
+  Part& cornerBottomRight() { return cornerBottomRight_; }
+  Part& intersection() { return intersection_; }
+  Part& connectorLeft() { return connectorLeft_; }
+  Part& connectorRight() { return connectorRight_; }
+  Part& connectorTop() { return connectorTop_; }
+  Part& connectorBottom() { return connectorBottom_; }
 
-  const Part& horizontal() const { return this->horizontal_; }
-  const Part& vertical() const { return this->vertical_; }
-  const Part& cornerTopLeft() const { return this->cornerTopLeft_; }
-  const Part& cornerTopRight() const { return this->cornerTopRight_; }
-  const Part& cornerBottomLeft() const { return this->cornerBottomLeft_; }
-  const Part& cornerBottomRight() const { return this->cornerBottomRight_; }
-  const Part& intersection() const { return this->intersection_; }
-  const Part& connectorLeft() const { return this->connectorLeft_; }
-  const Part& connectorRight() const { return this->connectorRight_; }
-  const Part& connectorTop() const { return this->connectorTop_; }
-  const Part& connectorBottom() const { return this->connectorBottom_; }
+  const Part& horizontal() const { return horizontal_; }
+  const Part& vertical() const { return vertical_; }
+  const Part& cornerTopLeft() const { return cornerTopLeft_; }
+  const Part& cornerTopRight() const { return cornerTopRight_; }
+  const Part& cornerBottomLeft() const { return cornerBottomLeft_; }
+  const Part& cornerBottomRight() const { return cornerBottomRight_; }
+  const Part& intersection() const { return intersection_; }
+  const Part& connectorLeft() const { return connectorLeft_; }
+  const Part& connectorRight() const { return connectorRight_; }
+  const Part& connectorTop() const { return connectorTop_; }
+  const Part& connectorBottom() const { return connectorBottom_; }
 
   Border& horizontal(const uint32_t glyph)
   {
-    this->horizontal_.glyph(glyph);
+    horizontal_.glyph(glyph);
     return *this;
   }
   Border& vertical(const uint32_t glyph)
   {
-    this->vertical_.glyph(glyph);
+    vertical_.glyph(glyph);
     return *this;
   }
   Border& cornerTopLeft(const uint32_t glyph)
   {
-    this->cornerTopLeft_.glyph(glyph);
+    cornerTopLeft_.glyph(glyph);
     return *this;
   }
   Border& cornerTopRight(const uint32_t glyph)
   {
-    this->cornerTopRight_.glyph(glyph);
+    cornerTopRight_.glyph(glyph);
     return *this;
   }
   Border& cornerBottomLeft(const uint32_t glyph)
   {
-    this->cornerBottomLeft_.glyph(glyph);
+    cornerBottomLeft_.glyph(glyph);
     return *this;
   }
   Border& cornerBottomRight(const uint32_t glyph)
   {
-    this->cornerBottomRight_.glyph(glyph);
+    cornerBottomRight_.glyph(glyph);
     return *this;
   }
   Border& intersection(const uint32_t glyph)
   {
-    this->intersection_.glyph(glyph);
+    intersection_.glyph(glyph);
     return *this;
   }
   Border& connectorLeft(const uint32_t glyph)
   {
-    this->connectorLeft_.glyph(glyph);
+    connectorLeft_.glyph(glyph);
     return *this;
   }
   Border& connectorRight(const uint32_t glyph)
   {
-    this->connectorRight_.glyph(glyph);
+    connectorRight_.glyph(glyph);
     return *this;
   }
   Border& connectorTop(const uint32_t glyph)
   {
-    this->connectorTop_.glyph(glyph);
+    connectorTop_.glyph(glyph);
     return *this;
   }
   Border& connectorBottom(const uint32_t glyph)
   {
-    this->connectorBottom_.glyph(glyph);
+    connectorBottom_.glyph(glyph);
     return *this;
   }
 
@@ -328,20 +328,20 @@ public:
 
   void reset()
   {
-    this->horizontal_ = U'-'; // ─
-    this->vertical_ = U'|'; // │
+    horizontal_ = U'-'; // ─
+    vertical_ = U'|'; // │
 
-    this->cornerTopLeft_ = U'+'; // ┌
-    this->cornerTopRight_ = U'+'; // ┐
-    this->cornerBottomLeft_ = U'+'; // └
-    this->cornerBottomRight_ = U'+'; // ┘
+    cornerTopLeft_ = U'+'; // ┌
+    cornerTopRight_ = U'+'; // ┐
+    cornerBottomLeft_ = U'+'; // └
+    cornerBottomRight_ = U'+'; // ┘
 
-    this->intersection_ = U'+'; // ┼
+    intersection_ = U'+'; // ┼
 
-    this->connectorLeft_ = U'+'; // ├
-    this->connectorRight_ = U'+'; // ┤
-    this->connectorTop_ = U'-'; // ┬
-    this->connectorBottom_ = U'-'; // ┴
+    connectorLeft_ = U'+'; // ├
+    connectorRight_ = U'+'; // ┤
+    connectorTop_ = U'-'; // ┬
+    connectorBottom_ = U'-'; // ┴
   }
 
 private:

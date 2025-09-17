@@ -18,102 +18,102 @@ class Column {
 public:
   class Style {
   public:
-    explicit Style(Column& parent) : parent(parent)
+    explicit Style(Column& parent) : parent_(parent)
     {
     }
 
     Style& fg(Color color)
     {
-      this->fg_ = static_cast<uint32_t>(color);
-      this->parent.makeDirty();
+      fg_ = static_cast<uint32_t>(color);
+      parent_.makeDirty();
       return *this;
     }
     Style& bg(Color color)
     {
-      this->bg_ = static_cast<uint32_t>(color);
-      this->parent.makeDirty();
+      bg_ = static_cast<uint32_t>(color);
+      parent_.makeDirty();
       return *this;
     }
     Style& base(Color color)
     {
-      this->base_ = static_cast<uint32_t>(color);
-      this->parent.makeDirty();
+      base_ = static_cast<uint32_t>(color);
+      parent_.makeDirty();
       return *this;
     }
 
     Style& fg(const Rgb rgb)
     {
-      this->fg_ = rgb.toHex() | (1u << 24);
-      this->parent.makeDirty();
+      fg_ = rgb.toHex() | (1u << 24);
+      parent_.makeDirty();
       return *this;
     }
     Style& bg(const Rgb rgb)
     {
-      this->bg_ = rgb.toHex() | (1u << 24);
-      this->parent.makeDirty();
+      bg_ = rgb.toHex() | (1u << 24);
+      parent_.makeDirty();
       return *this;
     }
     Style& base(const Rgb rgb)
     {
-      this->base_ = rgb.toHex() | (1u << 24);
-      this->parent.makeDirty();
+      base_ = rgb.toHex() | (1u << 24);
+      parent_.makeDirty();
       return *this;
     }
 
     Style& attrs(Attribute attr)
     {
-      this->attrs_ |= static_cast<uint16_t>(attr);
-      this->parent.makeDirty();
+      attrs_ |= static_cast<uint16_t>(attr);
+      parent_.makeDirty();
       return *this;
     }
     Style& attrs(const Style& attr)
     {
-      this->attrs_ |= attr.attrs_;
-      this->parent.makeDirty();
+      attrs_ |= attr.attrs_;
+      parent_.makeDirty();
       return *this;
     }
 
-    bool hasFg() const { return this->fg_ != 0; }
-    bool hasBg() const { return this->bg_ != 0; }
-    bool hasBase() const { return this->base_ != 0; }
-    bool hasAttrs() const { return this->attrs_ != 0; }
+    bool hasFg() const { return fg_ != 0; }
+    bool hasBg() const { return bg_ != 0; }
+    bool hasBase() const { return base_ != 0; }
+    bool hasAttrs() const { return attrs_ != 0; }
 
-    uint32_t fg() const { return this->fg_; }
-    uint32_t bg() const { return this->bg_; }
-    uint32_t base() const { return this->base_; }
+    uint32_t fg() const { return fg_; }
+    uint32_t bg() const { return bg_; }
+    uint32_t base() const { return base_; }
     Attribute attrs() const { return static_cast<Attribute>(attrs_); }
 
     void resetFg()
     {
-      this->fg_ = 0;
-      this->parent.makeDirty();
+      fg_ = 0;
+      parent_.makeDirty();
     }
     void resetBg()
     {
-      this->bg_ = 0;
-      this->parent.makeDirty();
+      bg_ = 0;
+      parent_.makeDirty();
     }
     void resetBase()
     {
-      this->base_ = 0;
-      this->parent.makeDirty();
+      base_ = 0;
+      parent_.makeDirty();
     }
     void resetAttrs()
     {
-      this->attrs_ = 0;
-      this->parent.makeDirty();
+      attrs_ = 0;
+      parent_.makeDirty();
     }
     void reset()
     {
-      this->fg_ = 0;
-      this->bg_ = 0;
-      this->base_ = 0;
-      this->attrs_ = 0;
-      this->parent.makeDirty();
+      fg_ = 0;
+      bg_ = 0;
+      base_ = 0;
+      attrs_ = 0;
+      parent_.makeDirty();
     }
 
   private:
-    Column& parent;
+    Column& parent_;
 
     // representing all the colors
     uint32_t fg_ = 0;
@@ -125,58 +125,58 @@ public:
   };
   class Config {
   public:
-    explicit Config(Column& parent) : parent(parent)
+    explicit Config(Column& parent) : parent_(parent)
     {
     }
 
-    Alignment align() const { return this->align_; }
-    Padding padd() const { return this->padd_; }
-    size_t width() const { return this->width_; }
-    std::string delimiter() const { return this->delimiter_; }
-    bool skipEmptyLineIndent() const { return this->skipEmptyLineIndent_; }
+    Alignment align() const { return align_; }
+    Padding padd() const { return padd_; }
+    size_t width() const { return width_; }
+    std::string delimiter() const { return delimiter_; }
+    bool skipEmptyLineIndent() const { return skipEmptyLineIndent_; }
 
     Config& align(const Alignment alignment)
     {
-      this->align_ = alignment;
-      this->parent.makeDirty();
+      align_ = alignment;
+      parent_.makeDirty();
       return *this;
     }
     Config& padd(const Padding padd)
     {
-      this->padd_ = padd;
-      this->parent.makeDirty();
+      padd_ = padd;
+      parent_.makeDirty();
       return *this;
     }
     Config& width(const size_t width)
     {
-      this->width_ = width;
-      this->parent.makeDirty();
+      width_ = width;
+      parent_.makeDirty();
       return *this;
     }
     Config& delimiter(std::string delimiter)
     {
-      this->delimiter_ = std::move(delimiter);
-      this->parent.makeDirty();
+      delimiter_ = std::move(delimiter);
+      parent_.makeDirty();
       return *this;
     }
     Config& skipEmptyLineIndent(const bool skip)
     {
-      this->skipEmptyLineIndent_ = skip;
-      this->parent.makeDirty();
+      skipEmptyLineIndent_ = skip;
+      parent_.makeDirty();
       return *this;
     }
 
     void reset()
     {
-      this->align_ = Alignment::Left;
-      this->padd_ = Padding();
-      this->delimiter_ = "-";
-      this->width_ = 0;
-      this->parent.makeDirty();
+      align_ = Alignment::Left;
+      padd_ = Padding();
+      delimiter_ = "-";
+      width_ = 0;
+      parent_.makeDirty();
     }
 
   private:
-    Column& parent;
+    Column& parent_;
 
     Alignment align_ = Alignment::Left;
     Padding padd_ = Padding();
@@ -195,49 +195,49 @@ public:
 
   void content(std::string content)
   {
-    this->content_ = std::move(content);
+    content_ = std::move(content);
     makeDirty();
   }
 
-  Config& config() { return this->config_; }
-  Style& style() { return this->style_; }
+  Config& config() { return config_; }
+  Style& style() { return style_; }
 
-  const Config& config() const { return this->config_; }
-  const Style& style() const { return this->style_; }
+  const Config& config() const { return config_; }
+  const Style& style() const { return style_; }
 
-  const std::string& content() const { return this->content_; }
+  const std::string& content() const { return content_; }
   std::string& content()
   {
     makeDirty();
-    return this->content_;
+    return content_;
   }
 
   explicit operator const std::string&() const
   {
-    return this->content_;
+    return content_;
   }
   explicit operator std::string&()
   {
     makeDirty();
-    return this->content_;
+    return content_;
   }
 
   char& operator[](int index)
   {
     makeDirty();
-    return this->content_.at(index);
+    return content_.at(index);
   }
   const char& operator[](int index) const
   {
-    return this->content_.at(index);
+    return content_.at(index);
   }
 
   void clr()
   {
-    this->content_.clear();
-    this->config_.reset();
-    this->style_.reset();
-    this->lines_.clear();
+    content_.clear();
+    config_.reset();
+    style_.reset();
+    lines_.clear();
     makeClean();
   }
 
@@ -273,8 +273,8 @@ private:
   mutable std::vector<std::string> lines_;
   mutable bool dirty_ = false;
 
-  void makeDirty() const { this->dirty_ = true; }
-  void makeClean() const { this->dirty_ = false; }
+  void makeDirty() const { dirty_ = true; }
+  void makeClean() const { dirty_ = false; }
 
   std::vector<std::string> genLines() const
   {
@@ -300,7 +300,7 @@ private:
     }
 
     // split the content into words
-    const auto words = split(this->content_);
+    const auto words = split(content_);
 
     // wrap the words into lines
     const std::vector<detail::Str> lines =
@@ -423,10 +423,10 @@ private:
     using namespace string_utils;
 
     const std::string styles = resolveStyles();
-    const bool skipBlanks = this->config_.skipEmptyLineIndent();
+    const bool skipBlanks = config_.skipEmptyLineIndent();
 
     std::vector<detail::Str> lines;
-    lines.reserve(this->content_.length() / width + 1);
+    lines.reserve(content_.length() / width + 1);
 
     std::string buffer;
     size_t bufferDw = 0; // the display width
