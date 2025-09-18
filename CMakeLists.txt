@@ -18,12 +18,6 @@ project(tabular
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(TABULAR_BUILD_TESTS "Build tests" OFF)
-if (TABULAR_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
-endif ()
-
 add_library(tabular INTERFACE)
 add_library(tabular::tabular ALIAS tabular)
 
@@ -70,5 +64,13 @@ install(FILES
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/tabular
 )
 
-# examples
-add_subdirectory(examples)
+option(TABULAR_BUILD_TESTS "Build tests" OFF)
+if (TABULAR_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
+
+option(TABULAR_BUILD_EXAMPLES "Build examples" ON)
+if (TABULAR_BUILD_TESTS)
+    add_subdirectory(examples)
+endif ()

@@ -1434,6 +1434,66 @@ public:
 
     return border;
   }
+  static Border Double()
+  {
+    Border border;
+    border.horizontal_ = U'═';
+    border.vertical_ = U'║';
+
+    border.cornerTopLeft_ = U'╔';
+    border.cornerTopRight_ = U'╗';
+    border.cornerBottomLeft_ = U'╚';
+    border.cornerBottomRight_ = U'╝';
+
+    border.intersection_ = U'╬';
+
+    border.connectorLeft_ = U'╠';
+    border.connectorRight_ = U'╣';
+    border.connectorTop_ = U'╦';
+    border.connectorBottom_ = U'╩';
+
+    return border;
+  }
+  static Border Rounded()
+  {
+    Border border;
+    border.horizontal_ = U'─';
+    border.vertical_ = U'│';
+
+    border.cornerTopLeft_ = U'╭';
+    border.cornerTopRight_ = U'╮';
+    border.cornerBottomLeft_ = U'╰';
+    border.cornerBottomRight_ = U'╯';
+
+    border.intersection_ = U'┼';
+
+    border.connectorLeft_ = U'├';
+    border.connectorRight_ = U'┤';
+    border.connectorTop_ = U'┬';
+    border.connectorBottom_ = U'┴';
+
+    return border;
+  }
+  static Border Heavy()
+  {
+    Border border;
+    border.horizontal_ = U'━';
+    border.vertical_ = U'┃';
+
+    border.cornerTopLeft_ = U'┏';
+    border.cornerTopRight_ = U'┓';
+    border.cornerBottomLeft_ = U'┗';
+    border.cornerBottomRight_ = U'┛';
+
+    border.intersection_ = U'╋';
+
+    border.connectorLeft_ = U'┣';
+    border.connectorRight_ = U'┫';
+    border.connectorTop_ = U'┳';
+    border.connectorBottom_ = U'┻';
+
+    return border;
+  }
 
   void reset()
   {
