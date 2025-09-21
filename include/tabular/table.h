@@ -1,6 +1,7 @@
 #pragma once
 
 #include "row.h"
+#include <stdexcept>
 
 namespace tabular {
 
@@ -22,6 +23,7 @@ inline bool bisearch(const std::vector<size_t>& vec, size_t value)
   return false;
 }
 }
+
 // clang-format off
 class Table {
 public:
@@ -159,6 +161,7 @@ private:
 
     adjustWidth(rows);
     configureRows(rows);
+
     tableStr += getBorderHeader(rows) + '\n';
 
     const size_t rowsSize = rows_.size();
@@ -192,7 +195,7 @@ private:
     return width;
   }
 
-  void setWidth(Row& row, size_t width) const
+  static void setWidth(Row& row, size_t width)
   {
     auto& columns = row.columns();
 
@@ -208,7 +211,8 @@ private:
     // if there's still a rest
     if (rest > 0) columns.back().config().width(indivWidth + rest);
   }
-  void setUnspecifiedWidth(Row& row, size_t unspecified, size_t width) const
+
+  static void setUnspecifiedWidth(Row& row, size_t unspecified, size_t width)
   {
     std::vector<Column>& columns = row.columns();
 
@@ -233,9 +237,25 @@ private:
   void adjustWidth(std::vector<Row>& rows) const
   {
     if (rows.empty()) return;
-    for (Row& row : rows)
+
+    size_t width = config_.width();
+    for (size_t i = 0; i < rows.size(); ++i)
     {
-      const size_t estimatedWidth = config_.width() - (row.columns().size() + 1);
+      Row& row = rows[i];
+
+      // check the minimum width first
+      {
+        size_t minWidth = (row.columns().size() * (MIN_COLUMN_WIDTH + 1)) + 1;
+        if (minWidth > width)
+        {
+          throw std::runtime_error(
+            "layout error: row " + std::to_string(i) +
+            " must a minimum width of " + std::to_string(minWidth) +
+            ", but found " + std::to_string(width));
+        }
+      }
+
+      const size_t estimatedWidth = width - (row.columns().size() + 1);
 
       size_t unspecified = 0;
       const size_t rowWidth = calculateWidth(row, unspecified);

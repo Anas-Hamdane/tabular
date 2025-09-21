@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace tabular {
 namespace detail {
@@ -464,6 +465,8 @@ struct Padding {
 
 constexpr auto RESET_ESC = "\x1b[0m";
 constexpr uint8_t WORD_LENGTH_AVERAGE = 5;
+
+// the maximum display width of a Unicode character
 constexpr uint8_t MIN_COLUMN_WIDTH = 2;
 
 class Column {
@@ -1832,6 +1835,7 @@ private:
 
     adjustWidth(rows);
     configureRows(rows);
+
     tableStr += getBorderHeader(rows) + '\n';
 
     const size_t rowsSize = rows_.size();
@@ -1852,7 +1856,7 @@ private:
   {
     const auto& columns = row.columns();
     if (columns.empty()) return 0;
-    size_t width = columns.size() + 1;
+    size_t width = 0;
 
     for (const auto& column : columns)
     {
@@ -1865,13 +1869,10 @@ private:
     return width;
   }
 
-  void setWidth(Row& row) const
+  static void setWidth(Row& row, size_t width)
   {
     auto& columns = row.columns();
-    size_t width = config_.width();
 
-    // subtract the splits
-    width -= (columns.size() + 1);
     size_t indivWidth = width / columns.size();
     size_t rest = width % columns.size();
 
@@ -1884,13 +1885,11 @@ private:
     // if there's still a rest
     if (rest > 0) columns.back().config().width(indivWidth + rest);
   }
-  void setUnspecifiedWidth(Row& row, size_t unspecified) const
+
+  static void setUnspecifiedWidth(Row& row, size_t unspecified, size_t width)
   {
     std::vector<Column>& columns = row.columns();
-    size_t width = config_.width();
 
-    // subtract the splits
-    width -= (columns.size() + 1);
     size_t indivWidth = width / unspecified;
     size_t rest = width % unspecified;
 
@@ -1913,17 +1912,39 @@ private:
   {
     if (rows.empty()) return;
 
-    for (Row& row : rows)
+    size_t width = config_.width();
+    for (size_t i = 0; i < rows.size(); ++i)
     {
-      const size_t estimatedWidth = config().width();
+      Row& row = rows[i];
+
+      // check the minimum width first
+      {
+        size_t minWidth = (row.columns().size() * (MIN_COLUMN_WIDTH + 1)) + 1;
+        if (minWidth > width)
+        {
+          throw std::runtime_error(
+            "layout error: row " + std::to_string(i) +
+            " must a minimum width of " + std::to_string(minWidth) +
+            ", but found " + std::to_string(width));
+        }
+      }
+
+      const size_t estimatedWidth = width - (row.columns().size() + 1);
 
       size_t unspecified = 0;
       const size_t rowWidth = calculateWidth(row, unspecified);
 
+      // everything is fine skip
+      if (rowWidth == estimatedWidth && unspecified == 0)
+        continue;
+
+      // set just the unspecified columns widths
       if (rowWidth < estimatedWidth && unspecified != 0)
-        setUnspecifiedWidth(row, unspecified);
+        setUnspecifiedWidth(row, unspecified, estimatedWidth - rowWidth);
+
+      // set/restore the width of all the columns
       else
-        setWidth(row);
+        setWidth(row, estimatedWidth);
     }
   }
   void configureRows(std::vector<Row>& rows) const

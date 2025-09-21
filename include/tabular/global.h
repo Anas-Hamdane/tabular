@@ -38,5 +38,7 @@ struct Padding {
 
 constexpr auto RESET_ESC = "\x1b[0m";
 constexpr uint8_t WORD_LENGTH_AVERAGE = 5;
+
+// the maximum display width of a Unicode character
 constexpr uint8_t MIN_COLUMN_WIDTH = 2;
 } // namespace tabular
