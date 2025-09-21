@@ -179,7 +179,7 @@ private:
   {
     const auto& columns = row.columns();
     if (columns.empty()) return 0;
-    size_t width = columns.size() + 1;
+    size_t width = 0;
 
     for (const auto& column : columns)
     {
@@ -192,13 +192,10 @@ private:
     return width;
   }
 
-  void setWidth(Row& row) const
+  void setWidth(Row& row, size_t width) const
   {
     auto& columns = row.columns();
-    size_t width = config_.width();
 
-    // subtract the splits
-    width -= (columns.size() + 1);
     size_t indivWidth = width / columns.size();
     size_t rest = width % columns.size();
 
@@ -211,13 +208,10 @@ private:
     // if there's still a rest
     if (rest > 0) columns.back().config().width(indivWidth + rest);
   }
-  void setUnspecifiedWidth(Row& row, size_t unspecified) const
+  void setUnspecifiedWidth(Row& row, size_t unspecified, size_t width) const
   {
     std::vector<Column>& columns = row.columns();
-    size_t width = config_.width();
 
-    // subtract the splits
-    width -= (columns.size() + 1);
     size_t indivWidth = width / unspecified;
     size_t rest = width % unspecified;
 
@@ -239,18 +233,24 @@ private:
   void adjustWidth(std::vector<Row>& rows) const
   {
     if (rows.empty()) return;
-
     for (Row& row : rows)
     {
-      const size_t estimatedWidth = config().width();
+      const size_t estimatedWidth = config_.width() - (row.columns().size() + 1);
 
       size_t unspecified = 0;
       const size_t rowWidth = calculateWidth(row, unspecified);
 
+      // everything is fine skip
+      if (rowWidth == estimatedWidth && unspecified == 0)
+        continue;
+
+      // set just the unspecified columns widths
       if (rowWidth < estimatedWidth && unspecified != 0)
-        setUnspecifiedWidth(row, unspecified);
+        setUnspecifiedWidth(row, unspecified, estimatedWidth - rowWidth);
+
+      // set/restore the width of all the columns
       else
-        setWidth(row);
+        setWidth(row, estimatedWidth);
     }
   }
   void configureRows(std::vector<Row>& rows) const

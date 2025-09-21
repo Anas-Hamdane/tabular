@@ -13,4 +13,6 @@
 
 add_executable(basic basic.cpp)
 add_executable(tabular_ tabular.cpp)
+add_executable(tasks tasks.cpp)
+
 set_target_properties(tabular_ PROPERTIES OUTPUT_NAME tabular)
