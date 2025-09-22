@@ -75,7 +75,7 @@ std::cout << table.str() << '\n'; // for ascii characters
 ```
 
 ### Result
-<img src="../img/basic.png" width="300"/>
+<img src="../img/basic.png" width="400"/>
 
 ## Accessing Table Elements
 ### Accessing Rows
@@ -222,19 +222,19 @@ table.border(Border::Rounded());
 ```
 
 #### Default
-<img src="../img/default.png" width="300"/>
+<img src="../img/default.png" width="400"/>
 
 #### Modern
-<img src="../img/modern.png" width="300"/>
+<img src="../img/modern.png" width="400"/>
 
 #### Double
-<img src="../img/double.png" width="300"/>
+<img src="../img/double.png" width="400"/>
 
 #### Rounded
-<img src="../img/rounded.png" width="300"/>
+<img src="../img/rounded.png" width="400"/>
 
 #### Heavy
-<img src="../img/heavy.png" width="300"/>
+<img src="../img/heavy.png" width="400"/>
 
 ### Border parts
 you can customize individual border parts using
