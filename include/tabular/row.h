@@ -14,11 +14,6 @@ public:
     {
     }
 
-    void width(const size_t width)
-    {
-      parent_.makeDirty();
-      width_ = width;
-    }
     void hasBottom(bool has)
     {
       parent_.makeDirty();
@@ -30,20 +25,17 @@ public:
       vertical_ = std::move(part);
     }
 
-    size_t width() const { return width_; }
     bool hasBottom() const { return hasBottom_; }
     const Border::Part& vertical() const { return vertical_; }
 
     void reset()
     {
-      width_ = 50;
       vertical_ = 0;
       parent_.makeDirty();
     }
 
   private:
     Row& parent_;
-    size_t width_ = 50;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
   };
@@ -137,9 +129,10 @@ private:
     const size_t maxLines = getMaxLines();
 
     std::string rowStr;
-    rowStr.reserve(config_.width() * maxLines + (columns_.size() + 1));
-    const auto& vertical = config().vertical().str();
+    // average
+    rowStr.reserve(DEFAULT_WIDTH * maxLines + (columns_.size() + 1));
 
+    const auto& vertical = config().vertical().str();
     for (size_t i = 0; i < maxLines; ++i)
     {
       if (!rowStr.empty()) rowStr.push_back('\n');

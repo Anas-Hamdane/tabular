@@ -43,13 +43,13 @@ public:
 
     void reset()
     {
-      width_ = 50;
+      width_ = DEFAULT_WIDTH;
       parent_.makeDirty();
     }
 
   private:
     Table& parent_;
-    size_t width_ = 50;
+    size_t width_ = DEFAULT_WIDTH;
   };
 
 public:

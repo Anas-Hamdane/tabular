@@ -3,7 +3,7 @@
 #include <cstdint>
 
 namespace tabular {
-enum class Attribute : uint16_t {
+enum class Attr : uint16_t {
   Bold = 1,
   Dim = 1 << 1,
   Italic = 1 << 2,
@@ -18,19 +18,19 @@ enum class Attribute : uint16_t {
   Crossed = 1 << 9,
 };
 
-enum class Alignment { Left, Right, Center };
-struct Padding {
+enum class Align { Left, Right, Center };
+struct Padd {
   uint8_t top = 0;
   uint8_t bottom = 0;
   uint8_t left = 1;
   uint8_t right = 1;
 
-  constexpr Padding() = default;
-  constexpr Padding(uint8_t vertical, uint8_t horizontal)
+  constexpr Padd() = default;
+  constexpr Padd(uint8_t vertical, uint8_t horizontal)
       : top(vertical), bottom(vertical), left(horizontal), right(horizontal)
   {
   }
-  constexpr Padding(uint8_t top, uint8_t bottom, uint8_t left, uint8_t right)
+  constexpr Padd(uint8_t top, uint8_t bottom, uint8_t left, uint8_t right)
       : top(top), bottom(bottom), left(left), right(right)
   {
   }
@@ -38,6 +38,7 @@ struct Padding {
 
 constexpr auto RESET_ESC = "\x1b[0m";
 constexpr uint8_t WORD_LENGTH_AVERAGE = 5;
+constexpr uint64_t DEFAULT_WIDTH = 50;
 
 // the maximum display width of a Unicode character
 constexpr uint8_t MIN_COLUMN_WIDTH = 2;

@@ -60,7 +60,7 @@ public:
       return *this;
     }
 
-    Style& attrs(Attribute attr)
+    Style& attrs(Attr attr)
     {
       attrs_ |= static_cast<uint16_t>(attr);
       parent_.makeDirty();
@@ -81,7 +81,7 @@ public:
     uint32_t fg() const { return fg_; }
     uint32_t bg() const { return bg_; }
     uint32_t base() const { return base_; }
-    Attribute attrs() const { return static_cast<Attribute>(attrs_); }
+    Attr attrs() const { return static_cast<Attr>(attrs_); }
 
     void resetFg()
     {
@@ -129,19 +129,19 @@ public:
     {
     }
 
-    Alignment align() const { return align_; }
-    Padding padd() const { return padd_; }
+    Align align() const { return align_; }
+    Padd padd() const { return padd_; }
     size_t width() const { return width_; }
     std::string delimiter() const { return delimiter_; }
     bool skipEmptyLineIndent() const { return skipEmptyLineIndent_; }
 
-    Config& align(const Alignment alignment)
+    Config& align(const Align alignment)
     {
       align_ = alignment;
       parent_.makeDirty();
       return *this;
     }
-    Config& padd(const Padding padd)
+    Config& padd(const Padd padd)
     {
       padd_ = padd;
       parent_.makeDirty();
@@ -168,18 +168,19 @@ public:
 
     void reset()
     {
-      align_ = Alignment::Left;
-      padd_ = Padding();
+      align_ = Align::Left;
+      padd_ = Padd();
       delimiter_ = "-";
       width_ = 0;
+      skipEmptyLineIndent_ = true;
       parent_.makeDirty();
     }
 
   private:
     Column& parent_;
 
-    Alignment align_ = Alignment::Left;
-    Padding padd_ = Padding();
+    Align align_ = Align::Left;
+    Padd padd_ = Padd();
     std::string delimiter_ = "-";
     size_t width_ = 0;
     bool skipEmptyLineIndent_ = true;
@@ -280,7 +281,7 @@ private:
   {
     std::string delimiter = config().delimiter();
     size_t delimiterDw = string_utils::dw(delimiter);
-    Padding padd = config().padd();
+    Padd padd = config().padd();
 
     size_t width = config().width();
     if (width < MIN_COLUMN_WIDTH) width = MIN_COLUMN_WIDTH;
@@ -327,22 +328,22 @@ private:
       styles += std::to_string(rgb.b) + ';';
     }
   }
-  static void handleAttrs(std::string& styles, Attribute attr)
+  static void handleAttrs(std::string& styles, Attr attr)
   {
-    auto hasAttr = [](Attribute attr, Attribute flag) -> bool {
+    auto hasAttr = [](Attr attr, Attr flag) -> bool {
       return static_cast<uint16_t>(attr) & static_cast<uint16_t>(flag);
     };
 
-    if (hasAttr(attr, Attribute::Bold)) styles += "1;";
-    if (hasAttr(attr, Attribute::Dim)) styles += "2;";
-    if (hasAttr(attr, Attribute::Italic)) styles += "3;";
-    if (hasAttr(attr, Attribute::Underline)) styles += "4;";
-    if (hasAttr(attr, Attribute::Dunderline)) styles += "21;";
-    if (hasAttr(attr, Attribute::Blink)) styles += "5;";
-    if (hasAttr(attr, Attribute::Flink)) styles += "6;";
-    if (hasAttr(attr, Attribute::Reverse)) styles += "7;";
-    if (hasAttr(attr, Attribute::Concealed)) styles += "8;";
-    if (hasAttr(attr, Attribute::Crossed)) styles += "9;";
+    if (hasAttr(attr, Attr::Bold)) styles += "1;";
+    if (hasAttr(attr, Attr::Dim)) styles += "2;";
+    if (hasAttr(attr, Attr::Italic)) styles += "3;";
+    if (hasAttr(attr, Attr::Underline)) styles += "4;";
+    if (hasAttr(attr, Attr::Dunderline)) styles += "21;";
+    if (hasAttr(attr, Attr::Blink)) styles += "5;";
+    if (hasAttr(attr, Attr::Flink)) styles += "6;";
+    if (hasAttr(attr, Attr::Reverse)) styles += "7;";
+    if (hasAttr(attr, Attr::Concealed)) styles += "8;";
+    if (hasAttr(attr, Attr::Crossed)) styles += "9;";
   }
 
   std::string resolveStyles() const
@@ -586,13 +587,13 @@ private:
     return lines;
   }
   std::vector<std::string> format(const std::vector<detail::Str>& lines,
-                                  const Padding padd) const
+                                  const Padd padd) const
   {
     using namespace string_utils;
 
     const size_t width = config().width();
     const std::string base = resolveBase();
-    const Alignment align = config().align();
+    const Align align = config().align();
 
     std::vector<std::string> formatted;
     formatted.reserve(lines.size() + padd.top + padd.bottom);
@@ -617,16 +618,16 @@ private:
       size_t leftSpace = 0, rightSpace = 0;
       switch (align)
       {
-      case Alignment::Left:
+      case Align::Left:
         leftSpace = 0;
         rightSpace = freeSpace;
         break;
-      case Alignment::Center: {
+      case Align::Center: {
         leftSpace = freeSpace / 2;
         rightSpace = freeSpace - leftSpace;
         break;
       }
-      case Alignment::Right:
+      case Align::Right:
         leftSpace = freeSpace;
         rightSpace = 0;
         break;
@@ -652,13 +653,13 @@ private:
 };
 // clang-format on
 
-inline Attribute operator|(Attribute lhs, Attribute rhs) noexcept
+inline Attr operator|(Attr lhs, Attr rhs) noexcept
 {
-  return static_cast<Attribute>(static_cast<uint16_t>(lhs) |
+  return static_cast<Attr>(static_cast<uint16_t>(lhs) |
                                 static_cast<uint16_t>(rhs));
 }
 
-inline Attribute& operator|=(Attribute& lhs, const Attribute rhs) noexcept
+inline Attr& operator|=(Attr& lhs, const Attr rhs) noexcept
 {
   lhs = lhs | rhs;
   return lhs;
