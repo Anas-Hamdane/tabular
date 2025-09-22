@@ -2,6 +2,7 @@
 - [Getting Started](#getting-started)
     - [Installation](#installation)
     - [Basic Usage](#basic-usage)
+    - [Result](#result)
 - [The width system](#the-width-system)
 - [Rendering the table](#rendering-the-table)
 - [Accessing Table Elements](#accessing-table-elements)
@@ -18,6 +19,11 @@
     - [Example](#example-1)
 - [Border](#border)
     - [Pre-defined templates](#pre-defined-templates)
+        - [Default](#default)
+        - [Modern](#modern)
+        - [Double](#double)
+        - [Rounded](#rounded)
+        - [Heavy](#heavy)
     - [Border parts](#border-parts)
 - [Unicode characters support](#unicode-characters-support)
 
@@ -68,8 +74,8 @@ render(table.str() + '\n', stdout);
 std::cout << table.str() << '\n'; // for ascii characters
 ```
 
-**Result:**
-![basic table example](../img/basic.png)
+### Result
+<img src="../img/basic.png" width="300"/>
 
 ## Accessing Table Elements
 ### Accessing Rows
@@ -215,20 +221,20 @@ You can set a pre-defined border template using
 table.border(Border::Rounded());
 ```
 
-Default
-![Default](../img/default.png)
+#### Default
+<img src="../img/default.png" width="300"/>
 
-Modern
-![Modern](../img/modern.png)
+#### Modern
+<img src="../img/modern.png" width="300"/>
 
-Double
-![Double](../img/double.png)
+#### Double
+<img src="../img/double.png" width="300"/>
 
-Rounded
-![Rounded](../img/rounded.png)
+#### Rounded
+<img src="../img/rounded.png" width="300"/>
 
-Heavy
-![Heavy](../img/heavy.png)
+#### Heavy
+<img src="../img/heavy.png" width="300"/>
 
 ### Border parts
 you can customize individual border parts using
