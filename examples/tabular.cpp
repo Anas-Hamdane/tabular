@@ -20,10 +20,10 @@ int main()
   });
 
   // set a padding horizontally (left and right) and vertically (top and bottom)
-  table[0][0].config().padd(Padding(0, 0));
+  table[0][0].config().padd(Padd(0, 0));
 
   // set the alignment of the content of the column
-  table[1][0].config().align(Alignment::Center);
+  table[1][0].config().align(Align::Center);
 
   // don't skip empty whitespaces at the start of an empty line
   // this helps when spaces at the start of a line are important

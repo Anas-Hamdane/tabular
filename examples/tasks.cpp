@@ -55,7 +55,7 @@ void adjustWidth(Table& table)
 void styleTable(Table& table)
 {
   // underline the numbers
-  for (size_t i = 1; i < 6; ++i) table[i][0].style().attrs(Attribute::Underline);
+  for (size_t i = 1; i < 6; ++i) table[i][0].style().attrs(Attr::Underline);
 
   // priority colors
   Rgb high = {255, 0, 0};
@@ -70,7 +70,7 @@ void styleTable(Table& table)
   table[5][1].style().base(medium);
 
   // dim the task description
-  for (size_t i = 1; i < 6; ++i) table[i][2].style().attrs(Attribute::Dim);
+  for (size_t i = 1; i < 6; ++i) table[i][2].style().attrs(Attr::Dim);
 
   // the color of the priorities
   table[1][3].style().fg(high);
@@ -94,7 +94,7 @@ void alignColumns(Table& table)
   {
     for (auto& column : row.columns())
     {
-      column.config().align(Alignment::Center);
+      column.config().align(Align::Center);
     }
   }
 }

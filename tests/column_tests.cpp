@@ -13,12 +13,12 @@ TEST(column_tests, basic_formatting)
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], " Hello, World  ");
 
-  column.config().align(Alignment::Center);
+  column.config().align(Align::Center);
   lines = column.lines();
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], " Hello, World  ");
 
-  column.config().align(Alignment::Right);
+  column.config().align(Align::Right);
   lines = column.lines();
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], "  Hello, World ");
@@ -29,12 +29,12 @@ TEST(column_tests, padding_formatting)
   Column column("Hello, World");
   column.config().width(22);
 
-  column.config().padd(Padding(0, 5));
+  column.config().padd(Padd(0, 5));
   auto lines = column.lines();
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], "     Hello, World     ");
 
-  column.config().padd(Padding(1, 5));
+  column.config().padd(Padd(1, 5));
   lines = column.lines();
   ASSERT_EQ(lines.size(), 3);
   EXPECT_EQ(lines[0], "                      ");
@@ -42,7 +42,7 @@ TEST(column_tests, padding_formatting)
   EXPECT_EQ(lines[2], "                      ");
 
   column.config().width(32);
-  column.config().padd(Padding(2, 10));
+  column.config().padd(Padd(2, 10));
   lines = column.lines();
   ASSERT_EQ(lines.size(), 5);
   EXPECT_EQ(lines[0], "                                ");
@@ -95,7 +95,7 @@ TEST(column_tests, styling)
 
   column.style().resetBase();
 
-  column.style().attrs(Attribute::Bold | Attribute::Italic | Attribute::Underline);
+  column.style().attrs(Attr::Bold | Attr::Italic | Attr::Underline);
   lines = column.lines();
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], " \x1b[1;3;4mHello, World\x1b[0m  ");
@@ -106,7 +106,7 @@ TEST(column_tests, styling)
   column.style().fg(Color::Red);
   column.style().bg(Color::Green);
   column.style().base(Color::Blue);
-  column.style().attrs(Attribute::Bold | Attribute::Underline);
+  column.style().attrs(Attr::Bold | Attr::Underline);
   lines = column.lines();
   ASSERT_EQ(lines.size(), 1);
   EXPECT_EQ(lines[0], "\x1b[44m \x1b[1;4;31;42mHello, World\x1b[0m\x1b[44m  \x1b[0m");
