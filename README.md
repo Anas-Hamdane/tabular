@@ -1,67 +1,43 @@
-<div align="center">
-  <img src="img/examples.png"/>
-</div>
-
 # tabular
 A lightweight, header-only C++ library for creating well-formatted, fully-customizable CLI tables.
 
-> [!WARNING]
-> the project got rewrited and both the README and the documentation are still outdated.
-> please don't rely on them until they get updated.
-
-## Why Yet Another Tabling Library?
-This project was inspired primarily by [tabulate](https://github.com/p-ranav/tabulate), a modern C++ table formatting library. However, while using it, I encountered several limitations:
-
-- **Dynamic Tables Support** - Rows with variant number of columns aren't properly handled
-- **Locale Dependent Behavior** - Multi-byte character handling depends on system locale
-- **Performance Overhead** - Simple examples could be up to 40x slower at runtime compared to this implementation
-
-So I decided to write my own implementation with better performance and more flexible design.
-
 ## Features
-- **Easy integration** - Header-only implementation with single include file
-- **Lightweight design** - Minimal overhead and resource usage
-- **Zero dependencies** - No external libraries required
-- **Locale independent** - Consistent behavior with robust multi-byte character support
-- **Cross-platform compatibility** - Seamless operation on Unix-like systems and Windows
-- **Unicode support** - Full multi-byte character handling across different platforms
-- **Rich styling** - Complete RGB color support, text attributes, and border customization
-- **Dynamic tables support** - Handle tables with varying column counts per row
-- **Modern C++ support** - Compatible with C++11 and later standards
+- full Unicode support
+- locale-independent display width handling
+- cross-platform rendering support trough `render()` function
+- compatible with [fmtlib](https://github.com/fmtlib/fmt)'s colored strings
+- fully customizable through `Alignment`, `Padding`, `Color`, `Rgb`...
+- flexible tables with variant number of columns are supported
+- full c++11 support, uses only `vector`, `string`, `stdexcept` and `cstdint` standard headers
+- fully customizable border with pre-defined ready-to use templates
+- header-only lightweight library with a [single-include file](./single_include/tabular/tabular.h)
 
 ## Quick Start
-Include the main header file (from the `include/` or the `single_include/`) and start creating tables immediately:
+Include the [header files](./include/tabular) or the [single-header file](./single_include/tabular/tabular.h)
+and start the journey!
 
-```cpp
-#include "tabular.hpp"
+```c++
+#include "tabular/table.h"
+#include "tabular/render.h"
 
-int main() {
-    using namespace tabular;
-    
-    Table table;
-    table.add_row({"Country", "Capital"})
-         .add_row({"United States", "Washington"})
-         .add_row({"Brazil", "Brasilia"})
-         .add_row({"France", "Paris"})
-         .add_row({"Japan", "Tokyo"})
-         .add_row({"India", "New Delhi"});
-    
-    print(table);
-    return 0;
+int main()
+{
+  using namespace tabular;
+  Table table;
+
+  table.addRow({"Countries Capitals"})
+      .addRow({"United States", "Washington"})
+      .addRow({"Brazil", "Brasilia"})
+      .addRow({"France", "Paris"})
+      .addRow({"Japan", "Tokyo"})
+      .addRow({"India", "New Delhi"});
+
+  render(table.str() + '\n', stdout);
+  return 0;
 }
 ```
 
 ## Documentation
 For complete documentation with examples:
-- **[Getting Started Guide](./docs/getting-started.md)** - Complete usage guide with examples
-- **[Examples Directory](./examples/source/)** - Advanced usage examples
-
-## Requirements
-- C++11 or later
-- No external dependencies
-
-## Contributing
-Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
-## License
-This project is distributed under the MIT License. See [LICENSE](./LICENSE) for more details.
+- [Getting Started Guide](docs/doc.md) - Complete usage guide
+- [Examples Directory](./examples) - Some examples
