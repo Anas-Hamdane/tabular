@@ -4,7 +4,7 @@ A lightweight, header-only C++ library for creating well-formatted, fully-custom
 ## Features
 - full Unicode support
 - locale-independent display width handling
-- cross-platform rendering support trough `render()` function
+- cross-platform rendering support through `render()` function
 - compatible with [fmtlib](https://github.com/fmtlib/fmt)'s colored strings
 - fully customizable through `Alignment`, `Padding`, `Color`, `Rgb`...
 - flexible tables with variant number of columns are supported
