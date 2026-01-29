@@ -474,58 +474,58 @@ class Column {
 public:
   class Style {
   public:
-    explicit Style(Column& parent) : parent_(parent)
+    explicit Style(bool& dirty_) : dirty_(dirty_)
     {
     }
 
     Style& fg(Color color)
     {
       fg_ = static_cast<uint32_t>(color);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Style& bg(Color color)
     {
       bg_ = static_cast<uint32_t>(color);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Style& base(Color color)
     {
       base_ = static_cast<uint32_t>(color);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
 
     Style& fg(const Rgb rgb)
     {
       fg_ = rgb.toHex() | (1u << 24);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Style& bg(const Rgb rgb)
     {
       bg_ = rgb.toHex() | (1u << 24);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Style& base(const Rgb rgb)
     {
       base_ = rgb.toHex() | (1u << 24);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
 
     Style& attrs(Attr attr)
     {
       attrs_ |= static_cast<uint16_t>(attr);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Style& attrs(const Style& attr)
     {
       attrs_ |= attr.attrs_;
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
 
@@ -542,22 +542,22 @@ public:
     void resetFg()
     {
       fg_ = 0;
-      parent_.makeDirty();
+      dirty_ = true;
     }
     void resetBg()
     {
       bg_ = 0;
-      parent_.makeDirty();
+      dirty_ = true;
     }
     void resetBase()
     {
       base_ = 0;
-      parent_.makeDirty();
+      dirty_ = true;
     }
     void resetAttrs()
     {
       attrs_ = 0;
-      parent_.makeDirty();
+      dirty_ = true;
     }
     void reset()
     {
@@ -565,11 +565,12 @@ public:
       bg_ = 0;
       base_ = 0;
       attrs_ = 0;
-      parent_.makeDirty();
+      dirty_ = true;
     }
 
   private:
-    Column& parent_;
+    friend class Column;
+    bool& dirty_;
 
     // representing all the colors
     uint32_t fg_ = 0;
@@ -581,7 +582,7 @@ public:
   };
   class Config {
   public:
-    explicit Config(Column& parent) : parent_(parent)
+    explicit Config(bool& dirty_) : dirty_(dirty_)
     {
     }
 
@@ -594,31 +595,31 @@ public:
     Config& align(const Align alignment)
     {
       align_ = alignment;
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Config& padd(const Padd padd)
     {
       padd_ = padd;
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Config& width(const size_t width)
     {
       width_ = width;
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Config& delimiter(std::string delimiter)
     {
       delimiter_ = std::move(delimiter);
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
     Config& skipEmptyLineIndent(const bool skip)
     {
       skipEmptyLineIndent_ = skip;
-      parent_.makeDirty();
+      dirty_ = true;
       return *this;
     }
 
@@ -629,11 +630,12 @@ public:
       delimiter_ = "-";
       width_ = 0;
       skipEmptyLineIndent_ = true;
-      parent_.makeDirty();
+      dirty_ = true;
     }
 
   private:
-    Column& parent_;
+    friend class Column;
+    bool& dirty_;
 
     Align align_ = Align::Left;
     Padd padd_ = Padd();
@@ -650,10 +652,36 @@ public:
   {
   }
 
+  // copy constructor
+  // NOTE: if we don't initialize config_ and style_ with dirty_, and instead copy
+  // other.config_ and other.style_ we will get a heap-use-after-free error from the address sanitizer
+  // because config_ will still have the old dirty_ flag that points to the old object
+  // to avoid this we will initialize config_ and style_ with dirty_ of the current object
+  // and then copy the data of other.config_ and other.style_ one by one
+  // I didn't find a workaround solution except this :(
+  Column(const Column& other)
+    : lines_(other.lines_),
+    dirty_(other.dirty_),
+    config_(dirty_), // CRUCIAL
+    style_(dirty_), // CRUCIAL
+    content_(other.content_)
+  {
+    config_.align_ = other.config_.align_;
+    config_.padd_ = other.config_.padd_;
+    config_.delimiter_ = other.config_.delimiter_;
+    config_.width_ = other.config_.width_;
+    config_.skipEmptyLineIndent_ = other.config_.skipEmptyLineIndent_;
+
+    style_.fg_ = other.style_.fg_;
+    style_.bg_ = other.style_.bg_;
+    style_.base_ = other.style_.base_;
+    style_.attrs_ = other.style_.attrs_;
+  }
+
   void content(std::string content)
   {
     content_ = std::move(content);
-    makeDirty();
+    dirty_ = true;
   }
 
   Config& config() { return config_; }
@@ -665,7 +693,7 @@ public:
   const std::string& content() const { return content_; }
   std::string& content()
   {
-    makeDirty();
+    dirty_ = true;
     return content_;
   }
 
@@ -675,13 +703,13 @@ public:
   }
   explicit operator std::string&()
   {
-    makeDirty();
+    dirty_ = true;
     return content_;
   }
 
   char& operator[](int index)
   {
-    makeDirty();
+    dirty_ = true;
     return content_.at(index);
   }
   const char& operator[](int index) const
@@ -695,7 +723,7 @@ public:
     config_.reset();
     style_.reset();
     lines_.clear();
-    makeClean();
+    dirty_ = false;
   }
 
   const std::vector<std::string>& lines() const
@@ -703,7 +731,7 @@ public:
     if (dirty_)
     {
       lines_ = genLines();
-      makeClean();
+      dirty_ = false;
     }
     return lines_;
   }
@@ -722,16 +750,13 @@ public:
   }
 
 private:
-  Config config_{*this};
-  Style style_{*this};
-  std::string content_;
-
   // cache
   mutable std::vector<std::string> lines_;
   mutable bool dirty_ = false;
 
-  void makeDirty() const { dirty_ = true; }
-  void makeClean() const { dirty_ = false; }
+  Config config_{dirty_};
+  Style style_{dirty_};
+  std::string content_;
 
   std::vector<std::string> genLines() const
   {
@@ -1132,33 +1157,33 @@ public:
     Part& glyph(const uint32_t glyph)
     {
       glyph_ = glyph;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
     Part& fg(const Color color)
     {
       fg_ = static_cast<uint32_t>(color);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& fg(const Rgb rgb)
     {
       fg_ = rgb.toHex() | (1u << 24);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
     Part& bg(const Color color)
     {
       bg_ = static_cast<uint32_t>(color);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& bg(const Rgb rgb)
     {
       bg_ = rgb.toHex() | (1u << 24);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
@@ -1178,20 +1203,20 @@ public:
     Part& clrFg()
     {
       fg_ = 0;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& clrBg()
     {
       bg_ = 0;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& clr()
     {
       fg_ = 0;
       bg_ = 0;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
@@ -1201,7 +1226,7 @@ public:
       if (dirty_)
       {
         str_ = genStr();
-        makeClean();
+        dirty_ = false;
       }
 
       return str_;
@@ -1215,9 +1240,6 @@ public:
     // cache
     mutable bool dirty_ = false;
     mutable std::string str_;
-
-    void makeDirty() const { dirty_ = true; }
-    void makeClean() const { dirty_ = false; }
 
     std::string genStr() const
     {
@@ -1539,19 +1561,19 @@ class Row {
 public:
   class Config {
   public:
-    explicit Config(Row& parent)
-      : parent_(parent)
+    explicit Config(bool& dirty_)
+      : dirty_(dirty_)
     {
     }
 
     void hasBottom(bool has)
     {
-      parent_.makeDirty();
+      dirty_ = true;
       hasBottom_ = has;
     }
     void vertical(Border::Part part)
     {
-      parent_.makeDirty();
+      dirty_ = true;
       vertical_ = std::move(part);
     }
 
@@ -1561,17 +1583,31 @@ public:
     void reset()
     {
       vertical_ = 0;
-      parent_.makeDirty();
+      dirty_ = true;
     }
 
   private:
-    Row& parent_;
+    friend class Row;
+
+    bool& dirty_;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
   };
 
 public:
   Row() = default;
+
+  // copy contructor
+  // NOTE: it's mandatory to initialize config_ with dirty_ to avoid a heap-use-after-free error
+  // from the address sanitizer, then copy the members of the other.config_ into our new one
+  // See column.h:200 note
+  Row(const Row& other)
+    : columns_(other.columns_), dirty_(other.dirty_), str_(other.str_), 
+    config_(dirty_) // CRUCIAL
+  {
+    config_.hasBottom_ = other.config_.hasBottom_;
+    config_.vertical_ = other.config_.vertical_;
+  }
 
   explicit Row(std::vector<Column> columns)
     : columns_(std::move(columns))
@@ -1589,7 +1625,7 @@ public:
 
   void columns(std::vector<Column> columns)
   {
-    makeDirty();
+    dirty_ = true;
     columns_ = std::move(columns);
   }
 
@@ -1598,14 +1634,14 @@ public:
 
   std::vector<Column>& columns()
   {
-    makeDirty();
+    dirty_ = true;
     return columns_;
   }
   const std::vector<Column>& columns() const { return columns_; }
 
   Column& column(int index)
   {
-    makeDirty();
+    dirty_ = true;
     return columns_.at(index);
   }
   const Column& column(int index) const
@@ -1615,7 +1651,7 @@ public:
 
   Column& operator[](int index)
   {
-    makeDirty();
+    dirty_ = true;
     return columns_.at(index);
   }
   const Column& operator[](int index) const
@@ -1628,7 +1664,7 @@ public:
     columns_.clear();
     str_.clear();
     config_.reset();
-    makeClean();
+    dirty_ = false;
   }
 
   const std::string& str() const
@@ -1636,22 +1672,19 @@ public:
     if (dirty_)
     {
       str_ = genStr();
-      makeClean();
+      dirty_ = false;
     }
 
     return str_;
   }
 
 private:
-  std::vector<Column> columns_;
-  Config config_{*this};
-
   // cache
   mutable bool dirty_ = false;
   mutable std::string str_;
 
-  void makeDirty() const { dirty_ = true; }
-  void makeClean() const { dirty_ = false; }
+  std::vector<Column> columns_;
+  Config config_{dirty_};
 
   std::string genStr() const
   {
@@ -1698,13 +1731,13 @@ class Table {
 public:
   class Config {
   public:
-    explicit Config(Table& table) : parent_(table)
+    explicit Config(bool& dirty_) : dirty_(dirty_)
     {
     }
 
     void width(const size_t width)
     {
-      parent_.makeDirty();
+      dirty_ = true;
       width_ = width;
     }
 
@@ -1713,11 +1746,11 @@ public:
     void reset()
     {
       width_ = DEFAULT_WIDTH;
-      parent_.makeDirty();
+      dirty_ = true;
     }
 
   private:
-    Table& parent_;
+    bool& dirty_;
     size_t width_ = DEFAULT_WIDTH;
   };
 
@@ -1732,24 +1765,24 @@ public:
   void rows(std::vector<Row> rows)
   {
     rows_ = std::move(rows);
-    makeDirty();
+    dirty_ = true;
   }
   void border(Border border)
   {
     border_ = std::move(border);
-    makeDirty();
+    dirty_ = true;
   }
 
   Table& addRow(Row row)
   {
     rows_.emplace_back(std::move(row));
-    makeDirty();
+    dirty_ = true;
     return *this;
   }
   Table& addRow(std::vector<std::string> row)
   {
     rows_.emplace_back(std::move(row));
-    makeDirty();
+    dirty_ = true;
     return *this;
   }
 
@@ -1758,28 +1791,28 @@ public:
 
   Border& border()
   {
-    makeDirty();
+    dirty_ = true;
     return border_;
   }
   const Border& border() const { return border_; }
 
   std::vector<Row>& rows()
   {
-    makeDirty();
+    dirty_ = true;
     return rows_;
   }
   const std::vector<Row>& rows() const { return rows_; }
 
   Row& row(int index)
   {
-    makeDirty();
+    dirty_ = true;
     return rows_.at(index);
   }
   const Row& row(int index) const { return rows_.at(index); }
 
   Row& operator[](int index)
   {
-    makeDirty();
+    dirty_ = true;
     return rows_.at(index);
   }
   const Row& operator[](int index) const
@@ -1793,7 +1826,7 @@ public:
     config_.reset();
     border_.reset();
     str_.clear();
-    makeClean();
+    dirty_ = false;
   }
 
   const std::string& str() const
@@ -1801,23 +1834,20 @@ public:
     if (dirty_)
     {
       str_ = genStr();
-      makeClean();
+    dirty_ = false;
     }
 
     return str_;
   }
 
 private:
-  std::vector<Row> rows_;
-  Config config_{*this};
-  Border border_;
-
   // cache
   mutable bool dirty_ = false;
   mutable std::string str_;
 
-  void makeDirty() const { dirty_ = true; }
-  void makeClean() const { dirty_ = false; }
+  std::vector<Row> rows_;
+  Config config_{dirty_};
+  Border border_;
 
   std::string genStr() const
   {
