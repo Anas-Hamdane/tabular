@@ -9,19 +9,19 @@ class Row {
 public:
   class Config {
   public:
-    explicit Config(Row& parent)
-      : parent_(parent)
+    explicit Config(bool& dirty_)
+      : dirty_(dirty_)
     {
     }
 
     void hasBottom(bool has)
     {
-      parent_.makeDirty();
+      dirty_ = true;
       hasBottom_ = has;
     }
     void vertical(Border::Part part)
     {
-      parent_.makeDirty();
+      dirty_ = true;
       vertical_ = std::move(part);
     }
 
@@ -31,17 +31,31 @@ public:
     void reset()
     {
       vertical_ = 0;
-      parent_.makeDirty();
+      dirty_ = true;
     }
 
   private:
-    Row& parent_;
+    friend class Row;
+
+    bool& dirty_;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
   };
 
 public:
   Row() = default;
+
+  // copy contructor
+  // NOTE: it's mandatory to initialize config_ with dirty_ to avoid a heap-use-after-free error
+  // from the address sanitizer, then copy the members of the other.config_ into our new one
+  // See column.h:200 note
+  Row(const Row& other)
+    : columns_(other.columns_), dirty_(other.dirty_), str_(other.str_), 
+    config_(dirty_) // CRUCIAL
+  {
+    config_.hasBottom_ = other.config_.hasBottom_;
+    config_.vertical_ = other.config_.vertical_;
+  }
 
   explicit Row(std::vector<Column> columns)
     : columns_(std::move(columns))
@@ -59,7 +73,7 @@ public:
 
   void columns(std::vector<Column> columns)
   {
-    makeDirty();
+    dirty_ = true;
     columns_ = std::move(columns);
   }
 
@@ -68,14 +82,14 @@ public:
 
   std::vector<Column>& columns()
   {
-    makeDirty();
+    dirty_ = true;
     return columns_;
   }
   const std::vector<Column>& columns() const { return columns_; }
 
   Column& column(int index)
   {
-    makeDirty();
+    dirty_ = true;
     return columns_.at(index);
   }
   const Column& column(int index) const
@@ -85,7 +99,7 @@ public:
 
   Column& operator[](int index)
   {
-    makeDirty();
+    dirty_ = true;
     return columns_.at(index);
   }
   const Column& operator[](int index) const
@@ -98,7 +112,7 @@ public:
     columns_.clear();
     str_.clear();
     config_.reset();
-    makeClean();
+    dirty_ = false;
   }
 
   const std::string& str() const
@@ -106,22 +120,19 @@ public:
     if (dirty_)
     {
       str_ = genStr();
-      makeClean();
+      dirty_ = false;
     }
 
     return str_;
   }
 
 private:
-  std::vector<Column> columns_;
-  Config config_{*this};
-
   // cache
   mutable bool dirty_ = false;
   mutable std::string str_;
 
-  void makeDirty() const { dirty_ = true; }
-  void makeClean() const { dirty_ = false; }
+  std::vector<Column> columns_;
+  Config config_{dirty_};
 
   std::string genStr() const
   {
