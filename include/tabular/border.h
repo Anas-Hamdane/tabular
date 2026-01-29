@@ -18,33 +18,33 @@ public:
     Part& glyph(const uint32_t glyph)
     {
       glyph_ = glyph;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
     Part& fg(const Color color)
     {
       fg_ = static_cast<uint32_t>(color);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& fg(const Rgb rgb)
     {
       fg_ = rgb.toHex() | (1u << 24);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
     Part& bg(const Color color)
     {
       bg_ = static_cast<uint32_t>(color);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& bg(const Rgb rgb)
     {
       bg_ = rgb.toHex() | (1u << 24);
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
@@ -64,20 +64,20 @@ public:
     Part& clrFg()
     {
       fg_ = 0;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& clrBg()
     {
       bg_ = 0;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
     Part& clr()
     {
       fg_ = 0;
       bg_ = 0;
-      makeDirty();
+      dirty_ = true;
       return *this;
     }
 
@@ -87,7 +87,7 @@ public:
       if (dirty_)
       {
         str_ = genStr();
-        makeClean();
+        dirty_ = false;
       }
 
       return str_;
@@ -101,9 +101,6 @@ public:
     // cache
     mutable bool dirty_ = false;
     mutable std::string str_;
-
-    void makeDirty() const { dirty_ = true; }
-    void makeClean() const { dirty_ = false; }
 
     std::string genStr() const
     {
