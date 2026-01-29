@@ -29,13 +29,13 @@ class Table {
 public:
   class Config {
   public:
-    explicit Config(Table& table) : parent_(table)
+    explicit Config(bool& dirty_) : dirty_(dirty_)
     {
     }
 
     void width(const size_t width)
     {
-      parent_.makeDirty();
+      dirty_ = true;
       width_ = width;
     }
 
@@ -44,11 +44,11 @@ public:
     void reset()
     {
       width_ = DEFAULT_WIDTH;
-      parent_.makeDirty();
+      dirty_ = true;
     }
 
   private:
-    Table& parent_;
+    bool& dirty_;
     size_t width_ = DEFAULT_WIDTH;
   };
 
@@ -63,24 +63,24 @@ public:
   void rows(std::vector<Row> rows)
   {
     rows_ = std::move(rows);
-    makeDirty();
+    dirty_ = true;
   }
   void border(Border border)
   {
     border_ = std::move(border);
-    makeDirty();
+    dirty_ = true;
   }
 
   Table& addRow(Row row)
   {
     rows_.emplace_back(std::move(row));
-    makeDirty();
+    dirty_ = true;
     return *this;
   }
   Table& addRow(std::vector<std::string> row)
   {
     rows_.emplace_back(std::move(row));
-    makeDirty();
+    dirty_ = true;
     return *this;
   }
 
@@ -89,28 +89,28 @@ public:
 
   Border& border()
   {
-    makeDirty();
+    dirty_ = true;
     return border_;
   }
   const Border& border() const { return border_; }
 
   std::vector<Row>& rows()
   {
-    makeDirty();
+    dirty_ = true;
     return rows_;
   }
   const std::vector<Row>& rows() const { return rows_; }
 
   Row& row(int index)
   {
-    makeDirty();
+    dirty_ = true;
     return rows_.at(index);
   }
   const Row& row(int index) const { return rows_.at(index); }
 
   Row& operator[](int index)
   {
-    makeDirty();
+    dirty_ = true;
     return rows_.at(index);
   }
   const Row& operator[](int index) const
@@ -124,7 +124,7 @@ public:
     config_.reset();
     border_.reset();
     str_.clear();
-    makeClean();
+    dirty_ = false;
   }
 
   const std::string& str() const
@@ -132,23 +132,20 @@ public:
     if (dirty_)
     {
       str_ = genStr();
-      makeClean();
+    dirty_ = false;
     }
 
     return str_;
   }
 
 private:
-  std::vector<Row> rows_;
-  Config config_{*this};
-  Border border_;
-
   // cache
   mutable bool dirty_ = false;
   mutable std::string str_;
 
-  void makeDirty() const { dirty_ = true; }
-  void makeClean() const { dirty_ = false; }
+  std::vector<Row> rows_;
+  Config config_{dirty_};
+  Border border_;
 
   std::string genStr() const
   {
