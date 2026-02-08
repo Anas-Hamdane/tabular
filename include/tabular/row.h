@@ -9,19 +9,16 @@ class Row {
 public:
   class Config {
   public:
-    explicit Config(bool& dirty_)
-      : dirty_(dirty_)
-    {
-    }
+    explicit Config() = default;
 
     void hasBottom(bool has)
     {
-      dirty_ = true;
+      setModified(true);
       hasBottom_ = has;
     }
     void vertical(Border::Part part)
     {
-      dirty_ = true;
+      setModified(true);
       vertical_ = std::move(part);
     }
 
@@ -31,32 +28,21 @@ public:
     void reset()
     {
       vertical_ = 0;
-      dirty_ = true;
+      hasBottom_ = true;
+      setModified(true);
     }
 
-  private:
-    friend class Row;
+    bool isModified() const { return this->modified; }
+    void setModified(bool modified) const { this->modified = modified; }
 
-    bool& dirty_;
+  private:
+    mutable bool modified = false;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
   };
 
 public:
   Row() = default;
-
-  // copy contructor
-  // NOTE: it's mandatory to initialize config_ with dirty_ to avoid a heap-use-after-free error
-  // from the address sanitizer, then copy the members of the other.config_ into our new one
-  // See column.h:200 note
-  Row(const Row& other)
-    : columns_(other.columns_), dirty_(other.dirty_), str_(other.str_), 
-    config_(dirty_) // CRUCIAL
-  {
-    config_.hasBottom_ = other.config_.hasBottom_;
-    config_.vertical_ = other.config_.vertical_;
-  }
-
   explicit Row(std::vector<Column> columns)
     : columns_(std::move(columns))
   {
@@ -73,66 +59,70 @@ public:
 
   void columns(std::vector<Column> columns)
   {
-    dirty_ = true;
+    setModified(true);
     columns_ = std::move(columns);
   }
 
   Config& config() { return config_; }
   const Config& config() const { return config_; }
-
-  std::vector<Column>& columns()
-  {
-    dirty_ = true;
-    return columns_;
-  }
+  std::vector<Column>& columns() { return columns_; }
   const std::vector<Column>& columns() const { return columns_; }
 
-  Column& column(int index)
-  {
-    dirty_ = true;
-    return columns_.at(index);
-  }
-  const Column& column(int index) const
-  {
-    return columns_.at(index);
-  }
+  Column& column(int index) { return columns_.at(index); }
+  const Column& column(int index) const { return columns_.at(index); }
 
-  Column& operator[](int index)
-  {
-    dirty_ = true;
-    return columns_.at(index);
-  }
-  const Column& operator[](int index) const
-  {
-    return columns_.at(index);
-  }
+  Column& operator[](int index) { return columns_.at(index); }
+  const Column& operator[](int index) const { return columns_.at(index); }
 
   void clr()
   {
     columns_.clear();
     str_.clear();
     config_.reset();
-    dirty_ = false;
+    setModified(false);
   }
 
   const std::string& str() const
   {
-    if (dirty_)
+    auto reGenerate = [this]()
     {
+      // note that when genStr() calls column.lines() which sets
+      // modified to false for each column so we don't need to
       str_ = genStr();
-      dirty_ = false;
+      this->setModified(false);
+      config_.setModified(false);
+    };
+
+    if (this->isModified() || config_.isModified())
+    {
+      reGenerate();
+    }
+    else
+    {
+      // check if any column got modified
+      for (const auto& column : columns_)
+      {
+        if (column.isModified())
+        {
+          reGenerate();
+          break;
+        }
+      }
     }
 
     return str_;
   }
 
+  bool isModified() const { return modified; }
+  void setModified(bool modified) const { this->modified = modified; }
+
 private:
   // cache
-  mutable bool dirty_ = false;
+  mutable bool modified = false;
   mutable std::string str_;
 
   std::vector<Column> columns_;
-  Config config_{dirty_};
+  Config config_;
 
   std::string genStr() const
   {
