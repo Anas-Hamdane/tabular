@@ -110,12 +110,7 @@ public:
       setModified(true);
     }
 
-    bool isModified() const { return modified; }
-    void setModified(bool modified) const { this->modified = modified; }
-
   private:
-    mutable bool modified = false;
-
     // representing all the colors
     uint32_t fg_ = 0;
     uint32_t bg_ = 0;
@@ -123,6 +118,12 @@ public:
 
     // all the attributes
     uint16_t attrs_ = 0;
+
+    // for caching
+    friend class Column;
+    mutable bool modified = false;
+    bool isModified() const { return modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
   class Config {
   public:
@@ -175,17 +176,19 @@ public:
       setModified(true);
     }
 
-    bool isModified() const { return modified; }
-    void setModified(bool modified) const { this->modified = modified; }
 
   private:
-    mutable bool modified = false;
-
     Align align_ = Align::Left;
     Padd padd_ = Padd();
     std::string delimiter_ = "-";
     size_t width_ = 0;
     bool skipEmptyLineIndent_ = true;
+
+    // for caching
+    friend class Column;
+    mutable bool modified = false;
+    bool isModified() const { return modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
 
 public:
@@ -245,7 +248,7 @@ public:
     if (this->isModified() || config_.isModified() || style_.isModified())
     {
       lines_ = genLines();
-      this->setModified(false);
+      this->modified = false;
       config_.setModified(false);
       style_.setModified(false);
     }
@@ -265,8 +268,14 @@ public:
     return empty;
   }
 
-  bool isModified() const { return modified; }
-  void setModified(bool modified) const { this->modified = modified; }
+  bool isModified() const
+  {
+    return this->modified || config_.isModified() || style_.isModified();
+  }
+  void setModified(bool modified)
+  {
+    this->modified = modified;
+  }
 
 private:
   // cache

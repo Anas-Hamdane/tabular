@@ -32,13 +32,16 @@ public:
       setModified(true);
     }
 
-    bool isModified() const { return this->modified; }
-    void setModified(bool modified) const { this->modified = modified; }
 
   private:
-    mutable bool modified = false;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
+
+    // for caching
+    friend class Row;
+    mutable bool modified = false;
+    bool isModified() const { return this->modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
 
 public:
@@ -84,37 +87,32 @@ public:
 
   const std::string& str() const
   {
-    auto reGenerate = [this]()
+    if (isModified())
     {
       // note that when genStr() calls column.lines() which sets
       // modified to false for each column so we don't need to
       str_ = genStr();
-      this->setModified(false);
+      this->modified = false;
       config_.setModified(false);
-    };
-
-    if (this->isModified() || config_.isModified())
-    {
-      reGenerate();
-    }
-    else
-    {
-      // check if any column got modified
-      for (const auto& column : columns_)
-      {
-        if (column.isModified())
-        {
-          reGenerate();
-          break;
-        }
-      }
     }
 
     return str_;
   }
 
-  bool isModified() const { return modified; }
-  void setModified(bool modified) const { this->modified = modified; }
+  bool isModified() const
+  {
+    if (this->modified || config_.isModified()) return true;
+    for (const auto& column : columns_)
+    {
+      if (column.isModified()) return true;
+    }
+
+    return false;
+  }
+  void setModified(bool modified)
+  {
+    this->modified = modified;
+  }
 
 private:
   // cache

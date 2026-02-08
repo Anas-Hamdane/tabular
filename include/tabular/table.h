@@ -29,13 +29,11 @@ class Table {
 public:
   class Config {
   public:
-    explicit Config(bool& dirty_) : dirty_(dirty_)
-    {
-    }
+    explicit Config() = default;
 
     void width(const size_t width)
     {
-      dirty_ = true;
+      setModified(true);
       width_ = width;
     }
 
@@ -44,43 +42,49 @@ public:
     void reset()
     {
       width_ = DEFAULT_WIDTH;
-      dirty_ = true;
+      setModified(true);
     }
 
+
   private:
-    bool& dirty_;
     size_t width_ = DEFAULT_WIDTH;
+
+    // for caching
+    friend class Table;
+    mutable bool modified = false;
+    bool isModified() const { return modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
 
 public:
   Table() = default;
 
   explicit Table(std::vector<Row> rows, Border border = {})
-    : rows_(std::move(rows)), border_(std::move(border)), dirty_(true)
+    : rows_(std::move(rows)), border_(std::move(border))
   {
   }
 
   void rows(std::vector<Row> rows)
   {
     rows_ = std::move(rows);
-    dirty_ = true;
+    setModified(true);
   }
   void border(Border border)
   {
     border_ = std::move(border);
-    dirty_ = true;
+    setModified(true);
   }
 
   Table& addRow(Row row)
   {
     rows_.emplace_back(std::move(row));
-    dirty_ = true;
+    setModified(true);
     return *this;
   }
   Table& addRow(std::vector<std::string> row)
   {
     rows_.emplace_back(std::move(row));
-    dirty_ = true;
+    setModified(true);
     return *this;
   }
 
@@ -89,28 +93,25 @@ public:
 
   Border& border()
   {
-    dirty_ = true;
+    setModified(true);
     return border_;
   }
   const Border& border() const { return border_; }
 
   std::vector<Row>& rows()
   {
-    dirty_ = true;
     return rows_;
   }
   const std::vector<Row>& rows() const { return rows_; }
 
   Row& row(int index)
   {
-    dirty_ = true;
     return rows_.at(index);
   }
   const Row& row(int index) const { return rows_.at(index); }
 
   Row& operator[](int index)
   {
-    dirty_ = true;
     return rows_.at(index);
   }
   const Row& operator[](int index) const
@@ -124,33 +125,45 @@ public:
     config_.reset();
     border_.reset();
     str_.clear();
-    dirty_ = false;
+    setModified(false);
   }
 
   const std::string& str() const
   {
-    if (dirty_)
+    if (isModified())
     {
       str_ = genStr();
-    dirty_ = false;
+      this->modified = false;
     }
 
     return str_;
   }
 
+  bool isModified() const
+  {
+    if (this->modified || config_.isModified()) return true;
+    for (const auto& row : rows_)
+    {
+      if (row.isModified()) return true;
+    }
+
+    return false;
+  }
+  void setModified(bool modified) { this->modified = modified; }
+
 private:
   // cache
-  mutable bool dirty_ = false;
+  mutable bool modified = false;
   mutable std::string str_;
 
   std::vector<Row> rows_;
-  Config config_{dirty_};
+  Config config_;
   Border border_;
 
   std::string genStr() const
   {
     // avoid reference
-    auto rows = rows_;
+    auto rows = rows_; // TODO: maybe remove this
     if (rows.empty()) return "";
 
     std::string tableStr;
