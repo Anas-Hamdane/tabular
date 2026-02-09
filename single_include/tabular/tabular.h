@@ -11,19 +11,22 @@
 */
 
 #pragma once
-
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
-namespace tabular {
-namespace detail {
-struct Range {
+namespace tabular
+{
+namespace detail
+{
+struct Range
+{
   uint32_t first;
   uint32_t last;
 };
 
+// clang-format off
 constexpr static Range combining[] = {
     {0x0000, 0x001F}, {0x007F, 0x009F}, {0x0300, 0x036F}, {0x0483, 0x0489},
     {0x0591, 0x05BD}, {0x05BF, 0x05BF}, {0x05C1, 0x05C2}, {0x05C4, 0x05C5},
@@ -158,8 +161,9 @@ static constexpr unsigned char utf8Len[256] = {
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
+// clang-format on
 
-inline bool bisearch(uint32_t ucs, const Range* interval, int max)
+inline bool bisearch(uint32_t ucs, const Range *interval, int max)
 {
   int min = 0;
 
@@ -169,41 +173,24 @@ inline bool bisearch(uint32_t ucs, const Range* interval, int max)
   {
     const int mid = (min + max) / 2;
 
-    if (ucs > interval[mid].last) min = mid + 1;
-    else if (ucs < interval[mid].first) max = mid - 1;
-    else return true;
+    if (ucs > interval[mid].last)
+      min = mid + 1;
+    else if (ucs < interval[mid].first)
+      max = mid - 1;
+    else
+      return true;
   }
 
   return false;
 }
+} // namespace detail
 
-inline bool bisearch(const std::vector<size_t>& vec, size_t value)
+namespace string_utils
 {
-  size_t left = 0;
-  size_t right = vec.size();
-
-  while (left < right)
-  {
-    size_t mid = left + (right - left) / 2;
-
-    if (vec[mid] == value) return true;
-
-    if (vec[mid] < value) left = mid + 1;
-    else right = mid;
-  }
-  return false;
-}
-
-struct Str {
-  std::string str;
-  size_t dw;
-};
-}
-
-namespace string_utils {
 inline bool isSpace(const char c)
 {
-  return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r';
+  return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' ||
+         c == '\r';
 }
 
 constexpr bool isAscii(const char character)
@@ -219,9 +206,9 @@ constexpr bool isAlpha(const char character)
 
 // convert a utf8 encoded sequence to a wide characters
 // returns true if it's a valid utf8 string
-inline bool utf8twc(const char* s, uint32_t& wc, int& consumed)
+inline bool utf8twc(const char *s, uint32_t &wc, int &consumed)
 {
-  const auto* u = reinterpret_cast<const unsigned char*>(s);
+  const auto *u = reinterpret_cast<const unsigned char *>(s);
   const unsigned char c = u[0];
 
   // ascii
@@ -239,27 +226,34 @@ inline bool utf8twc(const char* s, uint32_t& wc, int& consumed)
   switch (consumed)
   {
   case 2:
+  {
     if ((u[1] & 0xC0) != 0x80) return false;
     wc = ((c & 0x1F) << 6) | (u[1] & 0x3F);
     return wc >= 0x80;
+  }
 
   case 3:
+  {
     if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) return false;
     wc = ((c & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
     return wc >= 0x800 && (wc < 0xD800 || wc > 0xDFFF);
+  }
 
   case 4:
+  {
     if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80 || (u[3] & 0xC0) != 0x80)
+    {
       return false;
+    }
     wc = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) | ((u[2] & 0x3F) << 6) |
-                (u[3] & 0x3F);
+         (u[3] & 0x3F);
     return wc >= 0x10000 && wc <= 0x10FFFF;
+  }
 
   default:
     return false;
   }
 }
-
 
 // return the display width of a Unicode character
 inline size_t wcwidth(const uint32_t ucs)
@@ -269,24 +263,26 @@ inline size_t wcwidth(const uint32_t ucs)
   if (ucs == 0) return 0;
   if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0)) return 0;
 
-  if (bisearch(ucs, combining,
-               (sizeof(combining) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
+  if (bisearch(ucs, combining, std::size(combining) - 1))
+  {
     return 0;
+  }
 
-  if (bisearch(ucs, wide,
-               (sizeof(wide) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
+  if (bisearch(ucs, wide, std::size(wide) - 1))
+  {
     return 2;
+  }
 
   return 1;
 }
 
 // calculates the display width of a given utf8 string
-inline size_t dw(const char* str)
+inline size_t dw(const char *str)
 {
   using namespace detail;
 
   size_t width = 0;
-  const char* ptr = str;
+  const char *ptr = str;
 
   while (*ptr)
   {
@@ -296,8 +292,7 @@ inline size_t dw(const char* str)
       // skip every ascii character until a non-ascii one
       // or an alphabet is found
       ++ptr;
-      while (*ptr && isAscii(*ptr) && !isAlpha(*ptr))
-        ++ptr;
+      while (*ptr && isAscii(*ptr) && !isAlpha(*ptr)) ++ptr;
 
       // skip the first alphabet too
       if (*ptr && isAlpha(*ptr)) ++ptr;
@@ -324,12 +319,11 @@ inline size_t dw(const char* str)
   return width;
 }
 
-inline size_t dw(const std::string& str)
-{
-  return dw(str.c_str());
-}
+// calculates the display width of a given utf8 string
+inline size_t dw(const std::string &str) { return dw(str.c_str()); }
 
-inline std::string readUtf8Char(const std::string& str, const size_t pos)
+// read and return a full utf8 character
+inline std::string readUtf8Char(const std::string &str, const size_t pos)
 {
   if (pos >= str.length()) return "";
 
@@ -339,17 +333,15 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
   if ((first_byte & 0xC0) == 0x80) return "";
 
   // find the length of the sequence from the start byte
-  size_t len;
-  if ((first_byte & 0x80) == 0)
-    len = 1;
-  else if ((first_byte & 0xE0) == 0xC0)
-    len = 2;
-  else if ((first_byte & 0xF0) == 0xE0)
-    len = 3;
-  else if ((first_byte & 0xF8) == 0xF0)
-    len = 4;
-  else
-    return "";
+  size_t len = 0;
+
+  // clang-format off
+  if ((first_byte & 0x80) == 0)         len = 1;
+  else if ((first_byte & 0xE0) == 0xC0) len = 2;
+  else if ((first_byte & 0xF0) == 0xE0) len = 3;
+  else if ((first_byte & 0xF8) == 0xF0) len = 4;
+  else return "";
+  // clang-format on
 
   // not enough bytes
   if (pos + len > str.length()) return "";
@@ -366,16 +358,17 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
   return str.substr(pos, len);
 }
 
-inline bool endsWith(const std::string& str, const std::string& with)
+inline bool endsWith(const std::string &str, const std::string &prefix)
 {
-  const size_t len = with.size();
+  const size_t len = prefix.size();
   const size_t n = str.size();
   if (n < len) return false;
-  return str.compare(n - len, len, with) == 0;
+  return str.compare(n - len, len, prefix) == 0;
 }
-}
+} // namespace string_utils
 
-enum class Color : uint8_t {
+enum class Color : uint8_t
+{
   Black = 30,
   Red,
   Green,
@@ -394,7 +387,8 @@ enum class Color : uint8_t {
   BrightCyan,
   BrightWhite,
 };
-struct Rgb {
+struct Rgb
+{
   uint8_t r = 0;
   uint8_t g = 0;
   uint8_t b = 0;
@@ -412,41 +406,88 @@ struct Rgb {
   }
 };
 
-namespace detail {
-class ColorType {
-  public:
-  ColorType(uint32_t value)
-    : value_(value) {}
+namespace detail
+{
+class ColorType
+{
+public:
+  ColorType(uint32_t value) : value_(value) {}
 
-  bool isSet() { return value_ != 0; }
-  bool isColor() { return isSet() && (value_ & (1u << 24)) == 0; }
-  bool isRgb() { return isSet() && (value_ & (1u << 24)) != 0; }
+  bool isSet() const { return value_ != 0; }
+  bool isColor() const { return isSet() && (value_ & (1u << 24)) == 0; }
+  bool isRgb() const { return isSet() && (value_ & (1u << 24)) != 0; }
 
-  Color color() { return static_cast<Color>(value_ & 0xFFFFFF); }
-  Rgb rgb() { return {value_ & 0xFFFFFF}; }
+  Color color() const { return static_cast<Color>(value_ & 0xFFFFFF); }
+  Rgb rgb() const { return {value_ & 0xFFFFFF}; }
 
-  private:
+private:
   uint32_t value_;
 };
-}
+struct Str
+{
+  std::string str;
+  size_t dw;
+};
+inline bool bisearch(const std::vector<size_t> &vec, size_t value)
+{
+  size_t left = 0;
+  size_t right = vec.size();
 
-enum class Attr : uint16_t {
+  while (left < right)
+  {
+    size_t mid = left + (right - left) / 2;
+
+    if (vec[mid] == value) return true;
+
+    if (vec[mid] < value)
+      left = mid + 1;
+    else
+      right = mid;
+  }
+  return false;
+}
+} // namespace detail
+
+enum class Attr : uint16_t
+{
   Bold = 1,
   Dim = 1 << 1,
   Italic = 1 << 2,
-
   Underline = 1 << 3,
-  Dunderline = 1 << 4, // not popular
 
-  Blink = 1 << 5, // rarely supported
-  Flink = 1 << 6, // rarely supported
+  // double underline, not popular
+  Dunderline = 1 << 4,
+
+  // rarely supported
+  Blink = 1 << 5,
+
+  // fast blink, rarely supported
+  Flink = 1 << 6,
+
   Reverse = 1 << 7,
   Concealed = 1 << 8,
   Crossed = 1 << 9,
 };
+inline Attr operator|(Attr lhs, Attr rhs) noexcept
+{
+  return static_cast<Attr>(static_cast<uint16_t>(lhs) |
+                           static_cast<uint16_t>(rhs));
+}
 
-enum class Align { Left, Right, Center };
-struct Padd {
+inline Attr &operator|=(Attr &lhs, const Attr rhs) noexcept
+{
+  lhs = lhs | rhs;
+  return lhs;
+}
+
+enum class Align
+{
+  Left,
+  Right,
+  Center
+};
+struct Padd
+{
   uint8_t top = 0;
   uint8_t bottom = 0;
   uint8_t left = 1;
@@ -464,68 +505,70 @@ struct Padd {
 };
 
 constexpr auto RESET_ESC = "\x1b[0m";
-constexpr uint8_t WORD_LENGTH_AVERAGE = 5;
 constexpr uint64_t DEFAULT_WIDTH = 50;
+
+// for estimations
+constexpr uint8_t WORD_LENGTH_AVERAGE = 5;
 
 // the maximum display width of a Unicode character
 constexpr uint8_t MIN_COLUMN_WIDTH = 2;
 
-class Column {
+class Column
+{
 public:
-  class Style {
+  class Style
+  {
   public:
-    explicit Style(bool& dirty_) : dirty_(dirty_)
-    {
-    }
+    explicit Style() = default;
 
-    Style& fg(Color color)
+    Style &fg(Color color)
     {
       fg_ = static_cast<uint32_t>(color);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Style& bg(Color color)
+    Style &bg(Color color)
     {
       bg_ = static_cast<uint32_t>(color);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Style& base(Color color)
+    Style &base(Color color)
     {
       base_ = static_cast<uint32_t>(color);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
 
-    Style& fg(const Rgb rgb)
+    Style &fg(const Rgb rgb)
     {
       fg_ = rgb.toHex() | (1u << 24);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Style& bg(const Rgb rgb)
+    Style &bg(const Rgb rgb)
     {
       bg_ = rgb.toHex() | (1u << 24);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Style& base(const Rgb rgb)
+    Style &base(const Rgb rgb)
     {
       base_ = rgb.toHex() | (1u << 24);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
 
-    Style& attrs(Attr attr)
+    Style &attrs(Attr attr)
     {
       attrs_ |= static_cast<uint16_t>(attr);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Style& attrs(const Style& attr)
+    Style &attrs(const Style &attr)
     {
       attrs_ |= attr.attrs_;
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
 
@@ -542,22 +585,22 @@ public:
     void resetFg()
     {
       fg_ = 0;
-      dirty_ = true;
+      setModified(true);
     }
     void resetBg()
     {
       bg_ = 0;
-      dirty_ = true;
+      setModified(true);
     }
     void resetBase()
     {
       base_ = 0;
-      dirty_ = true;
+      setModified(true);
     }
     void resetAttrs()
     {
       attrs_ = 0;
-      dirty_ = true;
+      setModified(true);
     }
     void reset()
     {
@@ -565,13 +608,10 @@ public:
       bg_ = 0;
       base_ = 0;
       attrs_ = 0;
-      dirty_ = true;
+      setModified(true);
     }
 
   private:
-    friend class Column;
-    bool& dirty_;
-
     // representing all the colors
     uint32_t fg_ = 0;
     uint32_t bg_ = 0;
@@ -579,12 +619,17 @@ public:
 
     // all the attributes
     uint16_t attrs_ = 0;
+
+    // for caching
+    friend class Column;
+    mutable bool modified = false;
+    bool isModified() const { return modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
-  class Config {
+  class Config
+  {
   public:
-    explicit Config(bool& dirty_) : dirty_(dirty_)
-    {
-    }
+    explicit Config() = default;
 
     Align align() const { return align_; }
     Padd padd() const { return padd_; }
@@ -592,34 +637,39 @@ public:
     std::string delimiter() const { return delimiter_; }
     bool skipEmptyLineIndent() const { return skipEmptyLineIndent_; }
 
-    Config& align(const Align alignment)
+    Config &align(const Align alignment)
     {
       align_ = alignment;
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Config& padd(const Padd padd)
+    Config &padd(const Padd padd)
     {
       padd_ = padd;
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Config& width(const size_t width)
+    Config &width(const size_t width)
     {
       width_ = width;
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Config& delimiter(std::string delimiter)
+
+    // use for wrapping, the default is "-"
+    Config &delimiter(std::string delimiter)
     {
       delimiter_ = std::move(delimiter);
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
-    Config& skipEmptyLineIndent(const bool skip)
+
+    // skip empty lines at the beginning of the line
+    // turn this off when spaces at the start of a line are important
+    Config &skipEmptyLineIndent(const bool skip)
     {
       skipEmptyLineIndent_ = skip;
-      dirty_ = true;
+      setModified(true);
       return *this;
     }
 
@@ -630,92 +680,59 @@ public:
       delimiter_ = "-";
       width_ = 0;
       skipEmptyLineIndent_ = true;
-      dirty_ = true;
+      setModified(true);
     }
 
   private:
-    friend class Column;
-    bool& dirty_;
-
     Align align_ = Align::Left;
     Padd padd_ = Padd();
     std::string delimiter_ = "-";
     size_t width_ = 0;
     bool skipEmptyLineIndent_ = true;
+
+    // for caching
+    friend class Column;
+    mutable bool modified = false;
+    bool isModified() const { return modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
 
 public:
   Column() = default;
-
-  Column(std::string content)
-    : content_(std::move(content)), dirty_(true)
-  {
-  }
-
-  // copy constructor
-  // NOTE: if we don't initialize config_ and style_ with dirty_, and instead copy
-  // other.config_ and other.style_ we will get a heap-use-after-free error from the address sanitizer
-  // because config_ will still have the old dirty_ flag that points to the old object
-  // to avoid this we will initialize config_ and style_ with dirty_ of the current object
-  // and then copy the data of other.config_ and other.style_ one by one
-  // I didn't find a workaround solution except this :(
-  Column(const Column& other)
-    : lines_(other.lines_),
-    dirty_(other.dirty_),
-    config_(dirty_), // CRUCIAL
-    style_(dirty_), // CRUCIAL
-    content_(other.content_)
-  {
-    config_.align_ = other.config_.align_;
-    config_.padd_ = other.config_.padd_;
-    config_.delimiter_ = other.config_.delimiter_;
-    config_.width_ = other.config_.width_;
-    config_.skipEmptyLineIndent_ = other.config_.skipEmptyLineIndent_;
-
-    style_.fg_ = other.style_.fg_;
-    style_.bg_ = other.style_.bg_;
-    style_.base_ = other.style_.base_;
-    style_.attrs_ = other.style_.attrs_;
-  }
+  Column(std::string content) : content_(std::move(content)) {}
 
   void content(std::string content)
   {
     content_ = std::move(content);
-    dirty_ = true;
+    setModified(true);
   }
 
-  Config& config() { return config_; }
-  Style& style() { return style_; }
+  Config &config() { return config_; }
+  Style &style() { return style_; }
 
-  const Config& config() const { return config_; }
-  const Style& style() const { return style_; }
+  const Config &config() const { return config_; }
+  const Style &style() const { return style_; }
 
-  const std::string& content() const { return content_; }
-  std::string& content()
+  const std::string &content() const { return content_; }
+  std::string &content()
   {
-    dirty_ = true;
+    setModified(true);
     return content_;
   }
 
-  explicit operator const std::string&() const
+  explicit operator const std::string &() const { return content_; }
+  explicit operator std::string &()
   {
-    return content_;
-  }
-  explicit operator std::string&()
-  {
-    dirty_ = true;
+    setModified(true);
     return content_;
   }
 
-  char& operator[](int index)
+  char &operator[](int index)
   {
-    dirty_ = true;
+    setModified(true);
     return content_.at(index);
   }
-  const char& operator[](int index) const
-  {
-    return content_.at(index);
-  }
+  const char &operator[](int index) const { return content_.at(index); }
 
   void clr()
   {
@@ -723,15 +740,17 @@ public:
     config_.reset();
     style_.reset();
     lines_.clear();
-    dirty_ = false;
+    setModified(false);
   }
 
-  const std::vector<std::string>& lines() const
+  const std::vector<std::string> &lines() const
   {
-    if (dirty_)
+    if (this->isModified() || config_.isModified() || style_.isModified())
     {
       lines_ = genLines();
-      dirty_ = false;
+      this->modified = false;
+      config_.setModified(false);
+      style_.setModified(false);
     }
     return lines_;
   }
@@ -749,13 +768,19 @@ public:
     return empty;
   }
 
+  bool isModified() const
+  {
+    return this->modified || config_.isModified() || style_.isModified();
+  }
+  void setModified(bool modified) { this->modified = modified; }
+
 private:
   // cache
   mutable std::vector<std::string> lines_;
-  mutable bool dirty_ = false;
+  mutable bool modified = false;
 
-  Config config_{dirty_};
-  Style style_{dirty_};
+  Config config_;
+  Style style_;
   std::string content_;
 
   std::vector<std::string> genLines() const
@@ -791,7 +816,7 @@ private:
     // format the lines handling padding, alignment and the base styles
     return format(lines, padd);
   }
-  static void handleColor(std::string& styles, detail::ColorType colortype,
+  static void handleColor(std::string &styles, detail::ColorType colortype,
                           bool back)
   {
     if (colortype.isColor())
@@ -809,11 +834,10 @@ private:
       styles += std::to_string(rgb.b) + ';';
     }
   }
-  static void handleAttrs(std::string& styles, Attr attr)
+  static void handleAttrs(std::string &styles, Attr attr)
   {
-    auto hasAttr = [](Attr attr, Attr flag) -> bool {
-      return static_cast<uint16_t>(attr) & static_cast<uint16_t>(flag);
-    };
+    auto hasAttr = [](Attr attr, Attr flag) -> bool
+    { return static_cast<uint16_t>(attr) & static_cast<uint16_t>(flag); };
 
     if (hasAttr(attr, Attr::Bold)) styles += "1;";
     if (hasAttr(attr, Attr::Dim)) styles += "2;";
@@ -832,13 +856,10 @@ private:
     std::string styles = "\x1b[";
 
     if (style().hasAttrs()) handleAttrs(styles, style().attrs());
-
     if (style().hasFg()) handleColor(styles, style().fg(), false);
-
     if (style().hasBg()) handleColor(styles, style().bg(), true);
 
     if (styles == "\x1b[") return ""; // empty
-
     if (styles.back() == ';') styles.back() = 'm';
     return styles;
   }
@@ -848,21 +869,20 @@ private:
     handleColor(base, style().base(), true);
 
     if (base == "\x1b[") return ""; // empty
-
     if (base.back() == ';') base.back() = 'm';
     return base;
   }
 
-  std::vector<std::string> split(const std::string& str) const
+  static std::vector<std::string> split(const std::string &str)
   {
     using namespace string_utils;
 
     const size_t len = str.length();
-
     std::vector<std::string> words;
-    words.reserve((len / WORD_LENGTH_AVERAGE) + 1); // average
-
     std::string buffer;
+
+    // estimation
+    words.reserve((len / WORD_LENGTH_AVERAGE) + 1);
     buffer.reserve(WORD_LENGTH_AVERAGE);
 
     size_t i = 0;
@@ -874,7 +894,9 @@ private:
         buffer.clear();
 
         while (i < len && isAscii(str[i]) && !isAlpha(str[i]))
+        {
           buffer += str[i++];
+        }
 
         if (i < len) buffer += str[i++];
         words.emplace_back(std::move(buffer));
@@ -897,9 +919,9 @@ private:
     if (!buffer.empty()) words.emplace_back(std::move(buffer));
     return words;
   }
-  std::vector<detail::Str> wrap(const std::vector<std::string>& words,
+  std::vector<detail::Str> wrap(const std::vector<std::string> &words,
                                 const size_t width,
-                                const std::string& delimiter,
+                                const std::string &delimiter,
                                 const size_t delimiterDw) const
   {
     using namespace string_utils;
@@ -911,7 +933,8 @@ private:
     lines.reserve(content_.length() / width + 1);
 
     std::string buffer;
-    size_t bufferDw = 0; // the display width
+    // buffer display width
+    size_t bufferDw = 0;
 
     buffer.reserve(width);
     if (!styles.empty()) buffer += styles;
@@ -922,11 +945,16 @@ private:
     std::string activeEscs;
 
     // helper lambdas to avoid repeating code
-    auto appendResetIfNeeded = [&]() {
-      if (!(activeEscs.empty() && styles.empty()) && !endsWith(buffer, RESET_ESC))
+    auto appendResetIfNeeded = [&]()
+    {
+      if (!(activeEscs.empty() && styles.empty()) &&
+          !endsWith(buffer, RESET_ESC))
+      {
         buffer += RESET_ESC;
+      }
     };
-    auto startNewLine = [&]() {
+    auto startNewLine = [&]()
+    {
       appendResetIfNeeded();
       lines.push_back({buffer, bufferDw});
 
@@ -962,21 +990,19 @@ private:
       {
         if (word.back() != 'm') continue;
 
-        const auto* nextWord = i + 1 < words.size() ? &words[i + 1] : nullptr;
+        const auto *nextWord = i + 1 < words.size() ? &words[i + 1] : nullptr;
         if (word == "\x1b[0m")
         {
           activeEscs.clear();
           buffer += word;
 
           if (nextWord && dw(*nextWord) + bufferDw <= width) buffer += styles;
-
           continue;
         }
 
         activeEscs += word;
 
         if (nextWord && dw(*nextWord) + bufferDw <= width) buffer += word;
-
         continue;
       }
 
@@ -1035,8 +1061,10 @@ private:
           firstPart += utf8char;
           firstPartDw += utf8charDw;
 
+          // clang-format off
           if (utf8char.empty()) pos++;
           else pos += utf8char.length();
+          // clang-format on
         }
 
         // prepare the next word
@@ -1067,7 +1095,7 @@ private:
 
     return lines;
   }
-  std::vector<std::string> format(const std::vector<detail::Str>& lines,
+  std::vector<std::string> format(const std::vector<detail::Str> &lines,
                                   const Padd padd) const
   {
     using namespace string_utils;
@@ -1087,7 +1115,7 @@ private:
     std::string buffer;
     buffer.reserve(width);
 
-    for (const auto& line : lines)
+    for (const auto &line : lines)
     {
       // append the base styles
       if (styled) buffer += base;
@@ -1100,25 +1128,29 @@ private:
       switch (align)
       {
       case Align::Left:
+      {
         leftSpace = 0;
         rightSpace = freeSpace;
         break;
-      case Align::Center: {
+      }
+      case Align::Center:
+      {
         leftSpace = freeSpace / 2;
         rightSpace = freeSpace - leftSpace;
         break;
       }
       case Align::Right:
+      {
         leftSpace = freeSpace;
         rightSpace = 0;
         break;
+      }
       }
 
       buffer.append(leftSpace + padd.left, ' ');
       buffer += line.str;
 
       if (endsWith(line.str, RESET_ESC)) buffer += base;
-
       buffer.append(rightSpace + padd.right, ' ');
 
       // reset the base styles
@@ -1133,86 +1165,64 @@ private:
   }
 };
 
-inline Attr operator|(Attr lhs, Attr rhs) noexcept
+class Border
 {
-  return static_cast<Attr>(static_cast<uint16_t>(lhs) |
-                                static_cast<uint16_t>(rhs));
-}
-
-inline Attr& operator|=(Attr& lhs, const Attr rhs) noexcept
-{
-  lhs = lhs | rhs;
-  return lhs;
-}
-
-class Border {
 public:
-  class Part {
+  class Part
+  {
   public:
-    Part(const uint32_t glyph)
-      : glyph_(glyph), dirty_(true)
-    {
-    }
+    Part(const uint32_t glyph) : glyph_(glyph), dirty_(true) {}
 
-    Part& glyph(const uint32_t glyph)
+    Part &glyph(const uint32_t glyph)
     {
       glyph_ = glyph;
       dirty_ = true;
       return *this;
     }
 
-    Part& fg(const Color color)
+    Part &fg(const Color color)
     {
       fg_ = static_cast<uint32_t>(color);
       dirty_ = true;
       return *this;
     }
-    Part& fg(const Rgb rgb)
+    Part &fg(const Rgb rgb)
     {
       fg_ = rgb.toHex() | (1u << 24);
       dirty_ = true;
       return *this;
     }
 
-    Part& bg(const Color color)
+    Part &bg(const Color color)
     {
       bg_ = static_cast<uint32_t>(color);
       dirty_ = true;
       return *this;
     }
-    Part& bg(const Rgb rgb)
+    Part &bg(const Rgb rgb)
     {
       bg_ = rgb.toHex() | (1u << 24);
       dirty_ = true;
       return *this;
     }
 
-    uint32_t fg() const
-    {
-      return fg_;
-    }
-    uint32_t bg() const
-    {
-      return bg_;
-    }
-    uint32_t glyph() const
-    {
-      return glyph_;
-    }
+    uint32_t fg() const { return fg_; }
+    uint32_t bg() const { return bg_; }
+    uint32_t glyph() const { return glyph_; }
 
-    Part& clrFg()
+    Part &clrFg()
     {
       fg_ = 0;
       dirty_ = true;
       return *this;
     }
-    Part& clrBg()
+    Part &clrBg()
     {
       bg_ = 0;
       dirty_ = true;
       return *this;
     }
-    Part& clr()
+    Part &clr()
     {
       fg_ = 0;
       bg_ = 0;
@@ -1220,8 +1230,8 @@ public:
       return *this;
     }
 
-    explicit operator const std::string&() const { return str(); }
-    const std::string& str() const
+    explicit operator const std::string &() const { return str(); }
+    const std::string &str() const
     {
       if (dirty_)
       {
@@ -1234,8 +1244,8 @@ public:
 
   private:
     uint32_t glyph_ = 0; // Unicode code point
-    uint32_t fg_ = 0; // fg color
-    uint32_t bg_ = 0; // bg color
+    uint32_t fg_ = 0;    // fg color
+    uint32_t bg_ = 0;    // bg color
 
     // cache
     mutable bool dirty_ = false;
@@ -1289,8 +1299,7 @@ public:
       const std::string glyph = glyphToStr();
       buffer.append(glyph);
 
-      if (buffer.length() - glyph.length() > 0)
-        buffer.append(RESET_ESC);
+      if (buffer.length() - glyph.length() > 0) buffer.append(RESET_ESC);
 
       return buffer;
     }
@@ -1328,92 +1337,87 @@ public:
     }
   };
 
-  Part& horizontal() { return horizontal_; }
-  Part& vertical() { return vertical_; }
-  Part& cornerTopLeft() { return cornerTopLeft_; }
-  Part& cornerTopRight() { return cornerTopRight_; }
-  Part& cornerBottomLeft() { return cornerBottomLeft_; }
-  Part& cornerBottomRight() { return cornerBottomRight_; }
-  Part& intersection() { return intersection_; }
-  Part& connectorLeft() { return connectorLeft_; }
-  Part& connectorRight() { return connectorRight_; }
-  Part& connectorTop() { return connectorTop_; }
-  Part& connectorBottom() { return connectorBottom_; }
+  Part &horizontal() { return horizontal_; }
+  Part &vertical() { return vertical_; }
+  Part &cornerTopLeft() { return cornerTopLeft_; }
+  Part &cornerTopRight() { return cornerTopRight_; }
+  Part &cornerBottomLeft() { return cornerBottomLeft_; }
+  Part &cornerBottomRight() { return cornerBottomRight_; }
+  Part &intersection() { return intersection_; }
+  Part &connectorLeft() { return connectorLeft_; }
+  Part &connectorRight() { return connectorRight_; }
+  Part &connectorTop() { return connectorTop_; }
+  Part &connectorBottom() { return connectorBottom_; }
 
-  const Part& horizontal() const { return horizontal_; }
-  const Part& vertical() const { return vertical_; }
-  const Part& cornerTopLeft() const { return cornerTopLeft_; }
-  const Part& cornerTopRight() const { return cornerTopRight_; }
-  const Part& cornerBottomLeft() const { return cornerBottomLeft_; }
-  const Part& cornerBottomRight() const { return cornerBottomRight_; }
-  const Part& intersection() const { return intersection_; }
-  const Part& connectorLeft() const { return connectorLeft_; }
-  const Part& connectorRight() const { return connectorRight_; }
-  const Part& connectorTop() const { return connectorTop_; }
-  const Part& connectorBottom() const { return connectorBottom_; }
+  const Part &horizontal() const { return horizontal_; }
+  const Part &vertical() const { return vertical_; }
+  const Part &cornerTopLeft() const { return cornerTopLeft_; }
+  const Part &cornerTopRight() const { return cornerTopRight_; }
+  const Part &cornerBottomLeft() const { return cornerBottomLeft_; }
+  const Part &cornerBottomRight() const { return cornerBottomRight_; }
+  const Part &intersection() const { return intersection_; }
+  const Part &connectorLeft() const { return connectorLeft_; }
+  const Part &connectorRight() const { return connectorRight_; }
+  const Part &connectorTop() const { return connectorTop_; }
+  const Part &connectorBottom() const { return connectorBottom_; }
 
-  Border& horizontal(const uint32_t glyph)
+  Border &horizontal(const uint32_t glyph)
   {
     horizontal_.glyph(glyph);
     return *this;
   }
-  Border& vertical(const uint32_t glyph)
+  Border &vertical(const uint32_t glyph)
   {
     vertical_.glyph(glyph);
     return *this;
   }
-  Border& cornerTopLeft(const uint32_t glyph)
+  Border &cornerTopLeft(const uint32_t glyph)
   {
     cornerTopLeft_.glyph(glyph);
     return *this;
   }
-  Border& cornerTopRight(const uint32_t glyph)
+  Border &cornerTopRight(const uint32_t glyph)
   {
     cornerTopRight_.glyph(glyph);
     return *this;
   }
-  Border& cornerBottomLeft(const uint32_t glyph)
+  Border &cornerBottomLeft(const uint32_t glyph)
   {
     cornerBottomLeft_.glyph(glyph);
     return *this;
   }
-  Border& cornerBottomRight(const uint32_t glyph)
+  Border &cornerBottomRight(const uint32_t glyph)
   {
     cornerBottomRight_.glyph(glyph);
     return *this;
   }
-  Border& intersection(const uint32_t glyph)
+  Border &intersection(const uint32_t glyph)
   {
     intersection_.glyph(glyph);
     return *this;
   }
-  Border& connectorLeft(const uint32_t glyph)
+  Border &connectorLeft(const uint32_t glyph)
   {
     connectorLeft_.glyph(glyph);
     return *this;
   }
-  Border& connectorRight(const uint32_t glyph)
+  Border &connectorRight(const uint32_t glyph)
   {
     connectorRight_.glyph(glyph);
     return *this;
   }
-  Border& connectorTop(const uint32_t glyph)
+  Border &connectorTop(const uint32_t glyph)
   {
     connectorTop_.glyph(glyph);
     return *this;
   }
-  Border& connectorBottom(const uint32_t glyph)
+  Border &connectorBottom(const uint32_t glyph)
   {
     connectorBottom_.glyph(glyph);
     return *this;
   }
 
-  static Border Default()
-  {
-    // already default constructed
-    return {};
-  }
-  static Border Filled(const uint32_t c)
+  static Border filled(const uint32_t c)
   {
     Border border;
     border.horizontal_ = c;
@@ -1433,15 +1437,9 @@ public:
 
     return border;
   }
-  static Border None()
-  {
-    return Filled(U'\0');
-  }
-  static Border Blank()
-  {
-    return Filled(U' ');
-  }
-  static Border Modern()
+  static Border none() { return filled(U'\0'); }
+  static Border blank() { return filled(U' '); }
+  static Border modern()
   {
     Border border;
     border.horizontal_ = U'─';
@@ -1461,7 +1459,7 @@ public:
 
     return border;
   }
-  static Border Double()
+  static Border doubled()
   {
     Border border;
     border.horizontal_ = U'═';
@@ -1481,7 +1479,7 @@ public:
 
     return border;
   }
-  static Border Rounded()
+  static Border rounded()
   {
     Border border;
     border.horizontal_ = U'─';
@@ -1501,7 +1499,7 @@ public:
 
     return border;
   }
-  static Border Heavy()
+  static Border heavy()
   {
     Border border;
     border.horizontal_ = U'━';
@@ -1525,99 +1523,86 @@ public:
   void reset()
   {
     horizontal_ = U'-'; // ─
-    vertical_ = U'|'; // │
+    vertical_ = U'|';   // │
 
-    cornerTopLeft_ = U'+'; // ┌
-    cornerTopRight_ = U'+'; // ┐
-    cornerBottomLeft_ = U'+'; // └
+    cornerTopLeft_ = U'+';     // ┌
+    cornerTopRight_ = U'+';    // ┐
+    cornerBottomLeft_ = U'+';  // └
     cornerBottomRight_ = U'+'; // ┘
 
     intersection_ = U'+'; // ┼
 
-    connectorLeft_ = U'+'; // ├
-    connectorRight_ = U'+'; // ┤
-    connectorTop_ = U'-'; // ┬
+    connectorLeft_ = U'+';   // ├
+    connectorRight_ = U'+';  // ┤
+    connectorTop_ = U'-';    // ┬
     connectorBottom_ = U'-'; // ┴
   }
 
 private:
   Part horizontal_ = U'-'; // ─
-  Part vertical_ = U'|'; // │
+  Part vertical_ = U'|';   // │
 
-  Part cornerTopLeft_ = U'+'; // ┌
-  Part cornerTopRight_ = U'+'; // ┐
-  Part cornerBottomLeft_ = U'+'; // └
+  Part cornerTopLeft_ = U'+';     // ┌
+  Part cornerTopRight_ = U'+';    // ┐
+  Part cornerBottomLeft_ = U'+';  // └
   Part cornerBottomRight_ = U'+'; // ┘
 
   Part intersection_ = U'+'; // ┼
 
-  Part connectorLeft_ = U'+'; // ├
-  Part connectorRight_ = U'+'; // ┤
-  Part connectorTop_ = U'-'; // ┬
+  Part connectorLeft_ = U'+';   // ├
+  Part connectorRight_ = U'+';  // ┤
+  Part connectorTop_ = U'-';    // ┬
   Part connectorBottom_ = U'-'; // ┴
 };
 
-class Row {
+class Row
+{
 public:
-  class Config {
+  class Config
+  {
   public:
-    explicit Config(bool& dirty_)
-      : dirty_(dirty_)
-    {
-    }
+    explicit Config() = default;
 
-    void hasBottom(bool has)
+    void hasBottom(bool hasBottom)
     {
-      dirty_ = true;
-      hasBottom_ = has;
+      setModified(true);
+      hasBottom_ = hasBottom;
     }
     void vertical(Border::Part part)
     {
-      dirty_ = true;
+      setModified(true);
       vertical_ = std::move(part);
     }
 
     bool hasBottom() const { return hasBottom_; }
-    const Border::Part& vertical() const { return vertical_; }
+    const Border::Part &vertical() const { return vertical_; }
 
     void reset()
     {
       vertical_ = 0;
-      dirty_ = true;
+      hasBottom_ = true;
+      setModified(true);
     }
 
   private:
-    friend class Row;
-
-    bool& dirty_;
     bool hasBottom_ = true;
     Border::Part vertical_ = 0;
+
+    // for caching
+    friend class Row;
+    mutable bool modified = false;
+    bool isModified() const { return this->modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
 
 public:
   Row() = default;
-
-  // copy contructor
-  // NOTE: it's mandatory to initialize config_ with dirty_ to avoid a heap-use-after-free error
-  // from the address sanitizer, then copy the members of the other.config_ into our new one
-  // See column.h:200 note
-  Row(const Row& other)
-    : columns_(other.columns_), dirty_(other.dirty_), str_(other.str_), 
-    config_(dirty_) // CRUCIAL
-  {
-    config_.hasBottom_ = other.config_.hasBottom_;
-    config_.vertical_ = other.config_.vertical_;
-  }
-
-  explicit Row(std::vector<Column> columns)
-    : columns_(std::move(columns))
-  {
-  }
+  explicit Row(std::vector<Column> columns) : columns_(std::move(columns)) {}
   explicit Row(std::vector<std::string> columns)
   {
     columns_.reserve(columns.size());
 
-    for (auto& column : columns)
+    for (auto &column : columns)
     {
       columns_.emplace_back(std::move(column));
     }
@@ -1625,90 +1610,104 @@ public:
 
   void columns(std::vector<Column> columns)
   {
-    dirty_ = true;
+    setModified(true);
     columns_ = std::move(columns);
   }
 
-  Config& config() { return config_; }
-  const Config& config() const { return config_; }
+  /*
+   * Note: when we return a column by reference, it may get modified,
+   * but we already check for modification in str() so we don't need to set
+   * modified to true
+   */
 
-  std::vector<Column>& columns()
-  {
-    dirty_ = true;
-    return columns_;
-  }
-  const std::vector<Column>& columns() const { return columns_; }
+  Config &config() { return config_; }
+  const Config &config() const { return config_; }
 
-  Column& column(int index)
-  {
-    dirty_ = true;
-    return columns_.at(index);
-  }
-  const Column& column(int index) const
-  {
-    return columns_.at(index);
-  }
+  std::vector<Column> &columns() { return columns_; }
+  const std::vector<Column> &columns() const { return columns_; }
 
-  Column& operator[](int index)
-  {
-    dirty_ = true;
-    return columns_.at(index);
-  }
-  const Column& operator[](int index) const
-  {
-    return columns_.at(index);
-  }
+  Column &column(int index) { return columns_.at(index); }
+  const Column &column(int index) const { return columns_.at(index); }
+
+  Column &operator[](int index) { return columns_.at(index); }
+  const Column &operator[](int index) const { return columns_.at(index); }
 
   void clr()
   {
     columns_.clear();
     str_.clear();
     config_.reset();
-    dirty_ = false;
+    setModified(false);
   }
 
-  const std::string& str() const
+  const std::string &str() const
   {
-    if (dirty_)
+    if (isModified())
     {
+      // note that when genStr() calls column.lines() which sets
+      // modified to false for each column so we don't need to
       str_ = genStr();
-      dirty_ = false;
+      this->modified = false;
+      config_.setModified(false);
     }
 
     return str_;
   }
 
+  // check if the row or any of its columns or its config is modified
+  bool isModified() const
+  {
+    if (this->modified || config_.isModified()) return true;
+    for (const auto &column : columns_)
+    {
+      if (column.isModified()) return true;
+    }
+
+    return false;
+  }
+  // mark the row as modified
+  void setModified(bool modified) { this->modified = modified; }
+
 private:
   // cache
-  mutable bool dirty_ = false;
+  mutable bool modified = false;
   mutable std::string str_;
 
   std::vector<Column> columns_;
-  Config config_{dirty_};
+  Config config_;
 
   std::string genStr() const
   {
     if (columns_.empty()) return "";
-    const size_t maxLines = getMaxLines();
 
     std::string rowStr;
-    // average
+    const size_t maxLines = getMaxLines();
+    const auto &vertical = config().vertical().str();
+
+    // estimation
     rowStr.reserve(DEFAULT_WIDTH * maxLines + (columns_.size() + 1));
 
-    const auto& vertical = config().vertical().str();
     for (size_t i = 0; i < maxLines; ++i)
     {
+      // the start of a new line
       if (!rowStr.empty()) rowStr.push_back('\n');
       rowStr.append(vertical);
 
-      for (const auto& column : columns_)
+      for (const auto &column : columns_)
       {
-        const auto& lines = column.lines();
+        // the cache system works here
+        const auto &lines = column.lines();
 
+        // if the column has a line at index i, append it, otherwise append
+        // an empty line generated with respect to the column's configurations
         if (lines.size() > i)
+        {
           rowStr.append(lines[i]);
+        }
         else
+        {
           rowStr.append(column.genEmptyLine());
+        }
 
         rowStr.append(vertical);
       }
@@ -1720,24 +1719,26 @@ private:
   {
     size_t maxLines = 0;
 
-    for (const auto& column : columns_)
+    for (const auto &column : columns_)
+    {
       maxLines = (std::max)(maxLines, column.lines().size());
+    }
 
     return maxLines;
   }
 };
 
-class Table {
+class Table
+{
 public:
-  class Config {
+  class Config
+  {
   public:
-    explicit Config(bool& dirty_) : dirty_(dirty_)
-    {
-    }
+    explicit Config() = default;
 
     void width(const size_t width)
     {
-      dirty_ = true;
+      setModified(true);
       width_ = width;
     }
 
@@ -1746,79 +1747,69 @@ public:
     void reset()
     {
       width_ = DEFAULT_WIDTH;
-      dirty_ = true;
+      setModified(true);
     }
 
   private:
-    bool& dirty_;
     size_t width_ = DEFAULT_WIDTH;
+
+    // for caching
+    friend class Table;
+    mutable bool modified = false;
+    bool isModified() const { return modified; }
+    void setModified(bool modified) const { this->modified = modified; }
   };
 
 public:
   Table() = default;
 
   explicit Table(std::vector<Row> rows, Border border = {})
-    : rows_(std::move(rows)), border_(std::move(border)), dirty_(true)
+      : rows_(std::move(rows)), border_(std::move(border))
   {
   }
 
   void rows(std::vector<Row> rows)
   {
     rows_ = std::move(rows);
-    dirty_ = true;
+    setModified(true);
   }
   void border(Border border)
   {
     border_ = std::move(border);
-    dirty_ = true;
+    setModified(true);
   }
 
-  Table& addRow(Row row)
+  Table &addRow(Row row)
   {
     rows_.emplace_back(std::move(row));
-    dirty_ = true;
+    setModified(true);
     return *this;
   }
-  Table& addRow(std::vector<std::string> row)
+  Table &addRow(std::vector<std::string> row)
   {
     rows_.emplace_back(std::move(row));
-    dirty_ = true;
+    setModified(true);
     return *this;
   }
 
-  Config& config() { return config_; }
-  const Config& config() const { return config_; }
+  Config &config() { return config_; }
+  const Config &config() const { return config_; }
 
-  Border& border()
+  Border &border()
   {
-    dirty_ = true;
+    setModified(true);
     return border_;
   }
-  const Border& border() const { return border_; }
+  const Border &border() const { return border_; }
 
-  std::vector<Row>& rows()
-  {
-    dirty_ = true;
-    return rows_;
-  }
-  const std::vector<Row>& rows() const { return rows_; }
+  std::vector<Row> &rows() { return rows_; }
+  const std::vector<Row> &rows() const { return rows_; }
 
-  Row& row(int index)
-  {
-    dirty_ = true;
-    return rows_.at(index);
-  }
-  const Row& row(int index) const { return rows_.at(index); }
+  Row &row(int index) { return rows_.at(index); }
+  const Row &row(int index) const { return rows_.at(index); }
 
-  Row& operator[](int index)
-  {
-    dirty_ = true;
-    return rows_.at(index);
-  }
-  const Row& operator[](int index) const
-  {
-    return rows_.at(index);
-  }
+  Row &operator[](int index) { return rows_.at(index); }
+  const Row &operator[](int index) const { return rows_.at(index); }
 
   void clr()
   {
@@ -1826,34 +1817,48 @@ public:
     config_.reset();
     border_.reset();
     str_.clear();
-    dirty_ = false;
+    setModified(false);
   }
 
-  const std::string& str() const
+  const std::string &str() const
   {
-    if (dirty_)
+    if (isModified())
     {
       str_ = genStr();
-    dirty_ = false;
+      this->modified = false;
     }
 
     return str_;
   }
 
+  bool isModified() const
+  {
+    if (this->modified || config_.isModified()) return true;
+    for (const auto &row : rows_)
+    {
+      if (row.isModified()) return true;
+    }
+
+    return false;
+  }
+  void setModified(bool modified) { this->modified = modified; }
+
 private:
   // cache
-  mutable bool dirty_ = false;
+  mutable bool modified = false;
   mutable std::string str_;
 
   std::vector<Row> rows_;
-  Config config_{dirty_};
+  Config config_;
   Border border_;
 
   std::string genStr() const
   {
-    // avoid reference
+    if (rows_.empty()) return "";
+
+    // we need to copy the rows to adjust their widths and configs without
+    // modifying the original rows
     auto rows = rows_;
-    if (rows.empty()) return "";
 
     std::string tableStr;
     tableStr.reserve(rows.size() * config_.width());
@@ -1862,28 +1867,29 @@ private:
     configureRows(rows);
 
     tableStr += getBorderHeader(rows) + '\n';
-
     const size_t rowsSize = rows_.size();
+
     for (size_t i = 0; i < rowsSize; ++i)
     {
-      auto& row = rows[i];
-
+      auto &row = rows[i];
       tableStr += row.str() + '\n';
 
       if (i + 1 < rowsSize && row.config().hasBottom())
+      {
         tableStr += getBorderMiddle(rows, i) + '\n';
+      }
     }
 
     tableStr += getBorderFooter(rows);
     return tableStr;
   }
-  static size_t calculateWidth(const Row& row, size_t& unspecified)
+  static size_t calculateWidth(const Row &row, size_t &unspecified)
   {
-    const auto& columns = row.columns();
+    const auto &columns = row.columns();
     if (columns.empty()) return 0;
-    size_t width = 0;
 
-    for (const auto& column : columns)
+    size_t width = 0;
+    for (const auto &column : columns)
     {
       size_t w = column.config().width();
 
@@ -1894,26 +1900,29 @@ private:
     return width;
   }
 
-  static void setWidth(Row& row, size_t width)
+  static void setWidth(Row &row, size_t width)
   {
-    auto& columns = row.columns();
+    auto &columns = row.columns();
 
     size_t indivWidth = width / columns.size();
     size_t rest = width % columns.size();
 
-    for (auto& column : columns)
+    for (auto &column : columns)
     {
       column.config().width(indivWidth + (rest > 0));
       rest -= (rest > 0);
     }
 
     // if there's still a rest
-    if (rest > 0) columns.back().config().width(indivWidth + rest);
+    if (rest > 0)
+    {
+      columns.back().config().width(indivWidth + rest);
+    }
   }
 
-  static void setUnspecifiedWidth(Row& row, size_t unspecified, size_t width)
+  static void setUnspecifiedWidth(Row &row, size_t unspecified, size_t width)
   {
-    std::vector<Column>& columns = row.columns();
+    std::vector<Column> &columns = row.columns();
 
     size_t indivWidth = width / unspecified;
     size_t rest = width % unspecified;
@@ -1921,7 +1930,7 @@ private:
     size_t lastUnsp = 0;
     for (size_t i = 0; i < columns.size(); ++i)
     {
-      auto& column = columns[i];
+      auto &column = columns[i];
       if (column.config().width() != 0) continue;
 
       column.config().width(indivWidth + (rest > 0));
@@ -1930,27 +1939,28 @@ private:
     }
 
     // if there's still a rest
-    if (rest > 0) columns[lastUnsp].config().width(indivWidth + rest);
+    if (rest > 0)
+    {
+      columns[lastUnsp].config().width(indivWidth + rest);
+    }
   }
 
-  void adjustWidth(std::vector<Row>& rows) const
+  void adjustWidth(std::vector<Row> &rows) const
   {
-    if (rows.empty()) return;
-
     size_t width = config_.width();
     for (size_t i = 0; i < rows.size(); ++i)
     {
-      Row& row = rows[i];
+      Row &row = rows[i];
 
       // check the minimum width first
       {
         size_t minWidth = (row.columns().size() * (MIN_COLUMN_WIDTH + 1)) + 1;
         if (minWidth > width)
         {
-          throw std::runtime_error(
-            "layout error: row " + std::to_string(i) +
-            " must a minimum width of " + std::to_string(minWidth) +
-            ", but found " + std::to_string(width));
+          throw std::runtime_error("layout error: row " + std::to_string(i) +
+                                   " must a minimum width of " +
+                                   std::to_string(minWidth) + ", but found " +
+                                   std::to_string(width));
         }
       }
 
@@ -1960,37 +1970,35 @@ private:
       const size_t rowWidth = calculateWidth(row, unspecified);
 
       // everything is fine skip
-      if (rowWidth == estimatedWidth && unspecified == 0)
-        continue;
+      if (rowWidth == estimatedWidth && unspecified == 0) continue;
 
       // set just the unspecified columns widths
       if (rowWidth < estimatedWidth && unspecified != 0)
+      {
         setUnspecifiedWidth(row, unspecified, estimatedWidth - rowWidth);
+      }
 
       // set/restore the width of all the columns
-      else
-        setWidth(row, estimatedWidth);
+      else setWidth(row, estimatedWidth);
     }
   }
-  void configureRows(std::vector<Row>& rows) const
+  void configureRows(std::vector<Row> &rows) const
   {
-    auto& verticalBorder = border_.vertical();
-    for (auto& row : rows)
+    auto &verticalBorder = border_.vertical();
+    for (auto &row : rows)
     {
-      auto& config = row.config();
-
-      if (config.vertical().glyph() == '\0')
-        config.vertical(verticalBorder);
+      auto &config = row.config();
+      if (config.vertical().glyph() == '\0') config.vertical(verticalBorder);
     }
   }
 
-  static std::vector<size_t> connections(const Row& row)
+  static std::vector<size_t> connections(const Row &row)
   {
     std::vector<size_t> connections;
     connections.reserve(row.columns().size());
 
     size_t track = 1;
-    for (const Column& column : row.columns())
+    for (const Column &column : row.columns())
     {
       track += column.config().width();
       connections.push_back(track++);
@@ -1998,78 +2006,79 @@ private:
 
     return connections;
   }
-  std::string getBorderHeader(std::vector<Row>& rows) const
+  std::string getBorderHeader(std::vector<Row> &rows) const
   {
-    const auto& columns = rows[0].columns();
+    const auto &columns = rows[0].columns();
 
     std::string header = border_.cornerTopLeft().str();
     header.reserve(config_.width());
 
-    const std::string& horizontal = border_.horizontal().str();
+    const std::string &horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
-
-      for (size_t j = 0; j < width; ++j)
-        header += horizontal;
-
+      for (size_t j = 0; j < width; ++j) header += horizontal;
       if (i + 1 < columns.size()) header += border_.connectorTop().str();
     }
 
     header += border_.cornerTopRight().str();
     return header;
   }
-  std::string getBorderFooter(std::vector<Row>& rows) const
+  std::string getBorderFooter(std::vector<Row> &rows) const
   {
-    const auto& columns = rows.back().columns();
+    const auto &columns = rows.back().columns();
 
     std::string footer = border_.cornerBottomLeft().str();
     footer.reserve(config_.width());
 
-    const std::string& horizontal = border_.horizontal().str();
+    const std::string &horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
-
-      for (size_t j = 0; j < width; ++j)
-        footer += horizontal;
-
+      for (size_t j = 0; j < width; ++j) footer += horizontal;
       if (i + 1 < columns.size()) footer += border_.connectorBottom().str();
     }
 
     footer += border_.cornerBottomRight().str();
     return footer;
   }
-  std::string getBorderMiddle(std::vector<Row>& rows, size_t index) const
+  std::string getBorderMiddle(std::vector<Row> &rows, size_t index) const
   {
     const auto nextRowConnections = connections(rows[index + 1]);
 
     std::string middle = border_.connectorLeft().str();
     middle.reserve(config_.width());
 
-    const auto& columns = rows[index].columns();
+    const auto &columns = rows[index].columns();
+    const std::string &horizontal = border_.horizontal().str();
 
     size_t tracker = 0;
-    const std::string& horizontal = border_.horizontal().str();
     for (size_t i = 0; i < columns.size(); ++i)
     {
       size_t width = columns[i].config().width();
-
       for (size_t j = 0; j < width; ++j)
       {
         if (detail::bisearch(nextRowConnections, ++tracker))
+        {
           middle += border_.connectorTop().str();
+        }
         else
+        {
           middle += horizontal;
+        }
       }
-      tracker++;
 
+      tracker++;
       if (i + 1 >= columns.size()) continue;
 
       if (detail::bisearch(nextRowConnections, tracker))
+      {
         middle += border_.intersection().str();
+      }
       else
+      {
         middle += border_.connectorBottom().str();
+      }
     }
 
     middle += border_.connectorRight().str();
@@ -2082,10 +2091,9 @@ private:
 #include <io.h>
 #endif
 
-inline void render(const std::string& str, FILE* out)
+inline void render(const std::string &str, FILE *out)
 {
-  if (str.empty())
-    return;
+  if (str.empty()) return;
 
 #if defined(_WIN32) || defined(_WIN64)
   HANDLE handle;
@@ -2097,8 +2105,7 @@ inline void render(const std::string& str, FILE* out)
   else
     handle = reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(out)));
 
-  if (handle == INVALID_HANDLE_VALUE)
-    return;
+  if (handle == INVALID_HANDLE_VALUE) return;
 
   DWORD mode;
   DWORD written;
@@ -2119,7 +2126,7 @@ inline void render(const std::string& str, FILE* out)
     return;
   }
 
-  wchar_t* buffer = new wchar_t[wlen];
+  wchar_t *buffer = new wchar_t[wlen];
   int result = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer, wlen);
 
   if (result <= 0)
@@ -2129,13 +2136,14 @@ inline void render(const std::string& str, FILE* out)
     return;
   }
 
-  WriteConsoleW(handle, buffer, static_cast<DWORD>(wlen - 1), &written, nullptr);
+  WriteConsoleW(handle, buffer, static_cast<DWORD>(wlen - 1), &written,
+                nullptr);
   delete[] buffer;
 #else
   fwrite(str.c_str(), 1, str.length(), out);
 #endif
 }
-}
+} // namespace tabular
 
 /*
   ------------------------------------------------------------------------------

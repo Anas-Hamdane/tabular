@@ -1,77 +1,68 @@
 #pragma once
-#include <string>
 #include "color.h"
 #include "global.h"
+#include <string>
 
-namespace tabular {
-class Border {
+namespace tabular
+{
+class Border
+{
 public:
-  class Part {
+  class Part
+  {
   public:
-    Part(const uint32_t glyph)
-      : glyph_(glyph), dirty_(true)
-    {
-    }
+    Part(const uint32_t glyph) : glyph_(glyph), dirty_(true) {}
 
-    Part& glyph(const uint32_t glyph)
+    Part &glyph(const uint32_t glyph)
     {
       glyph_ = glyph;
       dirty_ = true;
       return *this;
     }
 
-    Part& fg(const Color color)
+    Part &fg(const Color color)
     {
       fg_ = static_cast<uint32_t>(color);
       dirty_ = true;
       return *this;
     }
-    Part& fg(const Rgb rgb)
+    Part &fg(const Rgb rgb)
     {
       fg_ = rgb.toHex() | (1u << 24);
       dirty_ = true;
       return *this;
     }
 
-    Part& bg(const Color color)
+    Part &bg(const Color color)
     {
       bg_ = static_cast<uint32_t>(color);
       dirty_ = true;
       return *this;
     }
-    Part& bg(const Rgb rgb)
+    Part &bg(const Rgb rgb)
     {
       bg_ = rgb.toHex() | (1u << 24);
       dirty_ = true;
       return *this;
     }
 
-    uint32_t fg() const
-    {
-      return fg_;
-    }
-    uint32_t bg() const
-    {
-      return bg_;
-    }
-    uint32_t glyph() const
-    {
-      return glyph_;
-    }
+    uint32_t fg() const { return fg_; }
+    uint32_t bg() const { return bg_; }
+    uint32_t glyph() const { return glyph_; }
 
-    Part& clrFg()
+    Part &clrFg()
     {
       fg_ = 0;
       dirty_ = true;
       return *this;
     }
-    Part& clrBg()
+    Part &clrBg()
     {
       bg_ = 0;
       dirty_ = true;
       return *this;
     }
-    Part& clr()
+    Part &clr()
     {
       fg_ = 0;
       bg_ = 0;
@@ -79,8 +70,8 @@ public:
       return *this;
     }
 
-    explicit operator const std::string&() const { return str(); }
-    const std::string& str() const
+    explicit operator const std::string &() const { return str(); }
+    const std::string &str() const
     {
       if (dirty_)
       {
@@ -93,8 +84,8 @@ public:
 
   private:
     uint32_t glyph_ = 0; // Unicode code point
-    uint32_t fg_ = 0; // fg color
-    uint32_t bg_ = 0; // bg color
+    uint32_t fg_ = 0;    // fg color
+    uint32_t bg_ = 0;    // bg color
 
     // cache
     mutable bool dirty_ = false;
@@ -148,8 +139,7 @@ public:
       const std::string glyph = glyphToStr();
       buffer.append(glyph);
 
-      if (buffer.length() - glyph.length() > 0)
-        buffer.append(RESET_ESC);
+      if (buffer.length() - glyph.length() > 0) buffer.append(RESET_ESC);
 
       return buffer;
     }
@@ -187,81 +177,81 @@ public:
     }
   };
 
-  Part& horizontal() { return horizontal_; }
-  Part& vertical() { return vertical_; }
-  Part& cornerTopLeft() { return cornerTopLeft_; }
-  Part& cornerTopRight() { return cornerTopRight_; }
-  Part& cornerBottomLeft() { return cornerBottomLeft_; }
-  Part& cornerBottomRight() { return cornerBottomRight_; }
-  Part& intersection() { return intersection_; }
-  Part& connectorLeft() { return connectorLeft_; }
-  Part& connectorRight() { return connectorRight_; }
-  Part& connectorTop() { return connectorTop_; }
-  Part& connectorBottom() { return connectorBottom_; }
+  Part &horizontal() { return horizontal_; }
+  Part &vertical() { return vertical_; }
+  Part &cornerTopLeft() { return cornerTopLeft_; }
+  Part &cornerTopRight() { return cornerTopRight_; }
+  Part &cornerBottomLeft() { return cornerBottomLeft_; }
+  Part &cornerBottomRight() { return cornerBottomRight_; }
+  Part &intersection() { return intersection_; }
+  Part &connectorLeft() { return connectorLeft_; }
+  Part &connectorRight() { return connectorRight_; }
+  Part &connectorTop() { return connectorTop_; }
+  Part &connectorBottom() { return connectorBottom_; }
 
-  const Part& horizontal() const { return horizontal_; }
-  const Part& vertical() const { return vertical_; }
-  const Part& cornerTopLeft() const { return cornerTopLeft_; }
-  const Part& cornerTopRight() const { return cornerTopRight_; }
-  const Part& cornerBottomLeft() const { return cornerBottomLeft_; }
-  const Part& cornerBottomRight() const { return cornerBottomRight_; }
-  const Part& intersection() const { return intersection_; }
-  const Part& connectorLeft() const { return connectorLeft_; }
-  const Part& connectorRight() const { return connectorRight_; }
-  const Part& connectorTop() const { return connectorTop_; }
-  const Part& connectorBottom() const { return connectorBottom_; }
+  const Part &horizontal() const { return horizontal_; }
+  const Part &vertical() const { return vertical_; }
+  const Part &cornerTopLeft() const { return cornerTopLeft_; }
+  const Part &cornerTopRight() const { return cornerTopRight_; }
+  const Part &cornerBottomLeft() const { return cornerBottomLeft_; }
+  const Part &cornerBottomRight() const { return cornerBottomRight_; }
+  const Part &intersection() const { return intersection_; }
+  const Part &connectorLeft() const { return connectorLeft_; }
+  const Part &connectorRight() const { return connectorRight_; }
+  const Part &connectorTop() const { return connectorTop_; }
+  const Part &connectorBottom() const { return connectorBottom_; }
 
-  Border& horizontal(const uint32_t glyph)
+  Border &horizontal(const uint32_t glyph)
   {
     horizontal_.glyph(glyph);
     return *this;
   }
-  Border& vertical(const uint32_t glyph)
+  Border &vertical(const uint32_t glyph)
   {
     vertical_.glyph(glyph);
     return *this;
   }
-  Border& cornerTopLeft(const uint32_t glyph)
+  Border &cornerTopLeft(const uint32_t glyph)
   {
     cornerTopLeft_.glyph(glyph);
     return *this;
   }
-  Border& cornerTopRight(const uint32_t glyph)
+  Border &cornerTopRight(const uint32_t glyph)
   {
     cornerTopRight_.glyph(glyph);
     return *this;
   }
-  Border& cornerBottomLeft(const uint32_t glyph)
+  Border &cornerBottomLeft(const uint32_t glyph)
   {
     cornerBottomLeft_.glyph(glyph);
     return *this;
   }
-  Border& cornerBottomRight(const uint32_t glyph)
+  Border &cornerBottomRight(const uint32_t glyph)
   {
     cornerBottomRight_.glyph(glyph);
     return *this;
   }
-  Border& intersection(const uint32_t glyph)
+  Border &intersection(const uint32_t glyph)
   {
     intersection_.glyph(glyph);
     return *this;
   }
-  Border& connectorLeft(const uint32_t glyph)
+  Border &connectorLeft(const uint32_t glyph)
   {
     connectorLeft_.glyph(glyph);
     return *this;
   }
-  Border& connectorRight(const uint32_t glyph)
+  Border &connectorRight(const uint32_t glyph)
   {
     connectorRight_.glyph(glyph);
     return *this;
   }
-  Border& connectorTop(const uint32_t glyph)
+  Border &connectorTop(const uint32_t glyph)
   {
     connectorTop_.glyph(glyph);
     return *this;
   }
-  Border& connectorBottom(const uint32_t glyph)
+  Border &connectorBottom(const uint32_t glyph)
   {
     connectorBottom_.glyph(glyph);
     return *this;
@@ -287,14 +277,8 @@ public:
 
     return border;
   }
-  static Border none()
-  {
-    return filled(U'\0');
-  }
-  static Border blank()
-  {
-    return filled(U' ');
-  }
+  static Border none() { return filled(U'\0'); }
+  static Border blank() { return filled(U' '); }
   static Border modern()
   {
     Border border;
@@ -379,35 +363,35 @@ public:
   void reset()
   {
     horizontal_ = U'-'; // ─
-    vertical_ = U'|'; // │
+    vertical_ = U'|';   // │
 
-    cornerTopLeft_ = U'+'; // ┌
-    cornerTopRight_ = U'+'; // ┐
-    cornerBottomLeft_ = U'+'; // └
+    cornerTopLeft_ = U'+';     // ┌
+    cornerTopRight_ = U'+';    // ┐
+    cornerBottomLeft_ = U'+';  // └
     cornerBottomRight_ = U'+'; // ┘
 
     intersection_ = U'+'; // ┼
 
-    connectorLeft_ = U'+'; // ├
-    connectorRight_ = U'+'; // ┤
-    connectorTop_ = U'-'; // ┬
+    connectorLeft_ = U'+';   // ├
+    connectorRight_ = U'+';  // ┤
+    connectorTop_ = U'-';    // ┬
     connectorBottom_ = U'-'; // ┴
   }
 
 private:
   Part horizontal_ = U'-'; // ─
-  Part vertical_ = U'|'; // │
+  Part vertical_ = U'|';   // │
 
-  Part cornerTopLeft_ = U'+'; // ┌
-  Part cornerTopRight_ = U'+'; // ┐
-  Part cornerBottomLeft_ = U'+'; // └
+  Part cornerTopLeft_ = U'+';     // ┌
+  Part cornerTopRight_ = U'+';    // ┐
+  Part cornerBottomLeft_ = U'+';  // └
   Part cornerBottomRight_ = U'+'; // ┘
 
   Part intersection_ = U'+'; // ┼
 
-  Part connectorLeft_ = U'+'; // ├
-  Part connectorRight_ = U'+'; // ┤
-  Part connectorTop_ = U'-'; // ┬
+  Part connectorLeft_ = U'+';   // ├
+  Part connectorRight_ = U'+';  // ┤
+  Part connectorTop_ = U'-';    // ┬
   Part connectorBottom_ = U'-'; // ┴
 };
-}
+} // namespace tabular

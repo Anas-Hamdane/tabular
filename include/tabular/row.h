@@ -64,7 +64,7 @@ public:
   }
 
   /*
-   * Note: when we return a column by reference, it may get modified
+   * Note: when we return a column by reference, it may get modified,
    * but we already check for modification in str() so we don't need to set
    * modified to true
    */

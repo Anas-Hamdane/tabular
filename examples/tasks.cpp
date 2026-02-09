@@ -35,19 +35,19 @@ using namespace tabular;
 void adjustWidth(Table &table)
 {
   // the first column
-  for (size_t i = 0; i < 6; ++i) table[i][0].config().width(5);
+  for (int i = 0; i < 6; ++i) table[i][0].config().width(5);
 
   // the second column
-  for (size_t i = 0; i < 6; ++i) table[i][1].config().width(20);
+  for (int i = 0; i < 6; ++i) table[i][1].config().width(20);
 
   // the third column
-  for (size_t i = 0; i < 6; ++i) table[i][2].config().width(16);
+  for (int i = 0; i < 6; ++i) table[i][2].config().width(16);
 
   // the fourth column
-  for (size_t i = 0; i < 6; ++i) table[i][3].config().width(10);
+  for (int i = 0; i < 6; ++i) table[i][3].config().width(10);
 
   // the fifth column
-  for (size_t i = 0; i < 6; ++i) table[i][4].config().width(13);
+  for (int i = 0; i < 6; ++i) table[i][4].config().width(13);
 
   // the total width set: 5 + 20 + 16 + 10 + 13 = 64
   // `width - (columns.size() + 1)`: 70 - (5 + 1) = 64
@@ -57,7 +57,7 @@ void adjustWidth(Table &table)
 void styleTable(Table &table)
 {
   // underline the numbers
-  for (size_t i = 1; i < 6; ++i) table[i][0].style().attrs(Attr::Underline);
+  for (int i = 1; i < 6; ++i) table[i][0].style().attrs(Attr::Underline);
 
   // priority colors
   Rgb high = {255, 0, 0};
@@ -72,7 +72,7 @@ void styleTable(Table &table)
   table[5][1].style().base(medium);
 
   // dim the task description
-  for (size_t i = 1; i < 6; ++i) table[i][2].style().attrs(Attr::Dim);
+  for (int i = 1; i < 6; ++i) table[i][2].style().attrs(Attr::Dim);
 
   // the color of the priorities
   table[1][3].style().fg(high);
