@@ -1,70 +1,73 @@
 #pragma once
-
 #include "color.h"
 #include "global.h"
 #include "string_utils.h"
-
 #include <vector>
 
-namespace tabular {
-namespace detail {
-struct Str {
+namespace tabular
+{
+namespace detail
+{
+struct Str
+{
   std::string str;
   size_t dw;
 };
 } // namespace detail
-// clang-format off
-class Column {
+
+class Column
+{
 public:
-  class Style {
+  class Style
+  {
   public:
     explicit Style() = default;
 
-    Style& fg(Color color)
+    Style &fg(Color color)
     {
       fg_ = static_cast<uint32_t>(color);
       setModified(true);
       return *this;
     }
-    Style& bg(Color color)
+    Style &bg(Color color)
     {
       bg_ = static_cast<uint32_t>(color);
       setModified(true);
       return *this;
     }
-    Style& base(Color color)
+    Style &base(Color color)
     {
       base_ = static_cast<uint32_t>(color);
       setModified(true);
       return *this;
     }
 
-    Style& fg(const Rgb rgb)
+    Style &fg(const Rgb rgb)
     {
       fg_ = rgb.toHex() | (1u << 24);
       setModified(true);
       return *this;
     }
-    Style& bg(const Rgb rgb)
+    Style &bg(const Rgb rgb)
     {
       bg_ = rgb.toHex() | (1u << 24);
       setModified(true);
       return *this;
     }
-    Style& base(const Rgb rgb)
+    Style &base(const Rgb rgb)
     {
       base_ = rgb.toHex() | (1u << 24);
       setModified(true);
       return *this;
     }
 
-    Style& attrs(Attr attr)
+    Style &attrs(Attr attr)
     {
       attrs_ |= static_cast<uint16_t>(attr);
       setModified(true);
       return *this;
     }
-    Style& attrs(const Style& attr)
+    Style &attrs(const Style &attr)
     {
       attrs_ |= attr.attrs_;
       setModified(true);
@@ -125,7 +128,8 @@ public:
     bool isModified() const { return modified; }
     void setModified(bool modified) const { this->modified = modified; }
   };
-  class Config {
+  class Config
+  {
   public:
     explicit Config() = default;
 
@@ -135,31 +139,36 @@ public:
     std::string delimiter() const { return delimiter_; }
     bool skipEmptyLineIndent() const { return skipEmptyLineIndent_; }
 
-    Config& align(const Align alignment)
+    Config &align(const Align alignment)
     {
       align_ = alignment;
       setModified(true);
       return *this;
     }
-    Config& padd(const Padd padd)
+    Config &padd(const Padd padd)
     {
       padd_ = padd;
       setModified(true);
       return *this;
     }
-    Config& width(const size_t width)
+    Config &width(const size_t width)
     {
       width_ = width;
       setModified(true);
       return *this;
     }
-    Config& delimiter(std::string delimiter)
+
+    // use for wrapping, the default is "-"
+    Config &delimiter(std::string delimiter)
     {
       delimiter_ = std::move(delimiter);
       setModified(true);
       return *this;
     }
-    Config& skipEmptyLineIndent(const bool skip)
+
+    // skip empty lines at the beginning of the line
+    // turn this off when spaces at the start of a line are important
+    Config &skipEmptyLineIndent(const bool skip)
     {
       skipEmptyLineIndent_ = skip;
       setModified(true);
@@ -175,7 +184,6 @@ public:
       skipEmptyLineIndent_ = true;
       setModified(true);
     }
-
 
   private:
     Align align_ = Align::Left;
@@ -201,38 +209,32 @@ public:
     setModified(true);
   }
 
-  Config& config() { return config_; }
-  Style& style() { return style_; }
+  Config &config() { return config_; }
+  Style &style() { return style_; }
 
-  const Config& config() const { return config_; }
-  const Style& style() const { return style_; }
+  const Config &config() const { return config_; }
+  const Style &style() const { return style_; }
 
-  const std::string& content() const { return content_; }
-  std::string& content()
+  const std::string &content() const { return content_; }
+  std::string &content()
   {
     setModified(true);
     return content_;
   }
 
-  explicit operator const std::string&() const
-  {
-    return content_;
-  }
-  explicit operator std::string&()
+  explicit operator const std::string &() const { return content_; }
+  explicit operator std::string &()
   {
     setModified(true);
     return content_;
   }
 
-  char& operator[](int index)
+  char &operator[](int index)
   {
     setModified(true);
     return content_.at(index);
   }
-  const char& operator[](int index) const
-  {
-    return content_.at(index);
-  }
+  const char &operator[](int index) const { return content_.at(index); }
 
   void clr()
   {
@@ -243,7 +245,7 @@ public:
     setModified(false);
   }
 
-  const std::vector<std::string>& lines() const
+  const std::vector<std::string> &lines() const
   {
     if (this->isModified() || config_.isModified() || style_.isModified())
     {
@@ -272,10 +274,7 @@ public:
   {
     return this->modified || config_.isModified() || style_.isModified();
   }
-  void setModified(bool modified)
-  {
-    this->modified = modified;
-  }
+  void setModified(bool modified) { this->modified = modified; }
 
 private:
   // cache
@@ -319,7 +318,7 @@ private:
     // format the lines handling padding, alignment and the base styles
     return format(lines, padd);
   }
-  static void handleColor(std::string& styles, detail::ColorType colortype,
+  static void handleColor(std::string &styles, detail::ColorType colortype,
                           bool back)
   {
     if (colortype.isColor())
@@ -337,11 +336,10 @@ private:
       styles += std::to_string(rgb.b) + ';';
     }
   }
-  static void handleAttrs(std::string& styles, Attr attr)
+  static void handleAttrs(std::string &styles, Attr attr)
   {
-    auto hasAttr = [](Attr attr, Attr flag) -> bool {
-      return static_cast<uint16_t>(attr) & static_cast<uint16_t>(flag);
-    };
+    auto hasAttr = [](Attr attr, Attr flag) -> bool
+    { return static_cast<uint16_t>(attr) & static_cast<uint16_t>(flag); };
 
     if (hasAttr(attr, Attr::Bold)) styles += "1;";
     if (hasAttr(attr, Attr::Dim)) styles += "2;";
@@ -360,13 +358,10 @@ private:
     std::string styles = "\x1b[";
 
     if (style().hasAttrs()) handleAttrs(styles, style().attrs());
-
     if (style().hasFg()) handleColor(styles, style().fg(), false);
-
     if (style().hasBg()) handleColor(styles, style().bg(), true);
 
     if (styles == "\x1b[") return ""; // empty
-
     if (styles.back() == ';') styles.back() = 'm';
     return styles;
   }
@@ -376,21 +371,20 @@ private:
     handleColor(base, style().base(), true);
 
     if (base == "\x1b[") return ""; // empty
-
     if (base.back() == ';') base.back() = 'm';
     return base;
   }
 
-  std::vector<std::string> split(const std::string& str) const
+  static std::vector<std::string> split(const std::string &str)
   {
     using namespace string_utils;
 
     const size_t len = str.length();
-
     std::vector<std::string> words;
-    words.reserve((len / WORD_LENGTH_AVERAGE) + 1); // average
-
     std::string buffer;
+
+    // estimation
+    words.reserve((len / WORD_LENGTH_AVERAGE) + 1);
     buffer.reserve(WORD_LENGTH_AVERAGE);
 
     size_t i = 0;
@@ -402,7 +396,9 @@ private:
         buffer.clear();
 
         while (i < len && isAscii(str[i]) && !isAlpha(str[i]))
+        {
           buffer += str[i++];
+        }
 
         if (i < len) buffer += str[i++];
         words.emplace_back(std::move(buffer));
@@ -425,9 +421,9 @@ private:
     if (!buffer.empty()) words.emplace_back(std::move(buffer));
     return words;
   }
-  std::vector<detail::Str> wrap(const std::vector<std::string>& words,
+  std::vector<detail::Str> wrap(const std::vector<std::string> &words,
                                 const size_t width,
-                                const std::string& delimiter,
+                                const std::string &delimiter,
                                 const size_t delimiterDw) const
   {
     using namespace string_utils;
@@ -439,7 +435,8 @@ private:
     lines.reserve(content_.length() / width + 1);
 
     std::string buffer;
-    size_t bufferDw = 0; // the display width
+    // buffer display width
+    size_t bufferDw = 0;
 
     buffer.reserve(width);
     if (!styles.empty()) buffer += styles;
@@ -450,11 +447,16 @@ private:
     std::string activeEscs;
 
     // helper lambdas to avoid repeating code
-    auto appendResetIfNeeded = [&]() {
-      if (!(activeEscs.empty() && styles.empty()) && !endsWith(buffer, RESET_ESC))
+    auto appendResetIfNeeded = [&]()
+    {
+      if (!(activeEscs.empty() && styles.empty()) &&
+          !endsWith(buffer, RESET_ESC))
+      {
         buffer += RESET_ESC;
+      }
     };
-    auto startNewLine = [&]() {
+    auto startNewLine = [&]()
+    {
       appendResetIfNeeded();
       lines.push_back({buffer, bufferDw});
 
@@ -490,21 +492,19 @@ private:
       {
         if (word.back() != 'm') continue;
 
-        const auto* nextWord = i + 1 < words.size() ? &words[i + 1] : nullptr;
+        const auto *nextWord = i + 1 < words.size() ? &words[i + 1] : nullptr;
         if (word == "\x1b[0m")
         {
           activeEscs.clear();
           buffer += word;
 
           if (nextWord && dw(*nextWord) + bufferDw <= width) buffer += styles;
-
           continue;
         }
 
         activeEscs += word;
 
         if (nextWord && dw(*nextWord) + bufferDw <= width) buffer += word;
-
         continue;
       }
 
@@ -563,8 +563,10 @@ private:
           firstPart += utf8char;
           firstPartDw += utf8charDw;
 
+          // clang-format off
           if (utf8char.empty()) pos++;
           else pos += utf8char.length();
+          // clang-format on
         }
 
         // prepare the next word
@@ -595,7 +597,7 @@ private:
 
     return lines;
   }
-  std::vector<std::string> format(const std::vector<detail::Str>& lines,
+  std::vector<std::string> format(const std::vector<detail::Str> &lines,
                                   const Padd padd) const
   {
     using namespace string_utils;
@@ -615,7 +617,7 @@ private:
     std::string buffer;
     buffer.reserve(width);
 
-    for (const auto& line : lines)
+    for (const auto &line : lines)
     {
       // append the base styles
       if (styled) buffer += base;
@@ -628,25 +630,29 @@ private:
       switch (align)
       {
       case Align::Left:
+      {
         leftSpace = 0;
         rightSpace = freeSpace;
         break;
-      case Align::Center: {
+      }
+      case Align::Center:
+      {
         leftSpace = freeSpace / 2;
         rightSpace = freeSpace - leftSpace;
         break;
       }
       case Align::Right:
+      {
         leftSpace = freeSpace;
         rightSpace = 0;
         break;
+      }
       }
 
       buffer.append(leftSpace + padd.left, ' ');
       buffer += line.str;
 
       if (endsWith(line.str, RESET_ESC)) buffer += base;
-
       buffer.append(rightSpace + padd.right, ' ');
 
       // reset the base styles
@@ -660,17 +666,4 @@ private:
     return formatted;
   }
 };
-// clang-format on
-
-inline Attr operator|(Attr lhs, Attr rhs) noexcept
-{
-  return static_cast<Attr>(static_cast<uint16_t>(lhs) |
-                                static_cast<uint16_t>(rhs));
-}
-
-inline Attr& operator|=(Attr& lhs, const Attr rhs) noexcept
-{
-  lhs = lhs | rhs;
-  return lhs;
-}
 } // namespace tabular

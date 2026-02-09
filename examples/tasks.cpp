@@ -1,36 +1,38 @@
-#include "../include/tabular/table.h"
 #include "../include/tabular/render.h"
+#include "../include/tabular/table.h"
 
 /*
  * The width system
  *
- * Since the library aims to be as lightweight as possible, the width
- * system is a little bit tricky.
- *
  * By default, the width of a fresh constructed `Table` instance will be 50
  * you can change it using `table.config().width(size_t)` call which forces
- * the table to match that width.
+ * the table to match that width. Unless the given width is less than the
+ * minimum width of the table which is the sum of the minimum widths of the
+ * columns. the minimum width of a column is preset in the global.h header and
+ * is equivalent to the maximum display width of any Unicode character which is
+ * 2, so the minimum width of a column is 2.
  *
  * With 'forces' I mean it literally forces the sum of the columns widths to be
- * exactly equal to the width of the table minus the space preserved for the vertical
- * borders, in other words it should be equal to `width - (columns.size() + 1)`.
+ * exactly equal to the width of the table minus the space preserved for the
+ * vertical borders, in other words it should be equal to `width -
+ * (columns.size() + 1)`.
  *
  * So to set a specific width for the table you just need to call
  * `table.config().width(size_t)`.
  *
- * And to set the width of SOME columns (NOT ALL OF THEM), the sum of their widths
- * MUST NOT exceed the total width of the table, and must leave enough space for
- * the other columns.
+ * And to set the width of SOME columns (NOT ALL OF THEM), the sum of their
+ * widths MUST NOT exceed the total width of the table, and must leave enough
+ * space for the other columns.
  *
- * But to set the width of ALL the columns the sum of their widths MUST be exactly
- * equal to the width of the table minus the space preserved for the vertical borders
- * which is `width - (columns.size() + 1)`.
+ * But to set the width of ALL the columns the sum of their widths MUST be
+ * exactly equal to the width of the table minus the space preserved for the
+ * vertical borders which is `width - (columns.size() + 1)`.
  */
 
 // it's bad but for convenience
 using namespace tabular;
 
-void adjustWidth(Table& table)
+void adjustWidth(Table &table)
 {
   // the first column
   for (size_t i = 0; i < 6; ++i) table[i][0].config().width(5);
@@ -52,7 +54,7 @@ void adjustWidth(Table& table)
   // so the width will get applied without any problems
   table.config().width(70);
 }
-void styleTable(Table& table)
+void styleTable(Table &table)
 {
   // underline the numbers
   for (size_t i = 1; i < 6; ++i) table[i][0].style().attrs(Attr::Underline);
@@ -88,11 +90,11 @@ void styleTable(Table& table)
 }
 
 // center all the columns
-void alignColumns(Table& table)
+void alignColumns(Table &table)
 {
-  for (auto& row : table.rows())
+  for (auto &row : table.rows())
   {
-    for (auto& column : row.columns())
+    for (auto &column : row.columns())
     {
       column.config().align(Align::Center);
     }
@@ -103,12 +105,14 @@ int main()
 {
   Table table;
 
+  // clang-format off
   table.addRow({"ID", "Dev", "Task", "Priority", "Status"})
       .addRow({"001", "Alice Carlisle", "Authentication", "High", "In Progress"})
       .addRow({"002", "Henry Dawson", "Database", "Medium", "Completed"})
       .addRow({"003", "Carol Bennett", "Frontend", "High", "Testing"})
       .addRow({"004", "Amelia Turner", "API", "Low", "Not Started"})
       .addRow({"005", "Charlotte Whitaker", "Documentation", "Medium", "In Progress"});
+  // clang-format on
 
   adjustWidth(table);
   styleTable(table);

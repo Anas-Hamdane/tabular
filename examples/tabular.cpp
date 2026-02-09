@@ -6,6 +6,7 @@ int main()
   using namespace tabular;
   Table table;
 
+  // clang-format off
   table.addRow({
     "   __        ___.         .__\n"
     " _/  |______ \\_ |__  __ __|  | _____ _______\n"
@@ -18,6 +19,7 @@ int main()
     "lightweight header-only library for constructing well-formatted,"
     " fully-customizable CLI tables."
   });
+  // clang-format on
 
   // set a padding horizontally (left and right) and vertically (top and bottom)
   table[0][0].config().padd(Padd(0, 0));

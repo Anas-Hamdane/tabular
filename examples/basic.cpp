@@ -1,5 +1,5 @@
-#include "../include/tabular/table.h"
 #include "../include/tabular/render.h"
+#include "../include/tabular/table.h"
 
 int main()
 {

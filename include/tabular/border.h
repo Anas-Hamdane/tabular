@@ -1,11 +1,9 @@
 #pragma once
-
 #include <string>
 #include "color.h"
 #include "global.h"
 
 namespace tabular {
-// clang-format off
 class Border {
 public:
   class Part {
@@ -412,5 +410,4 @@ private:
   Part connectorTop_ = U'-'; // ┬
   Part connectorBottom_ = U'-'; // ┴
 };
-// clang-format on
 }

@@ -1,5 +1,4 @@
 #pragma once
-
 #include <string>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -10,8 +9,7 @@
 namespace tabular {
   inline void render(const std::string& str, FILE* out)
   {
-    if (str.empty())
-      return;
+    if (str.empty()) return;
 
 #if defined(_WIN32) || defined(_WIN64)
     HANDLE handle;

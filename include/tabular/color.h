@@ -1,8 +1,10 @@
 #pragma once
-
 #include <cstdint>
-namespace tabular {
-enum class Color : uint8_t {
+
+namespace tabular
+{
+enum class Color : uint8_t
+{
   Black = 30,
   Red,
   Green,
@@ -21,7 +23,8 @@ enum class Color : uint8_t {
   BrightCyan,
   BrightWhite,
 };
-struct Rgb {
+struct Rgb
+{
   uint8_t r = 0;
   uint8_t g = 0;
   uint8_t b = 0;
@@ -39,21 +42,22 @@ struct Rgb {
   }
 };
 
-namespace detail {
-  class ColorType {
-    public:
-    ColorType(uint32_t value)
-      : value_(value) {}
+namespace detail
+{
+class ColorType
+{
+public:
+  ColorType(uint32_t value) : value_(value) {}
 
-    bool isSet() { return value_ != 0; }
-    bool isColor() { return isSet() && (value_ & (1u << 24)) == 0; }
-    bool isRgb() { return isSet() && (value_ & (1u << 24)) != 0; }
+  bool isSet() const { return value_ != 0; }
+  bool isColor() const { return isSet() && (value_ & (1u << 24)) == 0; }
+  bool isRgb() const { return isSet() && (value_ & (1u << 24)) != 0; }
 
-    Color color() { return static_cast<Color>(value_ & 0xFFFFFF); }
-    Rgb rgb() { return {value_ & 0xFFFFFF}; }
+  Color color() const { return static_cast<Color>(value_ & 0xFFFFFF); }
+  Rgb rgb() const { return {value_ & 0xFFFFFF}; }
 
-    private:
-    uint32_t value_;
-  };
-}
+private:
+  uint32_t value_;
+};
+} // namespace detail
 } // namespace tabular

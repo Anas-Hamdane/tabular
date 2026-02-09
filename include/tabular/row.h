@@ -1,20 +1,21 @@
 #pragma once
-
-#include "column.h"
 #include "border.h"
+#include "column.h"
 
-namespace tabular {
-// clang-format off
-class Row {
+namespace tabular
+{
+class Row
+{
 public:
-  class Config {
+  class Config
+  {
   public:
     explicit Config() = default;
 
-    void hasBottom(bool has)
+    void hasBottom(bool hasBottom)
     {
       setModified(true);
-      hasBottom_ = has;
+      hasBottom_ = hasBottom;
     }
     void vertical(Border::Part part)
     {
@@ -23,7 +24,7 @@ public:
     }
 
     bool hasBottom() const { return hasBottom_; }
-    const Border::Part& vertical() const { return vertical_; }
+    const Border::Part &vertical() const { return vertical_; }
 
     void reset()
     {
@@ -31,7 +32,6 @@ public:
       hasBottom_ = true;
       setModified(true);
     }
-
 
   private:
     bool hasBottom_ = true;
@@ -46,15 +46,12 @@ public:
 
 public:
   Row() = default;
-  explicit Row(std::vector<Column> columns)
-    : columns_(std::move(columns))
-  {
-  }
+  explicit Row(std::vector<Column> columns) : columns_(std::move(columns)) {}
   explicit Row(std::vector<std::string> columns)
   {
     columns_.reserve(columns.size());
 
-    for (auto& column : columns)
+    for (auto &column : columns)
     {
       columns_.emplace_back(std::move(column));
     }
@@ -66,16 +63,23 @@ public:
     columns_ = std::move(columns);
   }
 
-  Config& config() { return config_; }
-  const Config& config() const { return config_; }
-  std::vector<Column>& columns() { return columns_; }
-  const std::vector<Column>& columns() const { return columns_; }
+  /*
+   * Note: when we return a column by reference, it may get modified
+   * but we already check for modification in str() so we don't need to set
+   * modified to true
+   */
 
-  Column& column(int index) { return columns_.at(index); }
-  const Column& column(int index) const { return columns_.at(index); }
+  Config &config() { return config_; }
+  const Config &config() const { return config_; }
 
-  Column& operator[](int index) { return columns_.at(index); }
-  const Column& operator[](int index) const { return columns_.at(index); }
+  std::vector<Column> &columns() { return columns_; }
+  const std::vector<Column> &columns() const { return columns_; }
+
+  Column &column(int index) { return columns_.at(index); }
+  const Column &column(int index) const { return columns_.at(index); }
+
+  Column &operator[](int index) { return columns_.at(index); }
+  const Column &operator[](int index) const { return columns_.at(index); }
 
   void clr()
   {
@@ -85,7 +89,7 @@ public:
     setModified(false);
   }
 
-  const std::string& str() const
+  const std::string &str() const
   {
     if (isModified())
     {
@@ -99,20 +103,19 @@ public:
     return str_;
   }
 
+  // check if the row or any of its columns or its config is modified
   bool isModified() const
   {
     if (this->modified || config_.isModified()) return true;
-    for (const auto& column : columns_)
+    for (const auto &column : columns_)
     {
       if (column.isModified()) return true;
     }
 
     return false;
   }
-  void setModified(bool modified)
-  {
-    this->modified = modified;
-  }
+  // mark the row as modified
+  void setModified(bool modified) { this->modified = modified; }
 
 private:
   // cache
@@ -125,26 +128,35 @@ private:
   std::string genStr() const
   {
     if (columns_.empty()) return "";
-    const size_t maxLines = getMaxLines();
 
     std::string rowStr;
-    // average
+    const size_t maxLines = getMaxLines();
+    const auto &vertical = config().vertical().str();
+
+    // estimation
     rowStr.reserve(DEFAULT_WIDTH * maxLines + (columns_.size() + 1));
 
-    const auto& vertical = config().vertical().str();
     for (size_t i = 0; i < maxLines; ++i)
     {
+      // the start of a new line
       if (!rowStr.empty()) rowStr.push_back('\n');
       rowStr.append(vertical);
 
-      for (const auto& column : columns_)
+      for (const auto &column : columns_)
       {
-        const auto& lines = column.lines();
+        // the cache system works here
+        const auto &lines = column.lines();
 
+        // if the column has a line at index i, append it, otherwise append
+        // an empty line generated with respect to the column's configurations
         if (lines.size() > i)
+        {
           rowStr.append(lines[i]);
+        }
         else
+        {
           rowStr.append(column.genEmptyLine());
+        }
 
         rowStr.append(vertical);
       }
@@ -156,11 +168,12 @@ private:
   {
     size_t maxLines = 0;
 
-    for (const auto& column : columns_)
+    for (const auto &column : columns_)
+    {
       maxLines = (std::max)(maxLines, column.lines().size());
+    }
 
     return maxLines;
   }
 };
-// clang-format off
-}
+} // namespace tabular

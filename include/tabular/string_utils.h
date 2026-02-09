@@ -1,15 +1,18 @@
 #pragma once
-
 #include <cstdint>
 #include <string>
 
-namespace tabular {
-namespace detail {
-struct Range {
+namespace tabular
+{
+namespace detail
+{
+struct Range
+{
   uint32_t first;
   uint32_t last;
 };
 
+// clang-format off
 constexpr static Range combining[] = {
     {0x0000, 0x001F}, {0x007F, 0x009F}, {0x0300, 0x036F}, {0x0483, 0x0489},
     {0x0591, 0x05BD}, {0x05BF, 0x05BF}, {0x05C1, 0x05C2}, {0x05C4, 0x05C5},
@@ -144,8 +147,9 @@ static constexpr unsigned char utf8Len[256] = {
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
+// clang-format on
 
-inline bool bisearch(uint32_t ucs, const Range* interval, int max)
+inline bool bisearch(uint32_t ucs, const Range *interval, int max)
 {
   int min = 0;
 
@@ -155,19 +159,24 @@ inline bool bisearch(uint32_t ucs, const Range* interval, int max)
   {
     const int mid = (min + max) / 2;
 
-    if (ucs > interval[mid].last) min = mid + 1;
-    else if (ucs < interval[mid].first) max = mid - 1;
-    else return true;
+    if (ucs > interval[mid].last)
+      min = mid + 1;
+    else if (ucs < interval[mid].first)
+      max = mid - 1;
+    else
+      return true;
   }
 
   return false;
 }
-}
+} // namespace detail
 
-namespace string_utils {
+namespace string_utils
+{
 inline bool isSpace(const char c)
 {
-  return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r';
+  return c == ' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' ||
+         c == '\r';
 }
 
 constexpr bool isAscii(const char character)
@@ -183,9 +192,9 @@ constexpr bool isAlpha(const char character)
 
 // convert a utf8 encoded sequence to a wide characters
 // returns true if it's a valid utf8 string
-inline bool utf8twc(const char* s, uint32_t& wc, int& consumed)
+inline bool utf8twc(const char *s, uint32_t &wc, int &consumed)
 {
-  const auto* u = reinterpret_cast<const unsigned char*>(s);
+  const auto *u = reinterpret_cast<const unsigned char *>(s);
   const unsigned char c = u[0];
 
   // ascii
@@ -203,27 +212,34 @@ inline bool utf8twc(const char* s, uint32_t& wc, int& consumed)
   switch (consumed)
   {
   case 2:
+  {
     if ((u[1] & 0xC0) != 0x80) return false;
     wc = ((c & 0x1F) << 6) | (u[1] & 0x3F);
     return wc >= 0x80;
+  }
 
   case 3:
+  {
     if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) return false;
     wc = ((c & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
     return wc >= 0x800 && (wc < 0xD800 || wc > 0xDFFF);
+  }
 
   case 4:
+  {
     if ((u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80 || (u[3] & 0xC0) != 0x80)
+    {
       return false;
+    }
     wc = ((c & 0x07) << 18) | ((u[1] & 0x3F) << 12) | ((u[2] & 0x3F) << 6) |
-                (u[3] & 0x3F);
+         (u[3] & 0x3F);
     return wc >= 0x10000 && wc <= 0x10FFFF;
+  }
 
   default:
     return false;
   }
 }
-
 
 // return the display width of a Unicode character
 inline size_t wcwidth(const uint32_t ucs)
@@ -233,24 +249,26 @@ inline size_t wcwidth(const uint32_t ucs)
   if (ucs == 0) return 0;
   if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0)) return 0;
 
-  if (bisearch(ucs, combining,
-               (sizeof(combining) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
+  if (bisearch(ucs, combining, std::size(combining) - 1))
+  {
     return 0;
+  }
 
-  if (bisearch(ucs, wide,
-               (sizeof(wide) / sizeof(std::pair<uint32_t, uint32_t>)) - 1))
+  if (bisearch(ucs, wide, std::size(wide) - 1))
+  {
     return 2;
+  }
 
   return 1;
 }
 
 // calculates the display width of a given utf8 string
-inline size_t dw(const char* str)
+inline size_t dw(const char *str)
 {
   using namespace detail;
 
   size_t width = 0;
-  const char* ptr = str;
+  const char *ptr = str;
 
   while (*ptr)
   {
@@ -260,8 +278,7 @@ inline size_t dw(const char* str)
       // skip every ascii character until a non-ascii one
       // or an alphabet is found
       ++ptr;
-      while (*ptr && isAscii(*ptr) && !isAlpha(*ptr))
-        ++ptr;
+      while (*ptr && isAscii(*ptr) && !isAlpha(*ptr)) ++ptr;
 
       // skip the first alphabet too
       if (*ptr && isAlpha(*ptr)) ++ptr;
@@ -288,12 +305,11 @@ inline size_t dw(const char* str)
   return width;
 }
 
-inline size_t dw(const std::string& str)
-{
-  return dw(str.c_str());
-}
+// calculates the display width of a given utf8 string
+inline size_t dw(const std::string &str) { return dw(str.c_str()); }
 
-inline std::string readUtf8Char(const std::string& str, const size_t pos)
+// read and return a full utf8 character
+inline std::string readUtf8Char(const std::string &str, const size_t pos)
 {
   if (pos >= str.length()) return "";
 
@@ -303,17 +319,15 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
   if ((first_byte & 0xC0) == 0x80) return "";
 
   // find the length of the sequence from the start byte
-  size_t len;
-  if ((first_byte & 0x80) == 0)
-    len = 1;
-  else if ((first_byte & 0xE0) == 0xC0)
-    len = 2;
-  else if ((first_byte & 0xF0) == 0xE0)
-    len = 3;
-  else if ((first_byte & 0xF8) == 0xF0)
-    len = 4;
-  else
-    return "";
+  size_t len = 0;
+
+  // clang-format off
+  if ((first_byte & 0x80) == 0)         len = 1;
+  else if ((first_byte & 0xE0) == 0xC0) len = 2;
+  else if ((first_byte & 0xF0) == 0xE0) len = 3;
+  else if ((first_byte & 0xF8) == 0xF0) len = 4;
+  else return "";
+  // clang-format on
 
   // not enough bytes
   if (pos + len > str.length()) return "";
@@ -330,12 +344,12 @@ inline std::string readUtf8Char(const std::string& str, const size_t pos)
   return str.substr(pos, len);
 }
 
-inline bool endsWith(const std::string& str, const std::string& with)
+inline bool endsWith(const std::string &str, const std::string &prefix)
 {
-  const size_t len = with.size();
+  const size_t len = prefix.size();
   const size_t n = str.size();
   if (n < len) return false;
-  return str.compare(n - len, len, with) == 0;
+  return str.compare(n - len, len, prefix) == 0;
 }
-}
-}
+} // namespace string_utils
+} // namespace tabular
