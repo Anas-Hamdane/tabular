@@ -115,7 +115,7 @@ int main()
   alignColumns(table);
 
   // rounded borders
-  table.border(Border::Rounded());
+  table.border(Border::rounded());
 
   render(table.str() + '\n', stdout);
   return 0;

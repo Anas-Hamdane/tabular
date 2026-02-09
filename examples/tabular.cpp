@@ -33,7 +33,7 @@ int main()
   table.config().width(48);
 
   // set the border style of the table
-  table.border(Border::Rounded());
+  table.border(Border::rounded());
 
   // render the table(or any string) in a cross-platform way
   render(table.str() + '\n', stdout);
