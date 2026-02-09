@@ -1,20 +1,7 @@
 BasedOnStyle: LLVM
-BreakBeforeBraces: Custom
-PointerAlignment: Left
-ColumnLimit: 85
-
-AllowShortIfStatementsOnASingleLine: WithoutElse
-AllowShortFunctionsOnASingleLine: Inline
-
-BraceWrapping:
-  AfterFunction: true
-  AfterClass: false
-  AfterStruct: false
-  AfterEnum: false
-  AfterNamespace: false
-  AfterControlStatement: Always
-  BeforeElse: true
-  BeforeCatch: false
-  BeforeWhile: false
-
-SeparateDefinitionBlocks: Leave
+IndentWidth: 2
+BreakBeforeBraces: Allman
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+ColumnLimit: 80
