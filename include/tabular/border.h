@@ -269,12 +269,7 @@ public:
     return *this;
   }
 
-  static Border Default()
-  {
-    // already default constructed
-    return {};
-  }
-  static Border Filled(const uint32_t c)
+  static Border filled(const uint32_t c)
   {
     Border border;
     border.horizontal_ = c;
@@ -294,15 +289,15 @@ public:
 
     return border;
   }
-  static Border None()
+  static Border none()
   {
-    return Filled(U'\0');
+    return filled(U'\0');
   }
-  static Border Blank()
+  static Border blank()
   {
-    return Filled(U' ');
+    return filled(U' ');
   }
-  static Border Modern()
+  static Border modern()
   {
     Border border;
     border.horizontal_ = U'─';
@@ -322,7 +317,7 @@ public:
 
     return border;
   }
-  static Border Double()
+  static Border doubled()
   {
     Border border;
     border.horizontal_ = U'═';
@@ -342,7 +337,7 @@ public:
 
     return border;
   }
-  static Border Rounded()
+  static Border rounded()
   {
     Border border;
     border.horizontal_ = U'─';
@@ -362,7 +357,7 @@ public:
 
     return border;
   }
-  static Border Heavy()
+  static Border heavy()
   {
     Border border;
     border.horizontal_ = U'━';

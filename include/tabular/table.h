@@ -163,8 +163,8 @@ private:
   std::string genStr() const
   {
     // avoid reference
-    auto rows = rows_; // TODO: maybe remove this
-    if (rows.empty()) return "";
+    if (rows_.empty()) return "";
+    auto rows = rows_;
 
     std::string tableStr;
     tableStr.reserve(rows.size() * config_.width());
@@ -246,8 +246,6 @@ private:
 
   void adjustWidth(std::vector<Row>& rows) const
   {
-    if (rows.empty()) return;
-
     size_t width = config_.width();
     for (size_t i = 0; i < rows.size(); ++i)
     {
